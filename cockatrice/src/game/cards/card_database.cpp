@@ -3,6 +3,7 @@
 #include "../../client/network/spoiler_background_updater.h"
 #include "../../client/ui/picture_loader.h"
 #include "../../settings/cache_settings.h"
+#include "../../utility/card_set_comparator.h"
 #include "../game_specific_terms.h"
 #include "./card_database_parser/cockatrice_xml_3.h"
 #include "./card_database_parser/cockatrice_xml_4.h"
@@ -440,6 +441,19 @@ QList<CardInfoPtr> CardDatabase::getCards(const QStringList &cardNames) const
     return cardInfos;
 }
 
+CardInfoPtr CardDatabase::getCardByNameAndUUID(const QString &cardName, const QString &uuid)
+{
+    auto info = getCard(cardName);
+    for (auto sets : info->getSets()) {
+        if (sets.getProperty("uuid") == uuid) {
+            CardInfoPtr set_pointer = info->clone();
+            set_pointer->setPixmapCacheKey(sets.getProperty("uuid"));
+            return set_pointer;
+        }
+    }
+    return {};
+}
+
 CardInfoPtr CardDatabase::getCardBySimpleName(const QString &cardName) const
 {
     return getCardFromMap(simpleNameCards, CardInfo::simplifyName(cardName));
@@ -561,6 +575,8 @@ LoadStatus CardDatabase::loadCardDatabases()
 
     // AFTER all the cards have been loaded
 
+    // Refresh the pixmap cache keys for all cards by setting them to the UUID of the preferred printing
+    refreshPreferredPrintings();
     // resolve the reverse-related tags
     refreshCachedReverseRelatedCards();
 
@@ -574,6 +590,63 @@ LoadStatus CardDatabase::loadCardDatabases()
 
     reloadDatabaseMutex->unlock();
     return loadStatus;
+}
+
+void CardDatabase::refreshPreferredPrintings()
+{
+    for (const CardInfoPtr &card : cards) {
+        card->setPixmapCacheKey(getPreferredPrintingUUIDForCard(card->getName()));
+    }
+}
+
+CardInfoPerSet CardDatabase::getPreferredPrintingForCard(const QString &cardName)
+{
+    CardInfoPtr cardInfo = getCard(cardName);
+    if (!cardInfo) {
+        return CardInfoPerSet(nullptr);
+    }
+
+    CardInfoPerSetMap setMap = cardInfo->getSets();
+    if (setMap.empty()) {
+        return CardInfoPerSet(nullptr);
+    }
+
+    CardSetPtr preferredSet = nullptr;
+    CardInfoPerSet preferredCard;
+    SetPriorityComparator comparator;
+
+    for (auto &set : setMap) {
+        CardSetPtr currentSet = set.getPtr();
+        if (!preferredSet || comparator(currentSet, preferredSet)) {
+            preferredSet = currentSet;
+            preferredCard = set;
+        }
+    }
+
+    if (preferredSet) {
+        return preferredCard;
+    }
+
+    return CardInfoPerSet(nullptr);
+}
+
+QString CardDatabase::getPreferredPrintingUUIDForCard(const QString &cardName)
+{
+    CardInfoPerSet preferred_set_card_info = getPreferredPrintingForCard(cardName);
+    QString preferred_set_uuid = preferred_set_card_info.getProperty(QString("uuid"));
+    if (preferred_set_uuid == QString("")) {
+        CardInfoPtr default_card_info = getCard(cardName);
+        if (default_card_info.isNull()) {
+            return cardName;
+        }
+        return default_card_info->getName();
+    }
+    return preferred_set_uuid;
+}
+
+bool CardDatabase::isUuidForPreferredPrinting(const QString &cardName, const QString &uuid)
+{
+    return uuid == getPreferredPrintingUUIDForCard(cardName);
 }
 
 void CardDatabase::refreshCachedReverseRelatedCards()
