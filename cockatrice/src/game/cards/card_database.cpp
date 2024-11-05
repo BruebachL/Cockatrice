@@ -583,6 +583,7 @@ LoadStatus CardDatabase::loadCardDatabases()
     if (loadStatus == Ok) {
         checkUnknownSets(); // update deck editors, etc
         qDebug() << "CardDatabase::loadCardDatabases success";
+        emit cardDatabaseLoadingFinished();
     } else {
         qDebug() << "CardDatabase::loadCardDatabases failed";
         emit cardDatabaseLoadingFailed(); // bring up the settings dialog
