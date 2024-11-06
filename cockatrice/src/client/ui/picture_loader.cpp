@@ -45,8 +45,10 @@ PictureToLoad::PictureToLoad(CardInfoPtr _card)
         std::sort(sortedSets.begin(), sortedSets.end(), SetDownloadPriorityComparator());
         // If the pixmapCacheKey corresponds to a specific set, we have to try to load it first.
         for (const auto &set : card->getSets()) {
-            if (set.getProperty(QString("uuid")) == card->getPixmapCacheKey()) {
-                sortedSets.prepend(sortedSets.takeAt(sortedSets.indexOf(set.getPtr())));
+            if (QLatin1String("card_") + QString(set.getProperty("uuid")) == card->getPixmapCacheKey()) {
+                long long setIndex = sortedSets.indexOf(set.getPtr());
+                CardSetPtr setForCardUUID = sortedSets.takeAt(setIndex);
+                sortedSets.prepend(setForCardUUID);
             }
         }
         // The first time called, nextSet will also populate the Urls for the first set.
@@ -176,7 +178,8 @@ void PictureLoaderWorker::processLoadQueue()
         qDebug().nospace() << "PictureLoader: [card: " << cardName << " set: " << setName
                            << "]: Trying to load picture";
 
-        if (CardDatabaseManager::getInstance()->isUuidForPreferredPrinting(cardName, cardBeingLoaded.getCard()->getPixmapCacheKey())) {
+        if (CardDatabaseManager::getInstance()->isUuidForPreferredPrinting(
+                cardName, cardBeingLoaded.getCard()->getPixmapCacheKey())) {
             if (cardImageExistsOnDisk(setName, correctedCardName)) {
                 continue;
             }
