@@ -272,8 +272,9 @@ bool InnerDecklistNode::readElement(QXmlStreamReader *xml)
             } else if (childName == "card") {
                 DecklistCardNode *newCard = new DecklistCardNode(xml->attributes().value("name").toString(),
                                                  xml->attributes().value("number").toString().toInt(),
-                                                 this, xml->attributes().value("uuid").toString(),
-                                                 xml->attributes().value("collectorNumber").toString());
+                                                 this, xml->attributes().value("setName").toString(),
+                                                 xml->attributes().value("collectorNumber").toString(),
+                                                 xml->attributes().value("providerId").toString());
                 newCard->readElement(xml);
             }
         } else if (xml->isEndElement() && (childName == "zone"))
@@ -308,10 +309,11 @@ void AbstractDecklistCardNode::writeElement(QXmlStreamWriter *xml)
     xml->writeAttribute("name", getName());
 
     if (getCardSetName() != "") {
-        xml->writeAttribute("uuid", getCardSetName());
+        xml->writeAttribute("setName", getCardSetName());
         if (getCardCollectorNumber() != "") {
             xml->writeAttribute("collectorNumber", getCardCollectorNumber());
         }
+        xml->writeAttribute("providerId", getCardSetId());
     }
 }
 
@@ -753,14 +755,15 @@ int DeckList::getSideboardSize() const
 DecklistCardNode *DeckList::addCard(const QString &cardName,
                                     const QString &zoneName,
                                     const QString &cardSetName,
-                                    const QString &cardSetCollectorNumber)
+                                    const QString &cardSetCollectorNumber,
+                                    const QString &cardSetId)
 {
     auto *zoneNode = dynamic_cast<InnerDecklistNode *>(root->findChild(zoneName));
     if (zoneNode == nullptr) {
         zoneNode = new InnerDecklistNode(zoneName, root);
     }
 
-    auto *node = new DecklistCardNode(cardName, 1, zoneNode, cardSetName, cardSetCollectorNumber);
+    auto *node = new DecklistCardNode(cardName, 1, zoneNode, cardSetName, cardSetCollectorNumber, cardSetId);
     updateDeckHash();
 
     return node;

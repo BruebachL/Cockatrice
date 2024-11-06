@@ -79,7 +79,7 @@ int DeckListModel::rowCount(const QModelIndex &parent) const
 
 int DeckListModel::columnCount(const QModelIndex & /*parent*/) const
 {
-    return 4;
+    return 5;
 }
 
 QVariant DeckListModel::data(const QModelIndex &index, int role) const
@@ -119,6 +119,9 @@ QVariant DeckListModel::data(const QModelIndex &index, int role) const
                     case 3: {
                         return node->getCardCollectorNumber();
                     }
+                    case 4: {
+                        return node->getCardSetId();
+                    }
                     default:
                         return {};
                 }
@@ -146,6 +149,8 @@ QVariant DeckListModel::data(const QModelIndex &index, int role) const
                         return card->getCardSetName();
                     case 3:
                         return card->getCardCollectorNumber();
+                    case 4:
+                        return card->getCardSetId();
                     default:
                         return {};
                 }
@@ -182,6 +187,8 @@ QVariant DeckListModel::headerData(const int section, const Qt::Orientation orie
             return tr("Set");
         case 3:
             return tr("Number");
+        case 4:
+            return tr("UUID");
         default:
             return {};
     }
@@ -245,10 +252,13 @@ bool DeckListModel::setData(const QModelIndex &index, const QVariant &value, con
             break;
         case 2:
             node->setCardSetName(value.toString());
-        break;
+            break;
         case 3:
             node->setCardCollectorNumber(value.toString());
-        break;
+            break;
+        case 4:
+            node->setCardSetId(value.toString());
+            break;
         default:
             return false;
     }
@@ -362,7 +372,7 @@ QModelIndex DeckListModel::addCard(const QString &cardName, const QString &zoneN
     auto *cardNode = dynamic_cast<DecklistModelCardNode *>(cardTypeNode->findChild(cardName));
     if (!cardNode) {
         auto *decklistCard = deckList->addCard(
-            cardInfo->getName(), zoneName, cardInfoSet.getPtr()->getShortName(), cardInfoSet.getProperty("num"));
+            cardInfo->getName(), zoneName, cardInfoSet.getPtr()->getShortName(), cardInfoSet.getProperty("num"), cardInfoSet.getProperty("uuid"));
         beginInsertRows(parentIndex, static_cast<int>(cardTypeNode->size()), static_cast<int>(cardTypeNode->size()));
         cardNode = new DecklistModelCardNode(decklistCard, cardTypeNode);
         endInsertRows();
@@ -370,6 +380,7 @@ QModelIndex DeckListModel::addCard(const QString &cardName, const QString &zoneN
         cardNode->setNumber(cardNode->getNumber() + 1);
         cardNode->setCardSetName(cardInfoSet.getPtr()->getShortName());
         cardNode->setCardCollectorNumber(cardInfoSet.getProperty("num"));
+        cardNode->setCardSetId(cardInfoSet.getProperty("uuid"));
         deckList->updateDeckHash();
     }
     sort(lastKnownColumn, lastKnownOrder);
