@@ -114,7 +114,7 @@ QVariant DeckListModel::data(const QModelIndex &index, int role) const
                         return node->getName();
                     }
                     case 2: {
-                        return node->getCardUuid();
+                        return node->getCardSetName();
                     }
                     case 3: {
                         return node->getCardCollectorNumber();
@@ -143,7 +143,7 @@ QVariant DeckListModel::data(const QModelIndex &index, int role) const
                     case 1:
                         return card->getName();
                     case 2:
-                        return card->getCardUuid();
+                        return card->getCardSetName();
                     case 3:
                         return card->getCardCollectorNumber();
                     default:
@@ -244,7 +244,7 @@ bool DeckListModel::setData(const QModelIndex &index, const QVariant &value, con
             node->setName(value.toString());
             break;
         case 2:
-            node->setCardSetCode(value.toString());
+            node->setCardSetName(value.toString());
         break;
         case 3:
             node->setCardCollectorNumber(value.toString());
@@ -362,13 +362,13 @@ QModelIndex DeckListModel::addCard(const QString &cardName, const QString &zoneN
     auto *cardNode = dynamic_cast<DecklistModelCardNode *>(cardTypeNode->findChild(cardName));
     if (!cardNode) {
         auto *decklistCard = deckList->addCard(
-            cardInfo->getName(), zoneName, cardInfoSet.getProperty("uuid"), cardInfoSet.getProperty("num"));
+            cardInfo->getName(), zoneName, cardInfoSet.getPtr()->getShortName(), cardInfoSet.getProperty("num"));
         beginInsertRows(parentIndex, static_cast<int>(cardTypeNode->size()), static_cast<int>(cardTypeNode->size()));
         cardNode = new DecklistModelCardNode(decklistCard, cardTypeNode);
         endInsertRows();
     } else {
         cardNode->setNumber(cardNode->getNumber() + 1);
-        cardNode->setCardSetCode(cardInfoSet.getProperty("uuid"));
+        cardNode->setCardSetName(cardInfoSet.getPtr()->getShortName());
         cardNode->setCardCollectorNumber(cardInfoSet.getProperty("num"));
         deckList->updateDeckHash();
     }

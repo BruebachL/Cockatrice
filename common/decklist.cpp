@@ -88,7 +88,7 @@ int AbstractDecklistNode::depth() const
 }
 
 InnerDecklistNode::InnerDecklistNode(InnerDecklistNode *other, InnerDecklistNode *_parent)
-: AbstractDecklistNode(_parent), name(other->getName()), cardSetCode(other->getCardUuid()),
+: AbstractDecklistNode(_parent), name(other->getName()), cardSetCode(other->getCardSetName()),
   cardCollectorNumber(other->getCardCollectorNumber())
 {
     for (int i = 0; i < other->size(); ++i) {
@@ -141,7 +141,7 @@ void InnerDecklistNode::clearTree()
 
 DecklistCardNode::DecklistCardNode(DecklistCardNode *other, InnerDecklistNode *_parent)
 : AbstractDecklistCardNode(_parent), name(other->getName()), number(other->getNumber()),
-  cardSetName(other->getCardUuid()), cardSetNumber(other->getCardCollectorNumber())
+  cardSetName(other->getCardSetName()), cardSetNumber(other->getCardCollectorNumber())
 {
 }
 
@@ -307,8 +307,8 @@ void AbstractDecklistCardNode::writeElement(QXmlStreamWriter *xml)
     xml->writeAttribute("number", QString::number(getNumber()));
     xml->writeAttribute("name", getName());
 
-    if (getCardUuid() != "") {
-        xml->writeAttribute("uuid", getCardUuid());
+    if (getCardSetName() != "") {
+        xml->writeAttribute("uuid", getCardSetName());
         if (getCardCollectorNumber() != "") {
             xml->writeAttribute("collectorNumber", getCardCollectorNumber());
         }
