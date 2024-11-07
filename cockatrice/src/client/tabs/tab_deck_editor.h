@@ -57,6 +57,8 @@ private slots:
     void updateCardInfoRight(const QModelIndex &current, const QModelIndex &previous);
     void updateSearch(const QString &search);
     void databaseCustomMenu(QPoint point);
+    void decklistCustomMenu(QPoint point);
+    void createPrintingSelector(CardInfoPtr selectedCard);
 
     void actNewDeck();
     void actLoadDeck();
