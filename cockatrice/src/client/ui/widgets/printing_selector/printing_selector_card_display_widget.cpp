@@ -23,8 +23,8 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(DeckListMod
     cardInfoPicture = new CardInfoPictureWidget();
     cardInfoPicture->setMinimumSize(0, 0);
     qDebug() << rootCard->getName() << " " << setInfoForCard.getProperty("uuid") << " " << countCards();
-    setCard = CardDatabaseManager::getInstance()->getCardByNameAndUUID(rootCard->getName(),
-                                                                       setInfoForCard.getProperty("uuid"));
+    setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
+                                                                             setInfoForCard.getProperty("uuid"));
     cardInfoPicture->setCard(setCard);
     layout->addWidget(cardInfoPicture);
 
@@ -105,11 +105,11 @@ int PrintingSelectorCardDisplayWidget::countCards()
             continue;
         for (int j = 0; j < currentZone->size(); j++) {
             DecklistCardNode *currentCard = dynamic_cast<DecklistCardNode *>(currentZone->at(j));
-            qDebug() << currentCard->getCardUuid();
+            qDebug() << currentCard->getCardProviderId();
             if (!currentCard)
                 continue;
             for (int k = 0; k < currentCard->getNumber(); ++k) {
-                if (currentCard->getCardUuid() == setInfoForCard.getProperty("uuid")) {
+                if (currentCard->getCardProviderId() == setInfoForCard.getProperty("uuid")) {
                     count++;
                 }
             }

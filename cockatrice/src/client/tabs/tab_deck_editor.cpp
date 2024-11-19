@@ -511,8 +511,7 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
     // filling out the related cards submenu
     QAction *selectPrinting = menu.addAction("Select Printing");
 
-    connect(selectPrinting, &QAction::triggered, this,
-            [this, info] { this->createPrintingSelector(info); });
+    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(info); });
 
     menu.exec(deckView->mapToGlobal(point));
 }
@@ -522,7 +521,6 @@ void TabDeckEditor::createPrintingSelector(CardInfoPtr selectedCard)
     printingSelector->setCard(selectedCard);
     printingSelector->show();
 }
-
 
 void TabDeckEditor::restartLayout()
 {
@@ -762,7 +760,7 @@ void TabDeckEditor::updatePrintingSelector(const QModelIndex &current, const QMo
     if (!current.isValid())
         return;
     if (!current.model()->hasChildren(current.sibling(current.row(), 0))) {
-        printingSelector->setCard(CardDatabaseManager::getInstance()->getCardByNameAndUUID(
+        printingSelector->setCard(CardDatabaseManager::getInstance()->getCardByNameAndProviderId(
             current.sibling(current.row(), 1).data().toString(), current.sibling(current.row(), 2).data().toString()));
     }
 }
