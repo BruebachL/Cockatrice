@@ -56,6 +56,9 @@ CardInfoPerSet PrintingSelector::getSetForUUID(const QString &uuid)
 
 QList<CardInfoPerSet> PrintingSelector::sortSets()
 {
+    if (selectedCard.isNull()) {
+        return {};
+    }
     CardInfoPerSetMap cardInfoPerSets = selectedCard->getSets();
     if (sortOptionsSelector->currentText() == "Alphabetical") {
         // Convert CardInfoPerSetMap to QList<CardInfoPerSet> and return
