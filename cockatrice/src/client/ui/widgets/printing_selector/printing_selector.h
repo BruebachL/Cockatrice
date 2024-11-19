@@ -34,4 +34,4 @@ private:
     CardInfoPtr selectedCard;
 };
 
-#endif //PRINTING_SELECTOR_H
+#endif // PRINTING_SELECTOR_H
