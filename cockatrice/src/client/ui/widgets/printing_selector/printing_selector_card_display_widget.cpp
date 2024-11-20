@@ -56,7 +56,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     decrementButtonSideboard = new QPushButton("-");
     connect(decrementButtonSideboard, SIGNAL(clicked()), this, SLOT(removePrintingSideboard()));
 
-    cardCountSideboard = new QLabel(QString::fromStdString(std::to_string(countCardsMainBoard())));
+    cardCountSideboard = new QLabel(QString::fromStdString(std::to_string(countCardsSideBoard())));
 
     buttonBoxSideboard->addWidget(decrementButtonSideboard);
     buttonBoxSideboard->addWidget(cardCountSideboard, 0, Qt::AlignmentFlag::AlignCenter);
@@ -108,12 +108,8 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
     deckView->setCurrentIndex(numberIndex);
     if (new_count <= 0) {
         deckModel->removeRow(idx.row(), idx.parent());
-        cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard() - 1)));
-        cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard() - 1)));
     } else {
         deckModel->setData(numberIndex, new_count, Qt::EditRole);
-        cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard())));
-        cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard())));
     }
     deckEditor->setModified(true);
 }
