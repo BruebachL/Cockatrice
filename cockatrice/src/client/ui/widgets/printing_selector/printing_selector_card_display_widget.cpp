@@ -5,16 +5,20 @@
 #include "../../../../deck/deck_view.h"
 #include "../../../../game/cards/card_database.h"
 #include "../../../../game/cards/card_database_manager.h"
+#include "../../../tabs/tab_deck_editor.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
 
-PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(DeckListModel *deckModel,
+PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEditor *deckEditor,
+                                                                     DeckListModel *deckModel,
                                                                      QTreeView *deckView,
                                                                      CardInfoPtr &rootCard,
                                                                      CardInfoPerSet &setInfoForCard,
+                                                                     QString &currentZone,
                                                                      QWidget *parent)
-    : QWidget(parent), deckModel(deckModel), deckView(deckView), rootCard(rootCard), setInfoForCard(setInfoForCard)
+    : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView), rootCard(rootCard),
+      setInfoForCard(setInfoForCard), currentZone(currentZone)
 {
     layout = new QVBoxLayout();
     setLayout(layout);
@@ -22,7 +26,6 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(DeckListMod
 
     cardInfoPicture = new CardInfoPictureWidget();
     cardInfoPicture->setMinimumSize(0, 0);
-    qDebug() << rootCard->getName() << " " << setInfoForCard.getProperty("uuid") << " " << countCards();
     setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
                                                                              setInfoForCard.getProperty("uuid"));
     cardInfoPicture->setCard(setCard);
@@ -54,13 +57,13 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(DeckListMod
 
 void PrintingSelectorCardDisplayWidget::addPrinting()
 {
-    deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
+    deckModel->addCard(rootCard->getName(), setInfoForCard, currentZone);
     cardCount->setText(QString::fromStdString(std::to_string(countCards())));
 }
 
 void PrintingSelectorCardDisplayWidget::removePrinting()
 {
-    decrementCardHelper(DECK_ZONE_MAIN);
+    decrementCardHelper(currentZone);
     cardCount->setText(QString::fromStdString(std::to_string(countCards())));
 }
 
@@ -77,6 +80,7 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
         deckModel->removeRow(idx.row(), idx.parent());
     else
         deckModel->setData(numberIndex, new_count, Qt::EditRole);
+    deckEditor->setModified(true);
 }
 
 void PrintingSelectorCardDisplayWidget::decrementCardHelper(QString zoneName)
@@ -105,7 +109,6 @@ int PrintingSelectorCardDisplayWidget::countCards()
             continue;
         for (int j = 0; j < currentZone->size(); j++) {
             DecklistCardNode *currentCard = dynamic_cast<DecklistCardNode *>(currentZone->at(j));
-            qDebug() << currentCard->getCardProviderId();
             if (!currentCard)
                 continue;
             for (int k = 0; k < currentCard->getNumber(); ++k) {

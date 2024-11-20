@@ -8,8 +8,11 @@
 #include <QComboBox>
 #include <QHBoxLayout>
 
-PrintingSelector::PrintingSelector(DeckListModel *deckModel, QTreeView *deckView, QWidget *parent)
-    : QWidget(parent), deckModel(deckModel), deckView(deckView)
+PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
+                                   DeckListModel *deckModel,
+                                   QTreeView *deckView,
+                                   QWidget *parent)
+    : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout = new QVBoxLayout();
@@ -35,9 +38,10 @@ void PrintingSelector::updateDisplay()
     getAllSetsForCurrentCard();
 }
 
-void PrintingSelector::setCard(const CardInfoPtr &newCard)
+void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_currentZone)
 {
     selectedCard = newCard;
+    currentZone = _currentZone;
     updateDisplay();
 }
 
@@ -111,8 +115,8 @@ void PrintingSelector::getAllSetsForCurrentCard()
     auto sortedMap = sortSets();
 
     for (auto cardInfoPerSet : sortedMap) {
-        auto *cardDisplayWidget =
-            new PrintingSelectorCardDisplayWidget(deckModel, deckView, selectedCard, cardInfoPerSet);
+        auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(deckEditor, deckModel, deckView, selectedCard,
+                                                                        cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
     }
 }

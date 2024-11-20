@@ -508,7 +508,6 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
     QMenu menu;
     const CardInfoPtr info = cardInfo->getInfo();
 
-    // filling out the related cards submenu
     QAction *selectPrinting = menu.addAction("Select Printing");
 
     connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(info); });
@@ -518,7 +517,7 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
 
 void TabDeckEditor::createPrintingSelector(CardInfoPtr selectedCard)
 {
-    printingSelector->setCard(selectedCard);
+    printingSelector->setCard(selectedCard, DECK_ZONE_MAIN);
     printingSelector->show();
 }
 
@@ -640,7 +639,7 @@ TabDeckEditor::TabDeckEditor(TabSupervisor *_tabSupervisor, QWidget *parent)
     createDeckDock();
     createCardInfoDock();
     createFiltersDock();
-    printingSelector = new PrintingSelector(deckModel, deckView, nullptr);
+    printingSelector = new PrintingSelector(this, deckModel, deckView, nullptr);
 
     this->installEventFilter(this);
 
@@ -757,11 +756,20 @@ void TabDeckEditor::updateCardInfoRight(const QModelIndex &current, const QModel
 
 void TabDeckEditor::updatePrintingSelector(const QModelIndex &current, const QModelIndex & /*previous*/)
 {
+    const QString cardName = current.sibling(current.row(), 1).data().toString();
+    const QString cardProviderID = current.sibling(current.row(), 4).data().toString();
+    const QModelIndex gparent = current.parent().parent();
+
+    if (!gparent.isValid())
+        return;
+
+    const QString zoneName = gparent.sibling(gparent.row(), 1).data(Qt::EditRole).toString();
+    const QString otherZoneName = zoneName == DECK_ZONE_MAIN ? DECK_ZONE_SIDE : DECK_ZONE_MAIN;
     if (!current.isValid())
         return;
     if (!current.model()->hasChildren(current.sibling(current.row(), 0))) {
-        printingSelector->setCard(CardDatabaseManager::getInstance()->getCardByNameAndProviderId(
-            current.sibling(current.row(), 1).data().toString(), current.sibling(current.row(), 2).data().toString()));
+        printingSelector->setCard(
+            CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID), zoneName);
     }
 }
 

@@ -5,6 +5,7 @@
 #include "../../../../deck/deck_list_model.h"
 #include "../../../../deck/deck_view.h"
 #include "../../../../game/cards/card_database.h"
+#include "../../../tabs/tab_deck_editor.h"
 
 #include <QLabel>
 #include <QPainter>
@@ -18,10 +19,12 @@ class PrintingSelectorCardDisplayWidget : public QWidget
     Q_OBJECT
 
 public:
-    PrintingSelectorCardDisplayWidget(DeckListModel *deckModel,
+    PrintingSelectorCardDisplayWidget(TabDeckEditor *deckEditor,
+                                      DeckListModel *deckModel,
                                       QTreeView *deckView,
                                       CardInfoPtr &rootCard,
                                       CardInfoPerSet &setInfoForCard,
+                                      QString &currentZone,
                                       QWidget *parent = nullptr);
     int countCards();
 
@@ -30,11 +33,13 @@ private:
     QHBoxLayout *buttonBox;
     QPushButton *incrementButton;
     QPushButton *decrementButton;
+    TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;
     CardInfoPtr rootCard;
     CardInfoPtr setCard;
     CardInfoPerSet setInfoForCard;
+    QString currentZone;
 
     CardInfoPictureWidget *cardInfoPicture;
     QLabel *cardCount;
