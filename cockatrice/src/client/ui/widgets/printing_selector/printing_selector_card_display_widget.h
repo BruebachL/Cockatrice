@@ -26,8 +26,7 @@ public:
                                       CardInfoPerSet &setInfoForCard,
                                       QString &currentZone,
                                       QWidget *parent = nullptr);
-    int countCardsMainBoard();
-    int countCardsSideBoard();
+    int countCardsInZone(const QString&);
 
 private:
     QVBoxLayout *layout;
@@ -52,7 +51,7 @@ private:
     QLabel *setNumber;
 
     void offsetCountAtIndex(const QModelIndex &idx, int offset);
-    void decrementCardHelper(QString zoneName);
+    void decrementCardHelper(const QString& zoneName);
 
 private slots:
     void addPrintingMainboard();
