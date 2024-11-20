@@ -63,36 +63,38 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     layout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
 
+    connect(deckModel, &DeckListModel::dataChanged, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
+
     setName = new QLabel(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
     layout->addWidget(setName, 0, Qt::AlignmentFlag::AlignCenter);
     setNumber = new QLabel(setInfoForCard.getProperty("num"));
     layout->addWidget(setNumber, 0, Qt::AlignmentFlag::AlignCenter);
 }
 
+void PrintingSelectorCardDisplayWidget::updateCardCounts()
+{
+    cardCountMainboard->setText(QString::number(countCardsInZone(DECK_ZONE_MAIN)));
+    cardCountSideboard->setText(QString::number(countCardsInZone(DECK_ZONE_SIDE)));
+}
+
 void PrintingSelectorCardDisplayWidget::addPrintingMainboard()
 {
     deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
-    cardCountMainboard->setText(QString::number(countCardsInZone(DECK_ZONE_MAIN)));
 }
 
 void PrintingSelectorCardDisplayWidget::addPrintingSideboard()
 {
     deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_SIDE);
-    cardCountSideboard->setText(QString::number(countCardsInZone(DECK_ZONE_SIDE)));
 }
 
 void PrintingSelectorCardDisplayWidget::removePrintingMainboard()
 {
     decrementCardHelper(DECK_ZONE_MAIN);
-    QString x = QString::number(countCardsInZone(DECK_ZONE_MAIN));
-    qDebug() << "UPDATING TEXT TO" << x;
-    cardCountMainboard->setText(x);
 }
 
 void PrintingSelectorCardDisplayWidget::removePrintingSideboard()
 {
     decrementCardHelper(DECK_ZONE_SIDE);
-    cardCountSideboard->setText(QString::number(countCardsInZone(DECK_ZONE_SIDE)));
 }
 
 void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &idx, int offset)
@@ -107,6 +109,7 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
     deckView->setCurrentIndex(numberIndex);
     if (new_count <= 0) {
         deckModel->removeRow(idx.row(), idx.parent());
+        updateCardCounts();
     } else {
         deckModel->setData(numberIndex, new_count, Qt::EditRole);
     }
@@ -154,7 +157,6 @@ int PrintingSelectorCardDisplayWidget::countCardsInZone(const QString& deckZone)
                 continue;
             }
 
-            qDebug() << "CURRENT CARD" << currentCard->getName() << "NUMBER" << currentCard->getNumber();
             for (int k = 0; k < currentCard->getNumber(); ++k) {
                 if (currentCard->getCardProviderId() == setInfoForCard.getProperty("uuid")) {
                     count++;

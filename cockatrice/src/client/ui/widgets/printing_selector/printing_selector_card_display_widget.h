@@ -58,6 +58,7 @@ private slots:
     void addPrintingSideboard();
     void removePrintingMainboard();
     void removePrintingSideboard();
+    void updateCardCounts();
 };
 
 #endif // PRINTING_SELECTOR_CARD_DISPLAY_WIDGET_H

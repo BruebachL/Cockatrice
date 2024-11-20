@@ -83,7 +83,7 @@ void TabDeckEditor::createDeckDock()
     connect(deckView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
             SLOT(updateCardInfoRight(const QModelIndex &, const QModelIndex &)));
     connect(deckView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
-            SLOT(updatePrintingSelector(const QModelIndex &, const QModelIndex &)));
+            SLOT(updatePrintingSelectorDeckView(const QModelIndex &, const QModelIndex &)));
     connect(deckView, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(actSwapCard()));
     connect(deckView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(decklistCustomMenu(QPoint)));
     connect(&deckViewKeySignals, SIGNAL(onShiftS()), this, SLOT(actSwapCard()));
@@ -432,7 +432,7 @@ void TabDeckEditor::createCentralFrame()
     connect(databaseView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
             SLOT(updateCardInfoLeft(const QModelIndex &, const QModelIndex &)));
     connect(databaseView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
-            SLOT(createPrintingSelector(const QModelIndex &, const QModelIndex &)));
+            SLOT(updatePrintingSelectorDatabase(const QModelIndex &, const QModelIndex &)));
     connect(databaseView, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(actAddCard()));
 
     QByteArray dbHeaderState = SettingsCache::instance().layouts().getDeckEditorDbHeaderState();
@@ -489,7 +489,7 @@ void TabDeckEditor::databaseCustomMenu(QPoint point)
 
     connect(addToDeck, SIGNAL(triggered()), this, SLOT(actAddCard()));
     connect(addToSideboard, SIGNAL(triggered()), this, SLOT(actAddCardToSideboard()));
-    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(info); });
+    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(); });
 
     // filling out the related cards submenu
     auto *relatedMenu = new QMenu(tr("Show Related cards"));
@@ -515,14 +515,14 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
 
     QAction *selectPrinting = menu.addAction("Select Printing");
 
-    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(info); });
+    connect(selectPrinting, &QAction::triggered, this, &TabDeckEditor::createPrintingSelector);
 
     menu.exec(deckView->mapToGlobal(point));
 }
 
-void TabDeckEditor::createPrintingSelector(CardInfoPtr selectedCard)
+void TabDeckEditor::createPrintingSelector()
 {
-    printingSelector->setCard(selectedCard, DECK_ZONE_MAIN);
+    printingSelector->setCard(cardInfo->getInfo(), DECK_ZONE_MAIN);
     printingSelector->show();
 }
 
@@ -759,7 +759,23 @@ void TabDeckEditor::updateCardInfoRight(const QModelIndex &current, const QModel
     }
 }
 
-void TabDeckEditor::updatePrintingSelector(const QModelIndex &current, const QModelIndex & /*previous*/)
+void TabDeckEditor::updatePrintingSelectorDatabase(const QModelIndex &current, const QModelIndex & /*previous*/)
+{
+    const QString cardName = current.sibling(current.row(), 0).data().toString();
+    qDebug() << cardName;
+    const QString cardProviderID = CardDatabaseManager::getInstance()->getPreferredPrintingProviderIdForCard(cardName);
+    qDebug() << cardProviderID;
+    qDebug() << CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID);
+
+    if (!current.isValid())
+        return;
+    if (!current.model()->hasChildren(current.sibling(current.row(), 0))) {
+        printingSelector->setCard(
+            CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID), DECK_ZONE_MAIN);
+    }
+}
+
+void TabDeckEditor::updatePrintingSelectorDeckView(const QModelIndex &current, const QModelIndex & /*previous*/)
 {
     const QString cardName = current.sibling(current.row(), 1).data().toString();
     const QString cardProviderID = current.sibling(current.row(), 4).data().toString();
