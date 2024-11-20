@@ -1,7 +1,5 @@
 #include "printing_selector.h"
 
-#include "../../../../deck/deck_list_model.h"
-#include "../../../../game/cards/card_database.h"
 #include "../../../../utility/card_set_comparator.h"
 #include "printing_selector_card_display_widget.h"
 
@@ -28,13 +26,13 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
                 << "Contained in Deck"
                 << "Potential Cards in Deck";
     sortOptionsSelector->addItems(sortOptions);
-    connect(sortOptionsSelector, SIGNAL(currentTextChanged(QString)), this, SLOT(updateDisplay()));
+    connect(sortOptionsSelector, &QComboBox::currentTextChanged, this, &PrintingSelector::updateDisplay);
     sortToolBar->addWidget(sortOptionsSelector);
 
     toggleSortOrder = new QPushButton(this);
     toggleSortOrder->setText(tr("Ascending"));
     descendingSort = false;
-    connect(toggleSortOrder, SIGNAL(clicked()), this, SLOT(updateSortOrder()));
+    connect(toggleSortOrder, &QPushButton::clicked, this, &PrintingSelector::updateSortOrder);
     sortToolBar->addWidget(toggleSortOrder);
 
     layout->addLayout(sortToolBar);
@@ -58,6 +56,9 @@ void PrintingSelector::updateSortOrder()
 void PrintingSelector::updateDisplay()
 {
     flowWidget->clearLayout();
+    if (selectedCard != nullptr) {
+        setWindowTitle(selectedCard->getName());
+    }
     getAllSetsForCurrentCard();
 }
 

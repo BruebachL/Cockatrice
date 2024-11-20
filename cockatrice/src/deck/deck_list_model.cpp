@@ -246,7 +246,6 @@ bool DeckListModel::setData(const QModelIndex &index, const QVariant &value, con
     switch (index.column()) {
         case 0:
             node->setNumber(value.toInt());
-            qDebug() << "NODE CARD" << node->getName() << "NUMBER" << node->getNumber();
             break;
         case 1:
             node->setName(value.toString());
