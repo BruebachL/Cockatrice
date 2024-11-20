@@ -431,6 +431,8 @@ void TabDeckEditor::createCentralFrame()
     connect(databaseView, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(databaseCustomMenu(QPoint)));
     connect(databaseView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
             SLOT(updateCardInfoLeft(const QModelIndex &, const QModelIndex &)));
+    connect(databaseView->selectionModel(), SIGNAL(currentRowChanged(const QModelIndex &, const QModelIndex &)), this,
+            SLOT(createPrintingSelector(const QModelIndex &, const QModelIndex &)));
     connect(databaseView, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(actAddCard()));
 
     QByteArray dbHeaderState = SettingsCache::instance().layouts().getDeckEditorDbHeaderState();
@@ -480,11 +482,14 @@ void TabDeckEditor::databaseCustomMenu(QPoint point)
     const CardInfoPtr info = currentCardInfo();
 
     // add to deck and sideboard options
-    QAction *addToDeck, *addToSideboard;
+    QAction *addToDeck, *addToSideboard, *selectPrinting;
     addToDeck = menu.addAction(tr("Add to Deck"));
     addToSideboard = menu.addAction(tr("Add to Sideboard"));
+    selectPrinting = menu.addAction("Select Printing");
+
     connect(addToDeck, SIGNAL(triggered()), this, SLOT(actAddCard()));
     connect(addToSideboard, SIGNAL(triggered()), this, SLOT(actAddCardToSideboard()));
+    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(info); });
 
     // filling out the related cards submenu
     auto *relatedMenu = new QMenu(tr("Show Related cards"));
