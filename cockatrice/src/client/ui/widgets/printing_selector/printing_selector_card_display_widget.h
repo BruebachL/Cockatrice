@@ -26,13 +26,17 @@ public:
                                       CardInfoPerSet &setInfoForCard,
                                       QString &currentZone,
                                       QWidget *parent = nullptr);
-    int countCards();
+    int countCardsMainBoard();
+    int countCardsSideBoard();
 
 private:
     QVBoxLayout *layout;
-    QHBoxLayout *buttonBox;
-    QPushButton *incrementButton;
-    QPushButton *decrementButton;
+    QHBoxLayout *buttonBoxMainboard;
+    QPushButton *incrementButtonMainboard;
+    QPushButton *decrementButtonMainboard;
+    QHBoxLayout *buttonBoxSideboard;
+    QPushButton *incrementButtonSideboard;
+    QPushButton *decrementButtonSideboard;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;
@@ -42,7 +46,8 @@ private:
     QString currentZone;
 
     CardInfoPictureWidget *cardInfoPicture;
-    QLabel *cardCount;
+    QLabel *cardCountMainboard;
+    QLabel *cardCountSideboard;
     QLabel *setName;
     QLabel *setNumber;
 
@@ -50,8 +55,10 @@ private:
     void decrementCardHelper(QString zoneName);
 
 private slots:
-    void addPrinting();
-    void removePrinting();
+    void addPrintingMainboard();
+    void addPrintingSideboard();
+    void removePrintingMainboard();
+    void removePrintingSideboard();
 };
 
 #endif // PRINTING_SELECTOR_CARD_DISPLAY_WIDGET_H

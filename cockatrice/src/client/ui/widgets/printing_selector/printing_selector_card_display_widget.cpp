@@ -31,23 +31,41 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     cardInfoPicture->setCard(setCard);
     layout->addWidget(cardInfoPicture);
 
-    buttonBox = new QHBoxLayout();
+    buttonBoxMainboard = new QHBoxLayout();
 
-    incrementButton = new QPushButton("+");
-    connect(incrementButton, SIGNAL(clicked()), this, SLOT(addPrinting()));
-    decrementButton = new QPushButton("-");
-    connect(decrementButton, SIGNAL(clicked()), this, SLOT(removePrinting()));
+    incrementButtonMainboard = new QPushButton("+");
+    connect(incrementButtonMainboard, SIGNAL(clicked()), this, SLOT(addPrintingMainboard()));
+    decrementButtonMainboard = new QPushButton("-");
+    connect(decrementButtonMainboard, SIGNAL(clicked()), this, SLOT(removePrintingMainboard()));
 
-    cardCount = new QLabel(QString::fromStdString(std::to_string(countCards())));
+    cardCountMainboard = new QLabel(QString::fromStdString(std::to_string(countCardsMainBoard())));
 
-    buttonBox->addWidget(decrementButton);
-    buttonBox->addWidget(cardCount, 0, Qt::AlignmentFlag::AlignCenter);
-    buttonBox->addWidget(incrementButton);
+    buttonBoxMainboard->addWidget(decrementButtonMainboard);
+    buttonBoxMainboard->addWidget(cardCountMainboard, 0, Qt::AlignmentFlag::AlignCenter);
+    buttonBoxMainboard->addWidget(incrementButtonMainboard);
 
-    QWidget *buttonBoxContainer = new QWidget();
-    buttonBoxContainer->setLayout(buttonBox);
-    buttonBoxContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    layout->addWidget(buttonBoxContainer, 0, Qt::AlignCenter);
+    QWidget *buttonBoxMainboardContainer = new QWidget();
+    buttonBoxMainboardContainer->setLayout(buttonBoxMainboard);
+    buttonBoxMainboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    layout->addWidget(buttonBoxMainboardContainer, 0, Qt::AlignCenter);
+
+    buttonBoxSideboard = new QHBoxLayout();
+
+    incrementButtonSideboard = new QPushButton("+");
+    connect(incrementButtonSideboard, SIGNAL(clicked()), this, SLOT(addPrintingSideboard()));
+    decrementButtonSideboard = new QPushButton("-");
+    connect(decrementButtonSideboard, SIGNAL(clicked()), this, SLOT(removePrintingSideboard()));
+
+    cardCountSideboard = new QLabel(QString::fromStdString(std::to_string(countCardsMainBoard())));
+
+    buttonBoxSideboard->addWidget(decrementButtonSideboard);
+    buttonBoxSideboard->addWidget(cardCountSideboard, 0, Qt::AlignmentFlag::AlignCenter);
+    buttonBoxSideboard->addWidget(incrementButtonSideboard);
+
+    QWidget *buttonBoxSideboardContainer = new QWidget();
+    buttonBoxSideboardContainer->setLayout(buttonBoxSideboard);
+    buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    layout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
 
     setName = new QLabel(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
     layout->addWidget(setName, 0, Qt::AlignmentFlag::AlignCenter);
@@ -55,16 +73,28 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     layout->addWidget(setNumber, 0, Qt::AlignmentFlag::AlignCenter);
 }
 
-void PrintingSelectorCardDisplayWidget::addPrinting()
+void PrintingSelectorCardDisplayWidget::addPrintingMainboard()
 {
-    deckModel->addCard(rootCard->getName(), setInfoForCard, currentZone);
-    cardCount->setText(QString::fromStdString(std::to_string(countCards())));
+    deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
+    cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard())));
 }
 
-void PrintingSelectorCardDisplayWidget::removePrinting()
+void PrintingSelectorCardDisplayWidget::addPrintingSideboard()
 {
-    decrementCardHelper(currentZone);
-    cardCount->setText(QString::fromStdString(std::to_string(countCards())));
+    deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_SIDE);
+    cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard())));
+}
+
+void PrintingSelectorCardDisplayWidget::removePrintingMainboard()
+{
+    decrementCardHelper(DECK_ZONE_MAIN);
+    cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard())));
+}
+
+void PrintingSelectorCardDisplayWidget::removePrintingSideboard()
+{
+    decrementCardHelper(DECK_ZONE_SIDE);
+    cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard())));
 }
 
 void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &idx, int offset)
@@ -76,10 +106,15 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
     const int count = deckModel->data(numberIndex, Qt::EditRole).toInt();
     const int new_count = count + offset;
     deckView->setCurrentIndex(numberIndex);
-    if (new_count <= 0)
+    if (new_count <= 0) {
         deckModel->removeRow(idx.row(), idx.parent());
-    else
+        cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard() - 1)));
+        cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard() - 1)));
+    } else {
         deckModel->setData(numberIndex, new_count, Qt::EditRole);
+        cardCountMainboard->setText(QString::fromStdString(std::to_string(countCardsMainBoard())));
+        cardCountSideboard->setText(QString::fromStdString(std::to_string(countCardsSideBoard())));
+    }
     deckEditor->setModified(true);
 }
 
@@ -90,7 +125,7 @@ void PrintingSelectorCardDisplayWidget::decrementCardHelper(QString zoneName)
     offsetCountAtIndex(idx, -1);
 }
 
-int PrintingSelectorCardDisplayWidget::countCards()
+int PrintingSelectorCardDisplayWidget::countCardsMainBoard()
 {
     int count = 0;
 
@@ -108,6 +143,43 @@ int PrintingSelectorCardDisplayWidget::countCards()
         if (!currentZone)
             continue;
         for (int j = 0; j < currentZone->size(); j++) {
+            if (currentZone->getName() != DECK_ZONE_MAIN) {
+                continue;
+            }
+            DecklistCardNode *currentCard = dynamic_cast<DecklistCardNode *>(currentZone->at(j));
+            if (!currentCard)
+                continue;
+            for (int k = 0; k < currentCard->getNumber(); ++k) {
+                if (currentCard->getCardProviderId() == setInfoForCard.getProperty("uuid")) {
+                    count++;
+                }
+            }
+        }
+    }
+    return count;
+}
+
+int PrintingSelectorCardDisplayWidget::countCardsSideBoard()
+{
+    int count = 0;
+
+    if (!deckModel)
+        return -1;
+    DeckList *decklist = deckModel->getDeckList();
+    if (!decklist)
+        return -1;
+    InnerDecklistNode *listRoot = decklist->getRoot();
+    if (!listRoot)
+        return -1;
+
+    for (int i = 0; i < listRoot->size(); i++) {
+        InnerDecklistNode *currentZone = dynamic_cast<InnerDecklistNode *>(listRoot->at(i));
+        if (!currentZone)
+            continue;
+        for (int j = 0; j < currentZone->size(); j++) {
+            if (currentZone->getName() != DECK_ZONE_SIDE) {
+                continue;
+            }
             DecklistCardNode *currentCard = dynamic_cast<DecklistCardNode *>(currentZone->at(j));
             if (!currentCard)
                 continue;
