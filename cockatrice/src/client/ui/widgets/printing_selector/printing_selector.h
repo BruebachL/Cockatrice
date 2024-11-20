@@ -7,6 +7,7 @@
 #include "../general/layout_containers/flow_widget.h"
 
 #include <QComboBox>
+#include <QPushButton>
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -28,10 +29,14 @@ public:
 
 public slots:
     void updateDisplay();
+    void updateSortOrder();
 
 private:
     QVBoxLayout *layout;
+    QHBoxLayout *sortToolBar;
     QComboBox *sortOptionsSelector;
+    bool descendingSort;
+    QPushButton *toggleSortOrder;
     FlowWidget *flowWidget;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;

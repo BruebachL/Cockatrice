@@ -18,20 +18,41 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
     layout = new QVBoxLayout();
     setLayout(layout);
 
+    sortToolBar = new QHBoxLayout();
+
     sortOptionsSelector = new QComboBox(this);
     QStringList sortOptions;
     sortOptions << "Alphabetical"
                 << "Preference"
-                << "Release Date (Asc)"
-                << "Release Date (Desc)"
+                << "Release Date"
                 << "Contained in Deck"
                 << "Potential Cards in Deck";
     sortOptionsSelector->addItems(sortOptions);
     connect(sortOptionsSelector, SIGNAL(currentTextChanged(QString)), this, SLOT(updateDisplay()));
-    layout->addWidget(sortOptionsSelector);
+    sortToolBar->addWidget(sortOptionsSelector);
+
+    toggleSortOrder = new QPushButton(this);
+    toggleSortOrder->setText(tr("Ascending"));
+    descendingSort = false;
+    connect(toggleSortOrder, SIGNAL(clicked()), this, SLOT(updateSortOrder()));
+    sortToolBar->addWidget(toggleSortOrder);
+
+    layout->addLayout(sortToolBar);
 
     flowWidget = new FlowWidget(this, Qt::ScrollBarAlwaysOff, Qt::ScrollBarAsNeeded);
     layout->addWidget(flowWidget);
+}
+
+void PrintingSelector::updateSortOrder()
+{
+    if (descendingSort) {
+        descendingSort = false;
+        toggleSortOrder->setText(tr("Ascending"));
+    } else {
+        descendingSort = true;
+        toggleSortOrder->setText(tr("Descending"));
+    }
+    updateDisplay();
 }
 
 void PrintingSelector::updateDisplay()
@@ -66,14 +87,6 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
         return {};
     }
     CardInfoPerSetMap cardInfoPerSets = selectedCard->getSets();
-    if (sortOptionsSelector->currentText() == "Alphabetical") {
-        // Convert CardInfoPerSetMap to QList<CardInfoPerSet> and return
-        QList<CardInfoPerSet> result;
-        for (const auto &entry : cardInfoPerSets) {
-            result << entry;
-        }
-        return result;
-    }
 
     QList<CardSetPtr> sortedSets;
 
@@ -85,11 +98,8 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     }
     if (sortOptionsSelector->currentText() == "Preference") {
         std::sort(sortedSets.begin(), sortedSets.end(), SetPriorityComparator());
-    } else if (sortOptionsSelector->currentText() == "Release Date (Asc)") {
+    } else if (sortOptionsSelector->currentText() == "Release Date") {
         std::sort(sortedSets.begin(), sortedSets.end(), SetReleaseDateComparator());
-    } else {
-        std::sort(sortedSets.begin(), sortedSets.end(), SetReleaseDateComparator());
-        std::reverse(sortedSets.begin(), sortedSets.end());
     }
 
     QList<CardInfoPerSet> sortedCardInfoPerSets;
@@ -114,6 +124,10 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     qDebug() << "Sorted CardInfoPerSet:";
     for (const auto &cardInfo : sortedCardInfoPerSets) {
         qDebug() << cardInfo.getPtr()->getLongName();
+    }
+
+    if (descendingSort) {
+        std::reverse(sortedCardInfoPerSets.begin(), sortedCardInfoPerSets.end());
     }
 
     return sortedCardInfoPerSets;
