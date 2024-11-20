@@ -1139,7 +1139,7 @@ void TabDeckEditor::actSwapCard()
     if (!currentIndex.isValid())
         return;
     const QString cardName = currentIndex.sibling(currentIndex.row(), 1).data().toString();
-    const QString cardProviderID = currentIndex.sibling(currentIndex.row(), 2).data().toString();
+    const QString cardProviderID = currentIndex.sibling(currentIndex.row(), 4).data().toString();
     const QModelIndex gparent = currentIndex.parent().parent();
 
     if (!gparent.isValid())
