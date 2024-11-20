@@ -717,6 +717,26 @@ void PictureLoader::getCardBackPixmap(QPixmap &pixmap, QSize size)
     }
 }
 
+void PictureLoader::getCardBackLoadingInProgressPixmap(QPixmap &pixmap, QSize size)
+{
+    QString backCacheKey = "_trice_card_back_" + QString::number(size.width()) + QString::number(size.height());
+    if (!QPixmapCache::find(backCacheKey, &pixmap)) {
+        qDebug() << "PictureLoader: cache fail for" << backCacheKey;
+        pixmap = QPixmap("theme:cardback").scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QPixmapCache::insert(backCacheKey, pixmap);
+    }
+}
+
+void PictureLoader::getCardBackLoadingFailedPixmap(QPixmap &pixmap, QSize size)
+{
+    QString backCacheKey = "_trice_card_back_" + QString::number(size.width()) + QString::number(size.height());
+    if (!QPixmapCache::find(backCacheKey, &pixmap)) {
+        qDebug() << "PictureLoader: cache fail for" << backCacheKey;
+        pixmap = QPixmap("theme:cardback").scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QPixmapCache::insert(backCacheKey, pixmap);
+    }
+}
+
 void PictureLoader::getPixmap(QPixmap &pixmap, CardInfoPtr card, QSize size)
 {
     if (card == nullptr) {

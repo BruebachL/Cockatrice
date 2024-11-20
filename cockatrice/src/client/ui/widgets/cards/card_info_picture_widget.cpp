@@ -119,10 +119,11 @@ void CardInfoPictureWidget::updatePixmap()
  */
 void CardInfoPictureWidget::loadPixmap()
 {
+    PictureLoader::getCardBackLoadingInProgressPixmap(resizedPixmap, size());
     if (info) {
         PictureLoader::getPixmap(resizedPixmap, info, size());
     } else {
-        PictureLoader::getCardBackPixmap(resizedPixmap, size());
+        PictureLoader::getCardBackLoadingFailedPixmap(resizedPixmap, size());
     }
 
     pixmapDirty = false;
