@@ -22,6 +22,8 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
     QStringList sortOptions;
     sortOptions << "Alphabetical"
                 << "Preference"
+                << "Release Date (Asc)"
+                << "Release Date (Desc)"
                 << "Contained in Deck"
                 << "Potential Cards in Deck";
     sortOptionsSelector->addItems(sortOptions);
@@ -81,7 +83,14 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     if (sortedSets.empty()) {
         sortedSets << CardSet::newInstance("", "", "", QDate());
     }
-    std::sort(sortedSets.begin(), sortedSets.end(), SetPriorityComparator());
+    if (sortOptionsSelector->currentText() == "Preference") {
+        std::sort(sortedSets.begin(), sortedSets.end(), SetPriorityComparator());
+    } else if (sortOptionsSelector->currentText() == "Release Date (Asc)") {
+        std::sort(sortedSets.begin(), sortedSets.end(), SetReleaseDateComparator());
+    } else {
+        std::sort(sortedSets.begin(), sortedSets.end(), SetReleaseDateComparator());
+        std::reverse(sortedSets.begin(), sortedSets.end());
+    }
 
     QList<CardInfoPerSet> sortedCardInfoPerSets;
 
