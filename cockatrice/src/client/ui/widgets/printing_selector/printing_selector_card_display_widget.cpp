@@ -116,14 +116,14 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
     deckEditor->setModified(true);
 }
 
-void PrintingSelectorCardDisplayWidget::decrementCardHelper(const QString& zoneName)
+void PrintingSelectorCardDisplayWidget::decrementCardHelper(const QString &zoneName)
 {
     QModelIndex idx;
     idx = deckModel->findCard(setCard->getName(), zoneName, setInfoForCard.getProperty("uuid"));
     offsetCountAtIndex(idx, -1);
 }
 
-int PrintingSelectorCardDisplayWidget::countCardsInZone(const QString& deckZone)
+int PrintingSelectorCardDisplayWidget::countCardsInZone(const QString &deckZone)
 {
     int count = 0;
 
