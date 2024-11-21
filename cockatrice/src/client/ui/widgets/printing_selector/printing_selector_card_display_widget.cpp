@@ -29,6 +29,9 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
 
     buttonBoxMainboard = new QHBoxLayout();
 
+    buttonBoxMainboardLabel = new QLabel();
+    buttonBoxMainboardLabel->setText(tr("Mainboard"));
+
     incrementButtonMainboard = new QPushButton("+");
     connect(incrementButtonMainboard, SIGNAL(clicked()), this, SLOT(addPrintingMainboard()));
     decrementButtonMainboard = new QPushButton("-");
@@ -43,9 +46,13 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     auto *buttonBoxMainboardContainer = new QWidget();
     buttonBoxMainboardContainer->setLayout(buttonBoxMainboard);
     buttonBoxMainboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    layout->addWidget(buttonBoxMainboardLabel, 0, Qt::AlignCenter);
     layout->addWidget(buttonBoxMainboardContainer, 0, Qt::AlignCenter);
 
     buttonBoxSideboard = new QHBoxLayout();
+
+    buttonBoxSideboardLabel = new QLabel();
+    buttonBoxSideboardLabel->setText(tr("Sideboard"));
 
     incrementButtonSideboard = new QPushButton("+");
     connect(incrementButtonSideboard, SIGNAL(clicked()), this, SLOT(addPrintingSideboard()));
@@ -61,6 +68,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     auto *buttonBoxSideboardContainer = new QWidget();
     buttonBoxSideboardContainer->setLayout(buttonBoxSideboard);
     buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    layout->addWidget(buttonBoxSideboardLabel, 0, Qt::AlignCenter);
     layout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
 
     connect(deckModel, &DeckListModel::dataChanged, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);

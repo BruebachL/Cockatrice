@@ -31,9 +31,11 @@ public:
 private:
     QVBoxLayout *layout;
     QHBoxLayout *buttonBoxMainboard;
+    QLabel *buttonBoxMainboardLabel;
     QPushButton *incrementButtonMainboard;
     QPushButton *decrementButtonMainboard;
     QHBoxLayout *buttonBoxSideboard;
+    QLabel *buttonBoxSideboardLabel;
     QPushButton *incrementButtonSideboard;
     QPushButton *decrementButtonSideboard;
     TabDeckEditor *deckEditor;
