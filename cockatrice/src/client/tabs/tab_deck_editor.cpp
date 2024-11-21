@@ -645,7 +645,7 @@ TabDeckEditor::TabDeckEditor(TabSupervisor *_tabSupervisor, QWidget *parent)
     createDeckDock();
     createCardInfoDock();
     createFiltersDock();
-    printingSelector = new PrintingSelector(this, deckModel, deckView, nullptr);
+    printingSelector = new PrintingSelector(nullptr, this, deckModel, deckView);
 
     this->installEventFilter(this);
 

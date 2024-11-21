@@ -7,10 +7,10 @@
 #include <QDebug>
 #include <QHBoxLayout>
 
-PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
+PrintingSelector::PrintingSelector(QWidget *parent,
+                                   TabDeckEditor *deckEditor,
                                    DeckListModel *deckModel,
-                                   QTreeView *deckView,
-                                   QWidget *parent)
+                                   QTreeView *deckView)
     : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
