@@ -25,6 +25,7 @@ public:
     void setCard(const CardInfoPtr &newCard, const QString &_currentZone);
     CardInfoPerSet getSetForUUID(const QString &uuid);
     QList<CardInfoPerSet> sortSets();
+    QList<CardInfoPerSet> filterSets(const QList<CardInfoPerSet> &sets) const;
     void getAllSetsForCurrentCard();
 
 public slots:
@@ -37,6 +38,8 @@ private:
     QComboBox *sortOptionsSelector;
     bool descendingSort;
     QPushButton *toggleSortOrder;
+    QLineEdit *searchBar;
+    QTimer *searchDebounceTimer;
     FlowWidget *flowWidget;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;

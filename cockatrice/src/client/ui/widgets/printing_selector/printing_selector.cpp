@@ -37,6 +37,19 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
 
     layout->addLayout(sortToolBar);
 
+    // Add the search bar
+    searchBar = new QLineEdit(this);
+    searchBar->setPlaceholderText(tr("Search..."));
+    layout->addWidget(searchBar);
+
+    // Add a debounce timer for the search bar
+    searchDebounceTimer = new QTimer(this);
+    searchDebounceTimer->setSingleShot(true);
+    connect(searchBar, &QLineEdit::textChanged, this, [this]() {
+        searchDebounceTimer->start(300); // 300ms debounce
+    });
+    connect(searchDebounceTimer, &QTimer::timeout, this, &PrintingSelector::updateDisplay);
+
     flowWidget = new FlowWidget(this, Qt::ScrollBarAlwaysOff, Qt::ScrollBarAsNeeded);
     layout->addWidget(flowWidget);
 }
@@ -136,11 +149,34 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     return sortedCardInfoPerSets;
 }
 
+QList<CardInfoPerSet> PrintingSelector::filterSets(const QList<CardInfoPerSet> &sets) const
+{
+    QString searchText = searchBar->text().trimmed().toLower();
+
+    if (searchText.isEmpty()) {
+        return sets;
+    }
+
+    QList<CardInfoPerSet> filteredSets;
+
+    for (const auto &set : sets) {
+        QString longName = set.getPtr()->getLongName().toLower();
+        QString shortName = set.getPtr()->getShortName().toLower();
+
+        if (longName.contains(searchText) || shortName.contains(searchText)) {
+            filteredSets << set;
+        }
+    }
+
+    return filteredSets;
+}
+
 void PrintingSelector::getAllSetsForCurrentCard()
 {
-    auto sortedMap = sortSets();
+    QList<CardInfoPerSet> sortedSets = sortSets();
+    QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
 
-    for (auto cardInfoPerSet : sortedMap) {
+    for (auto cardInfoPerSet : filteredSets) {
         auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(deckEditor, deckModel, deckView, selectedCard,
                                                                         cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
