@@ -19,13 +19,13 @@ class PrintingSelectorCardDisplayWidget : public QWidget
     Q_OBJECT
 
 public:
-    PrintingSelectorCardDisplayWidget(TabDeckEditor *deckEditor,
+    PrintingSelectorCardDisplayWidget(QWidget *parent,
+                                      TabDeckEditor *deckEditor,
                                       DeckListModel *deckModel,
                                       QTreeView *deckView,
                                       CardInfoPtr &rootCard,
                                       CardInfoPerSet &setInfoForCard,
-                                      QString &currentZone,
-                                      QWidget *parent = nullptr);
+                                      QString &currentZone);
     int countCardsInZone(const QString &);
 
 private:

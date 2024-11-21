@@ -17,16 +17,10 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
     layout = new QVBoxLayout();
     setLayout(layout);
 
-    sortToolBar = new QHBoxLayout();
+    sortToolBar = new QHBoxLayout(this);
 
     sortOptionsSelector = new QComboBox(this);
-    QStringList sortOptions;
-    sortOptions << "Alphabetical"
-                << "Preference"
-                << "Release Date"
-                << "Contained in Deck"
-                << "Potential Cards in Deck";
-    sortOptionsSelector->addItems(sortOptions);
+    sortOptionsSelector->addItems(SORT_OPTIONS);
     connect(sortOptionsSelector, &QComboBox::currentTextChanged, this, &PrintingSelector::updateDisplay);
     sortToolBar->addWidget(sortOptionsSelector);
 
@@ -58,12 +52,11 @@ PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
 void PrintingSelector::updateSortOrder()
 {
     if (descendingSort) {
-        descendingSort = false;
         toggleSortOrder->setText(tr("Ascending"));
     } else {
-        descendingSort = true;
         toggleSortOrder->setText(tr("Descending"));
     }
+    descendingSort = !descendingSort;
     updateDisplay();
 }
 
@@ -110,9 +103,11 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     for (const auto &set : cardInfoPerSets) {
         sortedSets << set.getPtr();
     }
+
     if (sortedSets.empty()) {
         sortedSets << CardSet::newInstance("", "", "", QDate());
     }
+
     if (sortOptionsSelector->currentText() == "Preference") {
         std::sort(sortedSets.begin(), sortedSets.end(), SetPriorityComparator());
     } else if (sortOptionsSelector->currentText() == "Release Date") {
@@ -120,27 +115,13 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
     }
 
     QList<CardInfoPerSet> sortedCardInfoPerSets;
-
-    // Debug: Output sorted set names
-    qDebug() << "Sorted sets:";
-    for (const auto &set : sortedSets) {
-        qDebug() << set->getLongName();
-    }
-
     // Reconstruct sorted list of CardInfoPerSet
     for (const auto &set : sortedSets) {
         for (auto it = cardInfoPerSets.begin(); it != cardInfoPerSets.end(); ++it) {
             if (it.value().getPtr() == set) {
-                qDebug() << "Adding: " << it.value().getPtr()->getLongName();
                 sortedCardInfoPerSets << it.value();
             }
         }
-    }
-
-    // Debug: Output final sorted list
-    qDebug() << "Sorted CardInfoPerSet:";
-    for (const auto &cardInfo : sortedCardInfoPerSets) {
-        qDebug() << cardInfo.getPtr()->getLongName();
     }
 
     if (descendingSort) {
@@ -152,7 +133,7 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
 
 QList<CardInfoPerSet> PrintingSelector::filterSets(const QList<CardInfoPerSet> &sets) const
 {
-    QString searchText = searchBar->text().trimmed().toLower();
+    const QString searchText = searchBar->text().trimmed().toLower();
 
     if (searchText.isEmpty()) {
         return sets;
@@ -161,8 +142,8 @@ QList<CardInfoPerSet> PrintingSelector::filterSets(const QList<CardInfoPerSet> &
     QList<CardInfoPerSet> filteredSets;
 
     for (const auto &set : sets) {
-        QString longName = set.getPtr()->getLongName().toLower();
-        QString shortName = set.getPtr()->getShortName().toLower();
+        const QString longName = set.getPtr()->getLongName().toLower();
+        const QString shortName = set.getPtr()->getShortName().toLower();
 
         if (longName.contains(searchText) || shortName.contains(searchText)) {
             filteredSets << set;
@@ -174,12 +155,12 @@ QList<CardInfoPerSet> PrintingSelector::filterSets(const QList<CardInfoPerSet> &
 
 void PrintingSelector::getAllSetsForCurrentCard()
 {
-    QList<CardInfoPerSet> sortedSets = sortSets();
-    QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
+    const QList<CardInfoPerSet> sortedSets = sortSets();
+    const QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
 
     for (auto cardInfoPerSet : filteredSets) {
-        auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(deckEditor, deckModel, deckView, selectedCard,
-                                                                        cardInfoPerSet, currentZone);
+        auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(this, deckEditor, deckModel, deckView,
+                                                                        selectedCard, cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
     }
 }

@@ -485,7 +485,7 @@ void TabDeckEditor::databaseCustomMenu(QPoint point)
     QAction *addToDeck, *addToSideboard, *selectPrinting;
     addToDeck = menu.addAction(tr("Add to Deck"));
     addToSideboard = menu.addAction(tr("Add to Sideboard"));
-    selectPrinting = menu.addAction("Select Printing");
+    selectPrinting = menu.addAction(tr("Select Printing"));
 
     connect(addToDeck, SIGNAL(triggered()), this, SLOT(actAddCard()));
     connect(addToSideboard, SIGNAL(triggered()), this, SLOT(actAddCardToSideboard()));
@@ -513,7 +513,7 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
     QMenu menu;
     const CardInfoPtr info = cardInfo->getInfo();
 
-    QAction *selectPrinting = menu.addAction("Select Printing");
+    QAction *selectPrinting = menu.addAction(tr("Select Printing"));
 
     connect(selectPrinting, &QAction::triggered, this, &TabDeckEditor::createPrintingSelector);
 
@@ -763,13 +763,12 @@ void TabDeckEditor::updateCardInfoRight(const QModelIndex &current, const QModel
 void TabDeckEditor::updatePrintingSelectorDatabase(const QModelIndex &current, const QModelIndex & /*previous*/)
 {
     const QString cardName = current.sibling(current.row(), 0).data().toString();
-    qDebug() << cardName;
     const QString cardProviderID = CardDatabaseManager::getInstance()->getPreferredPrintingProviderIdForCard(cardName);
-    qDebug() << cardProviderID;
-    qDebug() << CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID);
 
-    if (!current.isValid())
+    if (!current.isValid()) {
         return;
+    }
+
     if (!current.model()->hasChildren(current.sibling(current.row(), 0))) {
         printingSelector->setCard(
             CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID), DECK_ZONE_MAIN);
@@ -782,13 +781,17 @@ void TabDeckEditor::updatePrintingSelectorDeckView(const QModelIndex &current, c
     const QString cardProviderID = current.sibling(current.row(), 4).data().toString();
     const QModelIndex gparent = current.parent().parent();
 
-    if (!gparent.isValid())
+    if (!gparent.isValid()) {
         return;
+    }
 
     const QString zoneName = gparent.sibling(gparent.row(), 1).data(Qt::EditRole).toString();
     const QString otherZoneName = zoneName == DECK_ZONE_MAIN ? DECK_ZONE_SIDE : DECK_ZONE_MAIN;
-    if (!current.isValid())
+
+    if (!current.isValid()) {
         return;
+    }
+
     if (!current.model()->hasChildren(current.sibling(current.row(), 0))) {
         printingSelector->setCard(
             CardDatabaseManager::getInstance()->getCardByNameAndProviderId(cardName, cardProviderID), zoneName);
