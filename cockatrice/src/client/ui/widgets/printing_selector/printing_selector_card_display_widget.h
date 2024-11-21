@@ -23,6 +23,7 @@ public:
                                       TabDeckEditor *deckEditor,
                                       DeckListModel *deckModel,
                                       QTreeView *deckView,
+                                      QSlider *cardSizeSlider,
                                       CardInfoPtr &rootCard,
                                       CardInfoPerSet &setInfoForCard,
                                       QString &currentZone);
@@ -41,6 +42,7 @@ private:
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;
+    QSlider *cardSizeSlider;
     CardInfoPtr rootCard;
     CardInfoPtr setCard;
     CardInfoPerSet setInfoForCard;

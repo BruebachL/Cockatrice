@@ -44,6 +44,7 @@ private:
     QLineEdit *searchBar;
     QTimer *searchDebounceTimer;
     FlowWidget *flowWidget;
+    QSlider *cardSizeSlider;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;

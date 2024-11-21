@@ -10,11 +10,12 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
                                                                      TabDeckEditor *deckEditor,
                                                                      DeckListModel *deckModel,
                                                                      QTreeView *deckView,
+                                                                     QSlider *cardSizeSlider,
                                                                      CardInfoPtr &rootCard,
                                                                      CardInfoPerSet &setInfoForCard,
                                                                      QString &currentZone)
-    : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView), rootCard(rootCard),
-      setInfoForCard(setInfoForCard), currentZone(currentZone)
+    : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView), cardSizeSlider(cardSizeSlider),
+      rootCard(rootCard), setInfoForCard(setInfoForCard), currentZone(currentZone)
 {
     layout = new QVBoxLayout(this);
     setLayout(layout);
@@ -26,6 +27,8 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
                                                                              setInfoForCard.getProperty("uuid"));
     cardInfoPicture->setCard(setCard);
     layout->addWidget(cardInfoPicture);
+
+    connect(cardSizeSlider, &QSlider::valueChanged, cardInfoPicture, &CardInfoPictureWidget::setScaleFactor);
 
     buttonBoxMainboard = new QHBoxLayout(this);
     auto *buttonBoxMainboardContainer = new QWidget(this);

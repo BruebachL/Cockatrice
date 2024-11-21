@@ -56,6 +56,11 @@ PrintingSelector::PrintingSelector(QWidget *parent,
 
     flowWidget = new FlowWidget(this, Qt::ScrollBarAlwaysOff, Qt::ScrollBarAsNeeded);
     layout->addWidget(flowWidget);
+
+    cardSizeSlider = new QSlider(Qt::Horizontal);
+    cardSizeSlider->setRange(1, 10);
+
+    layout->addWidget(cardSizeSlider);
 }
 
 void PrintingSelector::updateSortOrder()
@@ -168,8 +173,8 @@ void PrintingSelector::getAllSetsForCurrentCard()
     const QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
 
     for (auto cardInfoPerSet : filteredSets) {
-        auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(this, deckEditor, deckModel, deckView,
-                                                                        selectedCard, cardInfoPerSet, currentZone);
+        auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(
+            this, deckEditor, deckModel, deckView, cardSizeSlider, selectedCard, cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
     }
 }
