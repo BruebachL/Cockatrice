@@ -61,6 +61,20 @@ PrintingSelector::PrintingSelector(QWidget *parent,
     cardSizeSlider->setRange(1, 10);
 
     layout->addWidget(cardSizeSlider);
+
+    cardSelectionBar = new QWidget(this);
+    cardSelectionBarLayout = new QHBoxLayout(cardSelectionBar);
+    previousCardButton = new QPushButton(cardSelectionBar);
+    previousCardButton->setText(tr("Previous Card"));
+    connect(previousCardButton, &QPushButton::clicked, this, &PrintingSelector::selectPreviousCard);
+    nextCardButton = new QPushButton(cardSelectionBar);
+    nextCardButton->setText(tr("Next Card"));
+    connect(nextCardButton, &QPushButton::clicked, this, &PrintingSelector::selectNextCard);
+
+    cardSelectionBarLayout->addWidget(previousCardButton);
+    cardSelectionBarLayout->addWidget(nextCardButton);
+
+    layout->addWidget(cardSelectionBar);
 }
 
 void PrintingSelector::updateSortOrder()
@@ -83,12 +97,45 @@ void PrintingSelector::updateDisplay()
     getAllSetsForCurrentCard();
 }
 
+void PrintingSelector::selectPreviousCard()
+{
+    // Get the current index of the selected item
+    QModelIndex currentIndex = deckView->currentIndex();
+
+    // Check if there's a valid current index
+    if (currentIndex.isValid()) {
+        QModelIndex previousSibling = currentIndex.siblingAtRow(currentIndex.row() - 1);
+
+        // If the previous index is valid, set it as the new current index
+        if (previousSibling.isValid()) {
+            deckView->setCurrentIndex(previousSibling);
+        }
+    }
+}
+
 void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_currentZone)
 {
     selectedCard = newCard;
     currentZone = _currentZone;
     if (isVisible()) {
         updateDisplay();
+    }
+}
+
+void PrintingSelector::selectNextCard()
+{
+    // Get the current index of the selected item
+    QModelIndex currentIndex = deckView->currentIndex();
+
+    // Check if there's a valid current index
+    if (currentIndex.isValid()) {
+        // Get the next index, if it exists
+        QModelIndex nextIndex = currentIndex.siblingAtRow(currentIndex.row() + 1);
+
+        // If the next index is valid, set it as the new current index
+        if (nextIndex.isValid()) {
+            deckView->setCurrentIndex(nextIndex);
+        }
     }
 }
 

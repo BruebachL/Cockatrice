@@ -20,6 +20,7 @@ class PrintingSelector : public QWidget
 public:
     PrintingSelector(QWidget *parent, TabDeckEditor *deckEditor, DeckListModel *deckModel, QTreeView *deckView);
     void setCard(const CardInfoPtr &newCard, const QString &_currentZone);
+    void selectNextCard();
     CardInfoPerSet getSetForUUID(const QString &uuid);
     QList<CardInfoPerSet> sortSets();
     QList<CardInfoPerSet> filterSets(const QList<CardInfoPerSet> &sets) const;
@@ -27,6 +28,7 @@ public:
 
 public slots:
     void updateDisplay();
+    void selectPreviousCard();
     void updateSortOrder();
 
 private:
@@ -45,6 +47,10 @@ private:
     QTimer *searchDebounceTimer;
     FlowWidget *flowWidget;
     QSlider *cardSizeSlider;
+    QWidget *cardSelectionBar;
+    QHBoxLayout *cardSelectionBarLayout;
+    QPushButton *previousCardButton;
+    QPushButton *nextCardButton;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;
