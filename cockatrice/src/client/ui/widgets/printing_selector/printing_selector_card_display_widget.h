@@ -27,7 +27,7 @@ public:
                                       CardInfoPtr &rootCard,
                                       CardInfoPerSet &setInfoForCard,
                                       QString &currentZone);
-    void resizeEvent(QResizeEvent *event);
+    void resizeEvent(QResizeEvent *event) override;
     int countCardsInZone(const QString &);
 
 private:
