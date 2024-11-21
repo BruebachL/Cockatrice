@@ -94,6 +94,10 @@ void PrintingSelectorCardDisplayWidget::addPrintingMainboard()
 {
     const auto newCardIndex = deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
     recursiveExpand(newCardIndex);
+    QModelIndex find_card = deckModel->findCard(rootCard->getName(), DECK_ZONE_MAIN);
+    if (find_card.isValid() && find_card != newCardIndex) {
+        deckModel->removeRow(find_card.row(), find_card.parent());
+    };
 }
 
 void PrintingSelectorCardDisplayWidget::addPrintingSideboard()
