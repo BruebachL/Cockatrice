@@ -17,6 +17,9 @@ public:
 
     QScrollArea *scrollArea;
 
+public slots:
+    void setMinimumSizeToMaxSizeHint();
+
 protected:
     void resizeEvent(QResizeEvent *event) override;
 

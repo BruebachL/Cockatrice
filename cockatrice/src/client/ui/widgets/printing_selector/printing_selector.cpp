@@ -66,6 +66,7 @@ PrintingSelector::PrintingSelector(QWidget *parent,
     cardSizeSlider = new QSlider(Qt::Horizontal, cardSizeWidget);
     cardSizeSlider->setRange(25, 250);
     cardSizeSlider->setValue(100);
+    connect(cardSizeSlider, &QSlider::valueChanged, flowWidget, &FlowWidget::setMinimumSizeToMaxSizeHint);
 
     cardSizeLayout->addWidget(cardSizeLabel);
     cardSizeLayout->addWidget(cardSizeSlider);
