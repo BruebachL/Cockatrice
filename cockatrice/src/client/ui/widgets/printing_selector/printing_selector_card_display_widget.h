@@ -32,6 +32,8 @@ public:
 
 private:
     QVBoxLayout *layout;
+    QWidget *mainboardAndSideboardButtonBoxContainer;
+    QVBoxLayout *mainboardAndSideboardButtonBoxLayout;
     QWidget *buttonBoxMainboardContainer;
     QHBoxLayout *buttonBoxMainboard;
     QLabel *buttonBoxMainboardLabel;
@@ -42,6 +44,8 @@ private:
     QLabel *buttonBoxSideboardLabel;
     QPushButton *incrementButtonSideboard;
     QPushButton *decrementButtonSideboard;
+    QWidget *setAndNumberContainer;
+    QVBoxLayout *setAndNumberLayout;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;

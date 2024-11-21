@@ -26,14 +26,18 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
                                                                              setInfoForCard.getProperty("uuid"));
     cardInfoPicture->setCard(setCard);
-    layout->addWidget(cardInfoPicture, 0, Qt::AlignmentFlag::AlignCenter);
+    layout->addWidget(cardInfoPicture, 0, Qt::AlignHCenter | Qt::AlignTop);
 
     connect(cardSizeSlider, &QSlider::valueChanged, cardInfoPicture, &CardInfoPictureWidget::setScaleFactor);
+
+    mainboardAndSideboardButtonBoxContainer = new QWidget(this);
+    mainboardAndSideboardButtonBoxLayout = new QVBoxLayout(this);
+    mainboardAndSideboardButtonBoxContainer->setLayout(mainboardAndSideboardButtonBoxLayout);
 
     buttonBoxMainboard = new QHBoxLayout(this);
     buttonBoxMainboardContainer = new QWidget(this);
     buttonBoxMainboardContainer->setLayout(buttonBoxMainboard);
-    buttonBoxMainboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    buttonBoxMainboardContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     buttonBoxMainboardLabel = new QLabel(this);
     buttonBoxMainboardLabel->setText(tr("Mainboard"));
@@ -46,16 +50,13 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     cardCountMainboard = new QLabel(QString::number(countCardsInZone(DECK_ZONE_MAIN)), buttonBoxMainboardContainer);
 
     buttonBoxMainboard->addWidget(decrementButtonMainboard);
-    buttonBoxMainboard->addWidget(cardCountMainboard, 0, Qt::AlignmentFlag::AlignCenter);
+    buttonBoxMainboard->addWidget(cardCountMainboard, 0, Qt::AlignCenter);
     buttonBoxMainboard->addWidget(incrementButtonMainboard);
-
-    layout->addWidget(buttonBoxMainboardLabel, 0, Qt::AlignCenter);
-    layout->addWidget(buttonBoxMainboardContainer, 0, Qt::AlignCenter);
 
     buttonBoxSideboard = new QHBoxLayout(this);
     buttonBoxSideboardContainer = new QWidget(this);
     buttonBoxSideboardContainer->setLayout(buttonBoxSideboard);
-    buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     buttonBoxSideboardLabel = new QLabel(this);
     buttonBoxSideboardLabel->setText(tr("Sideboard"));
@@ -69,21 +70,34 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
                                     buttonBoxSideboardContainer);
 
     buttonBoxSideboard->addWidget(decrementButtonSideboard);
-    buttonBoxSideboard->addWidget(cardCountSideboard, 0, Qt::AlignmentFlag::AlignCenter);
+    buttonBoxSideboard->addWidget(cardCountSideboard, 0, Qt::AlignCenter);
     buttonBoxSideboard->addWidget(incrementButtonSideboard);
 
-    layout->addWidget(buttonBoxSideboardLabel, 0, Qt::AlignCenter);
-    layout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
+    mainboardAndSideboardButtonBoxLayout->addWidget(buttonBoxMainboardLabel, 0, Qt::AlignCenter);
+    mainboardAndSideboardButtonBoxLayout->addWidget(buttonBoxMainboardContainer, 0, Qt::AlignCenter);
+
+    mainboardAndSideboardButtonBoxLayout->addWidget(buttonBoxSideboardLabel, 0, Qt::AlignCenter);
+    mainboardAndSideboardButtonBoxLayout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
+
+    layout->addWidget(mainboardAndSideboardButtonBoxContainer, 0, Qt::AlignCenter);
 
     connect(deckModel, &DeckListModel::dataChanged, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
     connect(deckModel, &QAbstractItemModel::rowsRemoved, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
 
+    setAndNumberContainer = new QWidget(this);
+    setAndNumberLayout = new QVBoxLayout(this);
+    setAndNumberContainer->setLayout(setAndNumberLayout);
+
     setName = new QLabel(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
     setName->setWordWrap(true);
-    setName->setAlignment(Qt::AlignmentFlag::AlignCenter);
-    layout->addWidget(setName);
+    setName->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+
     setNumber = new QLabel(setInfoForCard.getProperty("num"));
-    layout->addWidget(setNumber, 0, Qt::AlignmentFlag::AlignCenter);
+
+    setAndNumberLayout->addWidget(setName);
+    setAndNumberLayout->addWidget(setNumber, 0, Qt::AlignCenter);
+
+    layout->addWidget(setAndNumberContainer, 0, Qt::AlignHCenter | Qt::AlignBottom);
 }
 
 void PrintingSelectorCardDisplayWidget::resizeEvent(QResizeEvent *event)
