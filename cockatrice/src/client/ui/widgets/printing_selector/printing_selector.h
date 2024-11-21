@@ -32,8 +32,12 @@ public slots:
 private:
     QVBoxLayout *layout;
     QHBoxLayout *sortToolBar;
-    inline static const QStringList SORT_OPTIONS = {tr("Alphabetical"), tr("Preference"), tr("Release Date"),
-                                                    tr("Contained in Deck"), tr("Potential Cards in Deck")};
+    static const QString SORT_OPTIONS_ALPHABETICAL;
+    static const QString SORT_OPTIONS_PREFERENCE;
+    static const QString SORT_OPTIONS_RELEASE_DATE;
+    static const QString SORT_OPTIONS_CONTAINED_IN_DECK;
+    static const QString SORT_OPTIONS_POTENTIAL_CARDS;
+    static const QStringList SORT_OPTIONS;
     QComboBox *sortOptionsSelector;
     bool descendingSort;
     QPushButton *toggleSortOrder;

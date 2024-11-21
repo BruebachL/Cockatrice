@@ -7,6 +7,15 @@
 #include <QDebug>
 #include <QHBoxLayout>
 
+const QString PrintingSelector::SORT_OPTIONS_ALPHABETICAL = tr("Alphabetical");
+const QString PrintingSelector::SORT_OPTIONS_PREFERENCE = tr("Preference");
+const QString PrintingSelector::SORT_OPTIONS_RELEASE_DATE = tr("Release Date");
+const QString PrintingSelector::SORT_OPTIONS_CONTAINED_IN_DECK = tr("Contained in Deck");
+const QString PrintingSelector::SORT_OPTIONS_POTENTIAL_CARDS = tr("Potential Cards in Deck");
+
+const QStringList PrintingSelector::SORT_OPTIONS = {SORT_OPTIONS_ALPHABETICAL, SORT_OPTIONS_PREFERENCE,
+                                                    SORT_OPTIONS_RELEASE_DATE, SORT_OPTIONS_CONTAINED_IN_DECK,
+                                                    SORT_OPTIONS_POTENTIAL_CARDS};
 PrintingSelector::PrintingSelector(QWidget *parent,
                                    TabDeckEditor *deckEditor,
                                    DeckListModel *deckModel,
@@ -108,9 +117,9 @@ QList<CardInfoPerSet> PrintingSelector::sortSets()
         sortedSets << CardSet::newInstance("", "", "", QDate());
     }
 
-    if (sortOptionsSelector->currentText() == "Preference") {
+    if (sortOptionsSelector->currentText() == SORT_OPTIONS_PREFERENCE) {
         std::sort(sortedSets.begin(), sortedSets.end(), SetPriorityComparator());
-    } else if (sortOptionsSelector->currentText() == "Release Date") {
+    } else if (sortOptionsSelector->currentText() == SORT_OPTIONS_RELEASE_DATE) {
         std::sort(sortedSets.begin(), sortedSets.end(), SetReleaseDateComparator());
     }
 
