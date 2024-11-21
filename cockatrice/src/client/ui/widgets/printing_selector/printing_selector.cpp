@@ -66,7 +66,9 @@ void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_curre
 {
     selectedCard = newCard;
     currentZone = _currentZone;
-    updateDisplay();
+    if (isVisible()) {
+        updateDisplay();
+    }
 }
 
 CardInfoPerSet PrintingSelector::getSetForUUID(const QString &uuid)

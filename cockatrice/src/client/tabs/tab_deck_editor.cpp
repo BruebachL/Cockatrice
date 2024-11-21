@@ -523,6 +523,7 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
 void TabDeckEditor::createPrintingSelector()
 {
     printingSelector->setCard(cardInfo->getInfo(), DECK_ZONE_MAIN);
+    printingSelector->updateDisplay();
     printingSelector->show();
 }
 
