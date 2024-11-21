@@ -72,6 +72,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(TabDeckEdit
     layout->addWidget(buttonBoxSideboardContainer, 0, Qt::AlignCenter);
 
     connect(deckModel, &DeckListModel::dataChanged, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
+    connect(deckModel, &QAbstractItemModel::rowsRemoved, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
 
     setName = new QLabel(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
     layout->addWidget(setName, 0, Qt::AlignmentFlag::AlignCenter);
@@ -126,7 +127,6 @@ void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &id
     deckView->setCurrentIndex(numberIndex);
     if (new_count <= 0) {
         deckModel->removeRow(idx.row(), idx.parent());
-        updateCardCounts();
     } else {
         deckModel->setData(numberIndex, new_count, Qt::EditRole);
     }
