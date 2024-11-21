@@ -4,6 +4,7 @@
 #include "printing_selector_card_display_widget.h"
 
 #include <QComboBox>
+#include <QDebug>
 #include <QHBoxLayout>
 
 PrintingSelector::PrintingSelector(TabDeckEditor *deckEditor,
