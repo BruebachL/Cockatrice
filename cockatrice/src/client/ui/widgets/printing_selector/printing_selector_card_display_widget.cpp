@@ -31,7 +31,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     connect(cardSizeSlider, &QSlider::valueChanged, cardInfoPicture, &CardInfoPictureWidget::setScaleFactor);
 
     buttonBoxMainboard = new QHBoxLayout(this);
-    auto *buttonBoxMainboardContainer = new QWidget(this);
+    buttonBoxMainboardContainer = new QWidget(this);
     buttonBoxMainboardContainer->setLayout(buttonBoxMainboard);
     buttonBoxMainboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
@@ -53,7 +53,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     layout->addWidget(buttonBoxMainboardContainer, 0, Qt::AlignCenter);
 
     buttonBoxSideboard = new QHBoxLayout(this);
-    auto *buttonBoxSideboardContainer = new QWidget(this);
+    buttonBoxSideboardContainer = new QWidget(this);
     buttonBoxSideboardContainer->setLayout(buttonBoxSideboard);
     buttonBoxSideboardContainer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
@@ -79,9 +79,22 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     connect(deckModel, &QAbstractItemModel::rowsRemoved, this, &PrintingSelectorCardDisplayWidget::updateCardCounts);
 
     setName = new QLabel(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
-    layout->addWidget(setName, 0, Qt::AlignmentFlag::AlignCenter);
+    setName->setWordWrap(true);
+    setName->setAlignment(Qt::AlignmentFlag::AlignCenter);
+    layout->addWidget(setName);
     setNumber = new QLabel(setInfoForCard.getProperty("num"));
     layout->addWidget(setNumber, 0, Qt::AlignmentFlag::AlignCenter);
+}
+
+void PrintingSelectorCardDisplayWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event); // Ensure the parent class handles the event first
+
+    // Determine the smaller width between cardInfoPicture and buttonBoxMainboardContainer
+    int maxWidth = qMax(cardInfoPicture->width(), buttonBoxMainboardContainer->width());
+
+    // Set the maximum width for the setName QLabel
+    setName->setMaximumWidth(maxWidth);
 }
 
 void PrintingSelectorCardDisplayWidget::updateCardCounts()

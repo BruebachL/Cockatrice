@@ -27,14 +27,17 @@ public:
                                       CardInfoPtr &rootCard,
                                       CardInfoPerSet &setInfoForCard,
                                       QString &currentZone);
+    void resizeEvent(QResizeEvent *event);
     int countCardsInZone(const QString &);
 
 private:
     QVBoxLayout *layout;
+    QWidget *buttonBoxMainboardContainer;
     QHBoxLayout *buttonBoxMainboard;
     QLabel *buttonBoxMainboardLabel;
     QPushButton *incrementButtonMainboard;
     QPushButton *decrementButtonMainboard;
+    QWidget *buttonBoxSideboardContainer;
     QHBoxLayout *buttonBoxSideboard;
     QLabel *buttonBoxSideboardLabel;
     QPushButton *incrementButtonSideboard;
