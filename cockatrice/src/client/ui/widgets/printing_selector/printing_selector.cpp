@@ -57,10 +57,20 @@ PrintingSelector::PrintingSelector(QWidget *parent,
     flowWidget = new FlowWidget(this, Qt::ScrollBarAlwaysOff, Qt::ScrollBarAsNeeded);
     layout->addWidget(flowWidget);
 
-    cardSizeSlider = new QSlider(Qt::Horizontal);
-    cardSizeSlider->setRange(1, 10);
+    cardSizeWidget = new QWidget(this);
+    cardSizeLayout = new QHBoxLayout(this);
+    cardSizeWidget->setLayout(cardSizeLayout);
 
-    layout->addWidget(cardSizeSlider);
+    cardSizeLabel = new QLabel(tr("Card Size"), cardSizeWidget);
+    cardSizeLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    cardSizeSlider = new QSlider(Qt::Horizontal, cardSizeWidget);
+    cardSizeSlider->setRange(25, 250);
+    cardSizeSlider->setValue(100);
+
+    cardSizeLayout->addWidget(cardSizeLabel);
+    cardSizeLayout->addWidget(cardSizeSlider);
+
+    layout->addWidget(cardSizeWidget);
 
     cardSelectionBar = new QWidget(this);
     cardSelectionBarLayout = new QHBoxLayout(cardSelectionBar);

@@ -7,6 +7,7 @@
 #include "../general/layout_containers/flow_widget.h"
 
 #include <QComboBox>
+#include <QLabel>
 #include <QPushButton>
 #include <QTreeView>
 #include <QVBoxLayout>
@@ -46,6 +47,9 @@ private:
     QLineEdit *searchBar;
     QTimer *searchDebounceTimer;
     FlowWidget *flowWidget;
+    QWidget *cardSizeWidget;
+    QHBoxLayout *cardSizeLayout;
+    QLabel *cardSizeLabel;
     QSlider *cardSizeSlider;
     QWidget *cardSelectionBar;
     QHBoxLayout *cardSelectionBarLayout;

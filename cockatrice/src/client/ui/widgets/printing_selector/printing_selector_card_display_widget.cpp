@@ -26,7 +26,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
                                                                              setInfoForCard.getProperty("uuid"));
     cardInfoPicture->setCard(setCard);
-    layout->addWidget(cardInfoPicture);
+    layout->addWidget(cardInfoPicture, 0, Qt::AlignmentFlag::AlignCenter);
 
     connect(cardSizeSlider, &QSlider::valueChanged, cardInfoPicture, &CardInfoPictureWidget::setScaleFactor);
 
