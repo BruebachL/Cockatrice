@@ -79,12 +79,14 @@ void PrintingSelectorCardDisplayWidget::updateCardCounts()
 
 void PrintingSelectorCardDisplayWidget::addPrintingMainboard()
 {
-    deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
+    const auto newCardIndex = deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_MAIN);
+    recursiveExpand(newCardIndex);
 }
 
 void PrintingSelectorCardDisplayWidget::addPrintingSideboard()
 {
-    deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_SIDE);
+    const auto newCardIndex = deckModel->addCard(rootCard->getName(), setInfoForCard, DECK_ZONE_SIDE);
+    recursiveExpand(newCardIndex);
 }
 
 void PrintingSelectorCardDisplayWidget::removePrintingMainboard()
@@ -95,6 +97,13 @@ void PrintingSelectorCardDisplayWidget::removePrintingMainboard()
 void PrintingSelectorCardDisplayWidget::removePrintingSideboard()
 {
     decrementCardHelper(DECK_ZONE_SIDE);
+}
+
+void PrintingSelectorCardDisplayWidget::recursiveExpand(const QModelIndex &index)
+{
+    if (index.parent().isValid())
+        recursiveExpand(index.parent());
+    deckView->expand(index);
 }
 
 void PrintingSelectorCardDisplayWidget::offsetCountAtIndex(const QModelIndex &idx, int offset)
