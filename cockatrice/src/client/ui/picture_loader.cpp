@@ -143,11 +143,7 @@ PictureLoaderWorker::PictureLoaderWorker()
     networkManager->setRedirectPolicy(QNetworkRequest::ManualRedirectPolicy);
     connect(networkManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(picDownloadFinished(QNetworkReply *)));
 
-<<<<<<< HEAD
     cacheFilePath = SettingsCache::instance().getRedirectCachePath() + REDIRECT_CACHE_FILENAME;
-=======
-    cacheFilePath = SettingsCache::instance().getRedirectCachePath() + "cacheSettings.ini";
->>>>>>> 37e2879f (Load and store redirects properly.)
     loadRedirectCache();
     cleanStaleEntries();
 

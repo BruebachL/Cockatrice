@@ -79,13 +79,8 @@ private:
     QByteArray tokenDialogGeometry;
     QByteArray setsDialogGeometry;
     QString lang;
-<<<<<<< HEAD
     QString deckPath, replaysPath, picsPath, redirectCachePath, customPicsPath, cardDatabasePath,
         customCardDatabasePath, themesPath, spoilerDatabasePath, tokenDatabasePath, themeName;
-=======
-    QString deckPath, replaysPath, picsPath, redirectCachePath, customPicsPath, cardDatabasePath, customCardDatabasePath, themesPath,
-        spoilerDatabasePath, tokenDatabasePath, themeName;
->>>>>>> 37e2879f (Load and store redirects properly.)
     bool notifyAboutUpdates;
     bool notifyAboutNewVersion;
     bool showTipsOnStartup;
