@@ -9,7 +9,8 @@ class SetNameAndCollectorsNumberDisplayWidget : public QWidget
 {
     Q_OBJECT
 public:
-    SetNameAndCollectorsNumberDisplayWidget(QWidget *parent, const QString& setName, const QString& collectorsNumber);
+    SetNameAndCollectorsNumberDisplayWidget(QWidget *parent, const QString &setName, const QString &collectorsNumber);
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     QVBoxLayout *layout;
