@@ -5,9 +5,8 @@
 #include "card_amount_widget.h"
 #include "set_name_and_collectors_number_display_widget.h"
 
-#include <QLabel>
 #include <QVBoxLayout>
-#include <qgraphicseffect.h>
+#include <QGraphicsEffect>
 
 PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *parent,
                                                                      TabDeckEditor *deckEditor,
