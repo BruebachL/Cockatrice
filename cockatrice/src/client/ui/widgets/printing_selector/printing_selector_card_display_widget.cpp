@@ -7,6 +7,7 @@
 
 #include <QLabel>
 #include <QVBoxLayout>
+#include <qgraphicseffect.h>
 
 PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *parent,
                                                                      TabDeckEditor *deckEditor,
@@ -22,6 +23,11 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     layout = new QVBoxLayout(this);
     setLayout(layout);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(10);
+    shadow->setOffset(3, 3);
+    shadow->setColor(Qt::black);
+    setGraphicsEffect(shadow);
 
     cardInfoPicture = new CardInfoPictureWidget(this);
     cardInfoPicture->setMinimumSize(0, 0);

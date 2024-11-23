@@ -129,7 +129,8 @@ public:
     {
         cardCollectorNumber = _cardCollectorNumber;
     }
-    [[nodiscard]] bool isDeckHeader() const override {
+    [[nodiscard]] bool isDeckHeader() const override
+    {
         return true;
     }
 
@@ -237,7 +238,8 @@ public:
     {
         cardSetNumber = _cardSetNumber;
     }
-    [[nodiscard]] bool isDeckHeader() const override {
+    [[nodiscard]] bool isDeckHeader() const override
+    {
         return false;
     }
 };

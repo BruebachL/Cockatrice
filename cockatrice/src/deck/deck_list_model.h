@@ -66,7 +66,8 @@ public:
     {
         return dataNode;
     }
-    [[nodiscard]] bool isDeckHeader() const override {
+    [[nodiscard]] bool isDeckHeader() const override
+    {
         return false;
     }
 };
