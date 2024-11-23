@@ -6,6 +6,9 @@
 #include "../../../../deck/deck_view.h"
 #include "../../../../game/cards/card_database.h"
 #include "../../../tabs/tab_deck_editor.h"
+#include "all_zones_card_amount_widget.h"
+#include "card_amount_widget.h"
+#include "set_name_and_collectors_number_display_widget.h"
 
 #include <QLabel>
 #include <QPainter>
@@ -24,28 +27,15 @@ public:
                                       DeckListModel *deckModel,
                                       QTreeView *deckView,
                                       QSlider *cardSizeSlider,
-                                      CardInfoPtr &rootCard,
-                                      CardInfoPerSet &setInfoForCard,
+                                      CardInfoPtr rootCard,
+                                      CardInfoPerSet setInfoForCard,
                                       QString &currentZone);
     void resizeEvent(QResizeEvent *event) override;
-    int countCardsInZone(const QString &);
 
 private:
     QVBoxLayout *layout;
-    QWidget *mainboardAndSideboardButtonBoxContainer;
-    QVBoxLayout *mainboardAndSideboardButtonBoxLayout;
-    QWidget *buttonBoxMainboardContainer;
-    QHBoxLayout *buttonBoxMainboard;
-    QLabel *buttonBoxMainboardLabel;
-    QPushButton *incrementButtonMainboard;
-    QPushButton *decrementButtonMainboard;
-    QWidget *buttonBoxSideboardContainer;
-    QHBoxLayout *buttonBoxSideboard;
-    QLabel *buttonBoxSideboardLabel;
-    QPushButton *incrementButtonSideboard;
-    QPushButton *decrementButtonSideboard;
-    QWidget *setAndNumberContainer;
-    QVBoxLayout *setAndNumberLayout;
+    AllZonesCardAmountWidget *allZonesCardAmountWidget;
+    SetNameAndCollectorsNumberDisplayWidget *setNameAndCollectorsNumberDisplayWidget;
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
     QTreeView *deckView;
@@ -54,23 +44,7 @@ private:
     CardInfoPtr setCard;
     CardInfoPerSet setInfoForCard;
     QString currentZone;
-
     CardInfoPictureWidget *cardInfoPicture;
-    QLabel *cardCountMainboard;
-    QLabel *cardCountSideboard;
-    QLabel *setName;
-    QLabel *setNumber;
-
-    void offsetCountAtIndex(const QModelIndex &idx, int offset);
-    void decrementCardHelper(const QString &zoneName);
-    void recursiveExpand(const QModelIndex &index);
-
-private slots:
-    void addPrintingMainboard();
-    void addPrintingSideboard();
-    void removePrintingMainboard();
-    void removePrintingSideboard();
-    void updateCardCounts();
 };
 
 #endif // PRINTING_SELECTOR_CARD_DISPLAY_WIDGET_H
