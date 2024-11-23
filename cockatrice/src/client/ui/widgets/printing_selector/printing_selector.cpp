@@ -122,14 +122,14 @@ void PrintingSelector::selectPreviousCard()
     selectCard(-1);
 }
 
-
 void PrintingSelector::selectNextCard()
 {
     selectCard(1);
 }
 
 // TODO: Account for Mainboard -> Sideboard jump
-void PrintingSelector::selectCard(int changeBy) {
+void PrintingSelector::selectCard(int changeBy)
+{
     // Get the current index of the selected item
     auto currentIndex = deckView->currentIndex();
 

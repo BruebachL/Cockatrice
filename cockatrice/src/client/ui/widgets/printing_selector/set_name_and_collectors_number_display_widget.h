@@ -18,5 +18,4 @@ private:
     QLabel *collectorsNumber;
 };
 
-
 #endif // SET_NAME_AND_COLLECTORS_NUMBER_DISPLAY_WIDGET_H
