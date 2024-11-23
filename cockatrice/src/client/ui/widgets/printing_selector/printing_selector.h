@@ -21,7 +21,6 @@ class PrintingSelector : public QWidget
 public:
     PrintingSelector(QWidget *parent, TabDeckEditor *deckEditor, DeckListModel *deckModel, QTreeView *deckView);
     void setCard(const CardInfoPtr &newCard, const QString &_currentZone);
-    void selectNextCard();
     CardInfoPerSet getSetForUUID(const QString &uuid);
     QList<CardInfoPerSet> sortSets();
     QList<CardInfoPerSet> filterSets(const QList<CardInfoPerSet> &sets) const;
@@ -30,6 +29,7 @@ public:
 public slots:
     void updateDisplay();
     void selectPreviousCard();
+    void selectNextCard();
     void updateSortOrder();
 
 private:
@@ -60,6 +60,7 @@ private:
     QTreeView *deckView;
     CardInfoPtr selectedCard;
     QString currentZone;
+    void selectCard(int changeBy);
 };
 
 #endif // PRINTING_SELECTOR_H

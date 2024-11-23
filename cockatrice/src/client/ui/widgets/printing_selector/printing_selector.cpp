@@ -108,22 +108,6 @@ void PrintingSelector::updateDisplay()
     getAllSetsForCurrentCard();
 }
 
-void PrintingSelector::selectPreviousCard()
-{
-    // Get the current index of the selected item
-    QModelIndex currentIndex = deckView->currentIndex();
-
-    // Check if there's a valid current index
-    if (currentIndex.isValid()) {
-        QModelIndex previousSibling = currentIndex.siblingAtRow(currentIndex.row() - 1);
-
-        // If the previous index is valid, set it as the new current index
-        if (previousSibling.isValid()) {
-            deckView->setCurrentIndex(previousSibling);
-        }
-    }
-}
-
 void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_currentZone)
 {
     selectedCard = newCard;
@@ -133,20 +117,34 @@ void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_curre
     }
 }
 
+void PrintingSelector::selectPreviousCard()
+{
+    selectCard(-1);
+}
+
+
 void PrintingSelector::selectNextCard()
 {
+    selectCard(1);
+}
+
+// TODO: Account for Mainboard -> Sideboard jump
+void PrintingSelector::selectCard(int changeBy) {
     // Get the current index of the selected item
-    QModelIndex currentIndex = deckView->currentIndex();
+    auto currentIndex = deckView->currentIndex();
 
-    // Check if there's a valid current index
-    if (currentIndex.isValid()) {
-        // Get the next index, if it exists
-        QModelIndex nextIndex = currentIndex.siblingAtRow(currentIndex.row() + 1);
-
-        // If the next index is valid, set it as the new current index
-        if (nextIndex.isValid()) {
-            deckView->setCurrentIndex(nextIndex);
+    auto nextIndex = currentIndex.siblingAtRow(currentIndex.row() + changeBy);
+    if (!nextIndex.isValid()) {
+        if (changeBy > 0) {
+            // We have finished this tree leaf, go to the first element of the next one
+            nextIndex = deckView->indexBelow(deckView->indexBelow(currentIndex));
+        } else {
+            nextIndex = deckView->indexAbove(deckView->indexAbove(currentIndex));
         }
+    }
+
+    if (nextIndex.isValid()) {
+        deckView->setCurrentIndex(nextIndex);
     }
 }
 
