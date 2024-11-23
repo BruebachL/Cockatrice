@@ -127,20 +127,29 @@ void PrintingSelector::selectNextCard()
     selectCard(1);
 }
 
-// TODO: Account for Mainboard -> Sideboard jump
 void PrintingSelector::selectCard(int changeBy)
 {
+    if (changeBy == 0) {
+        return;
+    }
+
     // Get the current index of the selected item
     auto currentIndex = deckView->currentIndex();
 
     auto nextIndex = currentIndex.siblingAtRow(currentIndex.row() + changeBy);
     if (!nextIndex.isValid()) {
-        if (changeBy > 0) {
-            // We have finished this tree leaf, go to the first element of the next one
-            nextIndex = deckView->indexBelow(deckView->indexBelow(currentIndex));
-        } else {
-            nextIndex = deckView->indexAbove(deckView->indexAbove(currentIndex));
-        }
+        nextIndex = currentIndex;
+
+        // Increment to the next valid index, skipping header rows
+        AbstractDecklistNode *node;
+        do {
+            if (changeBy > 0) {
+                nextIndex = deckView->indexBelow(nextIndex);
+            } else {
+                nextIndex = deckView->indexAbove(nextIndex);
+            }
+            node = static_cast<AbstractDecklistNode *>(nextIndex.internalPointer());
+        } while (node && node->isDeckHeader());
     }
 
     if (nextIndex.isValid()) {
