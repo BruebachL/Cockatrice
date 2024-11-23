@@ -22,6 +22,7 @@ public:
     PrintingSelector(QWidget *parent, TabDeckEditor *deckEditor, DeckListModel *deckModel, QTreeView *deckView);
     void setCard(const CardInfoPtr &newCard, const QString &_currentZone);
     CardInfoPerSet getSetForUUID(const QString &uuid);
+    QList<CardInfoPerSet> prependPrintingsInDeck(const QList<CardInfoPerSet> &sets);
     QList<CardInfoPerSet> sortSets();
     QList<CardInfoPerSet> filterSets(const QList<CardInfoPerSet> &sets) const;
     void getAllSetsForCurrentCard();

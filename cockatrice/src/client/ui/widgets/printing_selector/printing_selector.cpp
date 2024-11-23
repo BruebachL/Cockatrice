@@ -161,6 +161,40 @@ CardInfoPerSet PrintingSelector::getSetForUUID(const QString &uuid)
     return CardInfoPerSet();
 }
 
+QList<CardInfoPerSet> PrintingSelector::prependPrintingsInDeck(const QList<CardInfoPerSet> &sets)
+{
+    CardInfoPerSetMap cardInfoPerSets = selectedCard->getSets();
+    QList<QPair<CardInfoPerSet, int>> countList;
+
+    // Collect sets with their counts
+    for (const auto &cardInfoPerSet : cardInfoPerSets) {
+        QModelIndex find_card =
+            deckModel->findCard(selectedCard->getName(), DECK_ZONE_MAIN, cardInfoPerSet.getProperty("uuid"));
+        if (find_card.isValid()) {
+            int count =
+                deckModel->data(find_card, Qt::DisplayRole).toInt(); // Ensure the count is treated as an integer
+            if (count > 0) {
+                countList.append(qMakePair(cardInfoPerSet, count));
+            }
+        }
+    }
+
+    // Sort sets by count in descending numerical order
+    std::sort(countList.begin(), countList.end(),
+              [](const QPair<CardInfoPerSet, int> &a, const QPair<CardInfoPerSet, int> &b) {
+                  return a.second > b.second; // Ensure numerical comparison
+              });
+
+    // Create the final list with the prepended sets
+    QList<CardInfoPerSet> result;
+    for (const auto &pair : countList) {
+        result.append(pair.first); // Append sorted items to the result
+    }
+    result.append(sets); // Append the original list after the sorted items
+
+    return result;
+}
+
 QList<CardInfoPerSet> PrintingSelector::sortSets()
 {
     if (selectedCard.isNull()) {
@@ -227,8 +261,9 @@ void PrintingSelector::getAllSetsForCurrentCard()
 {
     const QList<CardInfoPerSet> sortedSets = sortSets();
     const QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
+    const QList<CardInfoPerSet> prependedSets = prependPrintingsInDeck(filteredSets);
 
-    for (auto cardInfoPerSet : filteredSets) {
+    for (auto cardInfoPerSet : prependedSets) {
         auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(
             this, deckEditor, deckModel, deckView, cardSizeSlider, selectedCard, cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
