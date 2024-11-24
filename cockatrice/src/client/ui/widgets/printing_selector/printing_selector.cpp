@@ -110,6 +110,9 @@ void PrintingSelector::updateDisplay()
 
 void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_currentZone)
 {
+    if (newCard.isNull()) {
+        return;
+    }
     selectedCard = newCard;
     currentZone = _currentZone;
     if (isVisible()) {
