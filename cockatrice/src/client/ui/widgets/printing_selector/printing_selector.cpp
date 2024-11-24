@@ -282,7 +282,7 @@ void PrintingSelector::getAllSetsForCurrentCard()
     const QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
     const QList<CardInfoPerSet> prependedSets = prependPrintingsInDeck(filteredSets);
 
-    for (const auto& cardInfoPerSet : prependedSets) {
+    for (const auto &cardInfoPerSet : prependedSets) {
         auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(
             this, deckEditor, deckModel, deckView, cardSizeSlider, selectedCard, cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
