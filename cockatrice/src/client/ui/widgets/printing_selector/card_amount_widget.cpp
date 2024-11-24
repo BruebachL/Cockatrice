@@ -17,7 +17,9 @@ CardAmountWidget::CardAmountWidget(QWidget *parent,
     this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     incrementButton = new QPushButton(this);
+    incrementButton->setText("+");
     decrementButton = new QPushButton(this);
+    decrementButton->setText("-");
 
     incrementButton->setFixedSize(30, 30);
     decrementButton->setFixedSize(30, 30);
