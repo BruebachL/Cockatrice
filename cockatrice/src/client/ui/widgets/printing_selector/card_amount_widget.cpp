@@ -8,31 +8,77 @@ CardAmountWidget::CardAmountWidget(QWidget *parent,
                                    CardInfoPerSet &setInfoForCard,
                                    QString zoneName)
     : QWidget(parent), deckEditor(deckEditor), deckModel(deckModel), deckView(deckView), rootCard(rootCard),
-      setInfoForCard(setInfoForCard), zoneName(zoneName)
+      setInfoForCard(setInfoForCard), zoneName(zoneName), hovered(false)
 {
     layout = new QHBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(10);
     this->setLayout(layout);
     this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    incrementButton = new QPushButton("+", this);
-    decrementButton = new QPushButton("-", this);
+    incrementButton = new QPushButton(this);
+    decrementButton = new QPushButton(this);
 
+    incrementButton->setFixedSize(30, 30);
+    decrementButton->setFixedSize(30, 30);
+
+    // Apply styles for gradient buttons
+    QString buttonStyle = R"(
+        QPushButton {
+            background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1,
+                stop:0 rgba(64, 64, 64, 255), stop:1 rgba(32, 32, 32, 255));
+            border: none;
+            color: white;
+            font-size: 16px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1,
+                stop:0 rgba(96, 96, 96, 255), stop:1 rgba(48, 48, 48, 255));
+        }
+        QPushButton:pressed {
+            background: qlineargradient(spread:pad, x1:0.5, y1:0, x2:0.5, y2:1,
+                stop:0 rgba(128, 128, 128, 255), stop:1 rgba(64, 64, 64, 255));
+        }
+    )";
+    incrementButton->setStyleSheet(buttonStyle);
+    decrementButton->setStyleSheet(buttonStyle);
+
+    // Set up connections
     if (zoneName == DECK_ZONE_MAIN) {
-        connect(incrementButton, SIGNAL(clicked()), this, SLOT(addPrintingMainboard()));
-        connect(decrementButton, SIGNAL(clicked()), this, SLOT(removePrintingMainboard()));
+        connect(incrementButton, &QPushButton::clicked, this, &CardAmountWidget::addPrintingMainboard);
+        connect(decrementButton, &QPushButton::clicked, this, &CardAmountWidget::removePrintingMainboard);
     } else if (zoneName == DECK_ZONE_SIDE) {
-        connect(incrementButton, SIGNAL(clicked()), this, SLOT(addPrintingSideboard()));
-        connect(decrementButton, SIGNAL(clicked()), this, SLOT(removePrintingSideboard()));
+        connect(incrementButton, &QPushButton::clicked, this, &CardAmountWidget::addPrintingSideboard);
+        connect(decrementButton, &QPushButton::clicked, this, &CardAmountWidget::removePrintingSideboard);
     }
 
     cardCountInZone = new QLabel(QString::number(countCardsInZone(zoneName)), this);
+    cardCountInZone->setStyleSheet("color: white; font-size: 16px;");
+    cardCountInZone->setAlignment(Qt::AlignCenter);
 
     layout->addWidget(decrementButton);
-    layout->addWidget(cardCountInZone, 0, Qt::AlignCenter);
+    layout->addWidget(cardCountInZone);
     layout->addWidget(incrementButton);
 
+    // React to model changes
     connect(deckModel, &DeckListModel::dataChanged, this, &CardAmountWidget::updateCardCount);
     connect(deckModel, &QAbstractItemModel::rowsRemoved, this, &CardAmountWidget::updateCardCount);
+
+    // Initially hide UI elements
+    fadeAnimation = new QPropertyAnimation(this, "opacity");
+}
+
+void CardAmountWidget::paintEvent(QPaintEvent *event)
+{
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Draw semi-transparent black background
+    painter.setBrush(QBrush(QColor(0, 0, 0, 128)));
+    painter.setPen(Qt::NoPen);
+    painter.drawRect(rect());
+
+    QWidget::paintEvent(event);
 }
 
 void CardAmountWidget::updateCardCount()

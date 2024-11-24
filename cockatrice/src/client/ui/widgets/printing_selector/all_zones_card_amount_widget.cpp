@@ -13,9 +13,27 @@ AllZonesCardAmountWidget::AllZonesCardAmountWidget(QWidget *parent,
     setLayout(layout);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     zoneLabelMainboard = new QLabel(tr("Mainboard"), this);
+    zoneLabelMainboard->setStyleSheet(R"(
+    QLabel {
+        background-color: rgba(0, 0, 0, 128); /* Semi-transparent black */
+        color: white; /* Text color */
+        font-size: 16px;
+        border-radius: 5px; /* Rounded corners */
+        padding: 5px; /* Padding around text */
+    }
+    )");
     buttonBoxMainboard =
         new CardAmountWidget(this, deckEditor, deckModel, deckView, rootCard, setInfoForCard, DECK_ZONE_MAIN);
     zoneLabelSideboard = new QLabel(tr("Sideboard"), this);
+    zoneLabelSideboard->setStyleSheet(R"(
+    QLabel {
+        background-color: rgba(0, 0, 0, 128); /* Semi-transparent black */
+        color: white; /* Text color */
+        font-size: 16px;
+        border-radius: 5px; /* Rounded corners */
+        padding: 5px; /* Padding around text */
+    }
+    )");
     buttonBoxSideboard =
         new CardAmountWidget(this, deckEditor, deckModel, deckView, rootCard, setInfoForCard, DECK_ZONE_SIDE);
 
@@ -23,4 +41,11 @@ AllZonesCardAmountWidget::AllZonesCardAmountWidget(QWidget *parent,
     layout->addWidget(buttonBoxMainboard, 0, Qt::AlignCenter);
     layout->addWidget(zoneLabelSideboard, 0, Qt::AlignCenter);
     layout->addWidget(buttonBoxSideboard, 0, Qt::AlignCenter);
+    setMouseTracking(true);
+}
+
+void AllZonesCardAmountWidget::enterEvent(QEnterEvent *event)
+{
+    QWidget::enterEvent(event);
+    update();
 }

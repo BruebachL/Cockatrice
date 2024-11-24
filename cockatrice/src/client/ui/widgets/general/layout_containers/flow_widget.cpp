@@ -172,3 +172,13 @@ void FlowWidget::setMinimumSizeToMaxSizeHint()
         }
     }
 }
+
+QLayoutItem* FlowWidget::itemAt(int index) const
+{
+    return flow_layout->itemAt(index);
+}
+
+int FlowWidget::count() const
+{
+    return flow_layout->count();
+}

@@ -3,9 +3,11 @@
 #include "../../../../deck/deck_loader.h"
 #include "../../../../game/cards/card_database_manager.h"
 #include "card_amount_widget.h"
+#include "printing_selector_card_overlay_widget.h"
 #include "set_name_and_collectors_number_display_widget.h"
 
 #include <QGraphicsEffect>
+#include <QStackedWidget>
 #include <QVBoxLayout>
 
 PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *parent,
@@ -22,41 +24,30 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     layout = new QVBoxLayout(this);
     setLayout(layout);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    auto *shadow = new QGraphicsDropShadowEffect();
-    shadow->setBlurRadius(15);
-    shadow->setOffset(3, 3);
-    shadow->setColor(Qt::black);
-    setGraphicsEffect(shadow);
 
-    cardInfoPicture = new CardInfoPictureWidget(this);
-    cardInfoPicture->setMinimumSize(0, 0);
-    cardInfoPicture->setScaleFactor(cardSizeSlider->value());
-    setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
-                                                                             setInfoForCard.getProperty("uuid"));
-    cardInfoPicture->setCard(setCard);
-
-    allZonesCardAmountWidget =
-        new AllZonesCardAmountWidget(this, deckEditor, deckModel, deckView, setCard, setInfoForCard);
+    overlayWidget = new PrintingSelectorCardOverlayWidget(this, deckEditor, deckModel, deckView, cardSizeSlider,
+                                                          rootCard, setInfoForCard);
 
     const QString combinedSetName =
         QString(setInfoForCard.getPtr()->getLongName() + " (" + setInfoForCard.getPtr()->getShortName() + ")");
     setNameAndCollectorsNumberDisplayWidget =
         new SetNameAndCollectorsNumberDisplayWidget(this, combinedSetName, setInfoForCard.getProperty("num"));
 
-    layout->addWidget(cardInfoPicture, 1, Qt::AlignHCenter | Qt::AlignTop);
-    layout->addWidget(allZonesCardAmountWidget, 0, Qt::AlignCenter);
+    layout->addWidget(overlayWidget);
     layout->addWidget(setNameAndCollectorsNumberDisplayWidget, 1, Qt::AlignHCenter | Qt::AlignBottom);
+    setMouseTracking(true);
+}
 
-    connect(cardSizeSlider, &QSlider::valueChanged, cardInfoPicture, &CardInfoPictureWidget::setScaleFactor);
+void PrintingSelectorCardDisplayWidget::enterEvent(QEnterEvent *event)
+{
+    QWidget::enterEvent(event);
+    update();
 }
 
 void PrintingSelectorCardDisplayWidget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event); // Ensure the parent class handles the event first
 
-    // Determine the smaller width between cardInfoPicture and buttonBoxMainboardContainer
-    int maxWidth = qMax(cardInfoPicture->width(), allZonesCardAmountWidget->width());
-
     // Set the maximum width for the setName QLabel
-    setNameAndCollectorsNumberDisplayWidget->setMaximumWidth(maxWidth);
+    setNameAndCollectorsNumberDisplayWidget->setMaximumWidth(overlayWidget->width());
 }

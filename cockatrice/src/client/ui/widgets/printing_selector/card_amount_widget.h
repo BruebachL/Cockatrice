@@ -9,6 +9,7 @@
 
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPropertyAnimation>
 #include <QPushButton>
 #include <QTreeView>
 #include <QWidget>
@@ -29,6 +30,11 @@ public:
 public slots:
     void updateCardCount();
 
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void hideElements();
+    void showElements();
+
 private:
     TabDeckEditor *deckEditor;
     DeckListModel *deckModel;
@@ -40,6 +46,9 @@ private:
     QPushButton *incrementButton;
     QPushButton *decrementButton;
     QLabel *cardCountInZone;
+
+    bool hovered;
+    QPropertyAnimation *fadeAnimation;
 
     void offsetCountAtIndex(const QModelIndex &idx, int offset);
     void decrementCardHelper(const QString &zoneName);

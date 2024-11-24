@@ -14,6 +14,8 @@ public:
     FlowWidget(QWidget *parent, Qt::ScrollBarPolicy horizontalPolicy, Qt::ScrollBarPolicy verticalPolicy);
     void addWidget(QWidget *widget_to_add) const;
     void clearLayout();
+    [[nodiscard]] int count() const;
+    [[nodiscard]] QLayoutItem *itemAt(int index) const;
 
     QScrollArea *scrollArea;
 
