@@ -59,7 +59,7 @@ signals:
 public slots:
 
 private:
-    explicit LayoutsSettings(const QString& settingPath, QObject *parent = nullptr);
+    explicit LayoutsSettings(const QString &settingPath, QObject *parent = nullptr);
     LayoutsSettings(const LayoutsSettings & /*other*/);
 };
 

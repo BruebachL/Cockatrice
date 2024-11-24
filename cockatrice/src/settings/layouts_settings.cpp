@@ -1,6 +1,6 @@
 #include "layouts_settings.h"
 
-LayoutsSettings::LayoutsSettings(const QString& settingPath, QObject *parent)
+LayoutsSettings::LayoutsSettings(const QString &settingPath, QObject *parent)
     : SettingsManager(settingPath + "layouts.ini", parent)
 {
 }
