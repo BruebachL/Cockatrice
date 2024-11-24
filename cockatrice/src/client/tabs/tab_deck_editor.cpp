@@ -177,7 +177,6 @@ void TabDeckEditor::createDeckDock()
     deckDock = new QDockWidget(this);
     deckDock->setObjectName("deckDock");
 
-    deckDock->setMinimumSize(QSize(200, 41));
     deckDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     deckDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable |
                           QDockWidget::DockWidgetMovable);
@@ -201,7 +200,6 @@ void TabDeckEditor::createCardInfoDock()
     cardInfoDock = new QDockWidget(this);
     cardInfoDock->setObjectName("cardInfoDock");
 
-    cardInfoDock->setMinimumSize(QSize(200, 41));
     cardInfoDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     cardInfoDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable |
                               QDockWidget::DockWidgetMovable);
@@ -287,7 +285,6 @@ void TabDeckEditor::createPrintingSelectorDock()
     printingSelectorDock = new QDockWidget(this);
     printingSelectorDock->setObjectName("printingSelectorDock");
 
-    printingSelectorDock->setMinimumSize(QSize(350, 41));
     printingSelectorDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     printingSelectorDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable |
                                       QDockWidget::DockWidgetMovable);
@@ -596,9 +593,6 @@ void TabDeckEditor::restartLayout()
     splitDockWidget(cardInfoDock, printingSelectorDock, Qt::Horizontal);
     splitDockWidget(cardInfoDock, filterDock, Qt::Vertical);
 
-    deckDock->setMinimumWidth(360);
-
-    cardInfoDock->setMinimumSize(250, 360);
     QTimer::singleShot(100, this, SLOT(freeDocksSize()));
 }
 
