@@ -23,7 +23,7 @@ PrintingSelectorCardDisplayWidget::PrintingSelectorCardDisplayWidget(QWidget *pa
     setLayout(layout);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto *shadow = new QGraphicsDropShadowEffect();
-    shadow->setBlurRadius(10);
+    shadow->setBlurRadius(15);
     shadow->setOffset(3, 3);
     shadow->setColor(Qt::black);
     setGraphicsEffect(shadow);
