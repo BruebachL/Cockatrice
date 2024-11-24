@@ -569,7 +569,7 @@ void TabDeckEditor::restartLayout()
     deckDock->setVisible(true);
     cardInfoDock->setVisible(true);
     filterDock->setVisible(true);
-    printingSelectorDock->setVisible(true);
+    printingSelectorDock->setVisible(false);
 
     deckDock->setFloating(false);
     cardInfoDock->setFloating(false);
@@ -613,7 +613,7 @@ void TabDeckEditor::freeDocksSize()
     filterDock->setMinimumSize(100, 100);
     filterDock->setMaximumSize(5000, 5000);
 
-    printingSelectorDock->setMinimumSize(350, 100);
+    printingSelectorDock->setMinimumSize(525, 100);
     printingSelectorDock->setMaximumSize(5000, 5000);
 
     centralWidget->setMaximumSize(900, 5000);
@@ -680,8 +680,8 @@ void TabDeckEditor::loadLayout()
     deckDock->setMinimumSize(layouts.getDeckEditorDeckSize());
     deckDock->setMaximumSize(layouts.getDeckEditorDeckSize());
 
-    // printingSelectorDock->setMinimumSize(layouts.getPrintingSelectorSize());
-    // printingSelectorDock->setMaximumSize(layouts.getPrintingSelectorSize());
+    printingSelectorDock->setMinimumSize(layouts.getDeckEditorPrintingSelectorSize());
+    printingSelectorDock->setMaximumSize(layouts.getDeckEditorPrintingSelectorSize());
 
     QTimer::singleShot(100, this, SLOT(freeDocksSize()));
 }
@@ -1407,7 +1407,7 @@ bool TabDeckEditor::eventFilter(QObject *o, QEvent *e)
         layouts.setDeckEditorCardSize(cardInfoDock->size());
         layouts.setDeckEditorFilterSize(filterDock->size());
         layouts.setDeckEditorDeckSize(deckDock->size());
-        // layouts.setPrintingSelectorSize(printingSelectorDock->size());
+        layouts.setDeckEditorPrintingSelectorSize(printingSelectorDock->size());
     }
     return false;
 }

@@ -47,6 +47,17 @@ void LayoutsSettings::setDeckEditorDeckSize(const QSize &value)
     setValue(value, "layouts/deckEditor_DeckSize");
 }
 
+const QSize LayoutsSettings::getDeckEditorPrintingSelectorSize()
+{
+    QVariant previous = getValue("layouts/deckEditor_PrintingSelectorSize");
+    return previous == QVariant() ? QSize(350, 41) : previous.toSize();
+}
+
+void LayoutsSettings::setDeckEditorPrintingSelectorSize(const QSize &value)
+{
+    setValue(value, "layouts/deckEditor_PrintingSelectorSize");
+}
+
 const QSize LayoutsSettings::getDeckEditorFilterSize()
 {
     QVariant previous = getValue("layouts/deckEditor_FilterSize");

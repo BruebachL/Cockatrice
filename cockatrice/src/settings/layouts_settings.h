@@ -15,6 +15,7 @@ public:
     void setDeckEditorGeometry(const QByteArray &value);
     void setDeckEditorCardSize(const QSize &value);
     void setDeckEditorDeckSize(const QSize &value);
+    void setDeckEditorPrintingSelectorSize(const QSize &value);
     void setDeckEditorFilterSize(const QSize &value);
     void setDeckEditorDbHeaderState(const QByteArray &value);
     void setSetsDialogHeaderState(const QByteArray &value);
@@ -36,6 +37,7 @@ public:
     const QByteArray getDeckEditorGeometry();
     const QSize getDeckEditorCardSize();
     const QSize getDeckEditorDeckSize();
+    const QSize getDeckEditorPrintingSelectorSize();
     const QSize getDeckEditorFilterSize();
     const QByteArray getDeckEditorDbHeaderState();
     const QByteArray getSetsDialogHeaderState();
