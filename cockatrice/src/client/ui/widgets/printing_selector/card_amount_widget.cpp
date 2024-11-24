@@ -92,10 +92,10 @@ void CardAmountWidget::offsetCountAtIndex(const QModelIndex &idx, int offset)
     deckEditor->setModified(true);
 }
 
-void CardAmountWidget::decrementCardHelper(const QString &zoneName)
+void CardAmountWidget::decrementCardHelper(const QString &zone)
 {
     QModelIndex idx;
-    idx = deckModel->findCard(rootCard->getName(), zoneName, setInfoForCard.getProperty("uuid"));
+    idx = deckModel->findCard(rootCard->getName(), zone, setInfoForCard.getProperty("uuid"));
     offsetCountAtIndex(idx, -1);
 }
 

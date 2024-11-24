@@ -287,7 +287,7 @@ void TabDeckEditor::createPrintingSelectorDock()
     printingSelectorDock = new QDockWidget(this);
     printingSelectorDock->setObjectName("printingSelectorDock");
 
-    printingSelectorDock->setMinimumSize(QSize(200, 41));
+    printingSelectorDock->setMinimumSize(QSize(350, 41));
     printingSelectorDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     printingSelectorDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable |
                                       QDockWidget::DockWidgetMovable);
@@ -507,6 +507,7 @@ void TabDeckEditor::createCentralFrame()
     centralWidget = new QWidget(this);
     centralWidget->setObjectName("centralWidget");
     centralWidget->setLayout(centralFrame);
+    centralWidget->setMaximumSize(900, 5000);
     setCentralWidget(centralWidget);
     setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
 }
@@ -568,7 +569,7 @@ void TabDeckEditor::restartLayout()
     deckDock->setVisible(true);
     cardInfoDock->setVisible(true);
     filterDock->setVisible(true);
-    printingSelectorDock->setVisible(false);
+    printingSelectorDock->setVisible(true);
 
     deckDock->setFloating(false);
     cardInfoDock->setFloating(false);
@@ -590,15 +591,14 @@ void TabDeckEditor::restartLayout()
     addDockWidget(static_cast<Qt::DockWidgetArea>(2), filterDock);
     addDockWidget(static_cast<Qt::DockWidgetArea>(2), printingSelectorDock);
 
-    splitDockWidget(cardInfoDock, deckDock, Qt::Horizontal);
+    splitDockWidget(cardInfoDock, printingSelectorDock, Qt::Horizontal);
+    splitDockWidget(printingSelectorDock, deckDock, Qt::Horizontal);
+    splitDockWidget(cardInfoDock, printingSelectorDock, Qt::Horizontal);
     splitDockWidget(cardInfoDock, filterDock, Qt::Vertical);
-    splitDockWidget(deckDock, printingSelectorDock, Qt::Horizontal);
 
     deckDock->setMinimumWidth(360);
-    deckDock->setMaximumWidth(360);
 
     cardInfoDock->setMinimumSize(250, 360);
-    cardInfoDock->setMaximumSize(250, 360);
     QTimer::singleShot(100, this, SLOT(freeDocksSize()));
 }
 
@@ -613,8 +613,10 @@ void TabDeckEditor::freeDocksSize()
     filterDock->setMinimumSize(100, 100);
     filterDock->setMaximumSize(5000, 5000);
 
-    printingSelectorDock->setMinimumSize(100, 100);
+    printingSelectorDock->setMinimumSize(350, 100);
     printingSelectorDock->setMaximumSize(5000, 5000);
+
+    centralWidget->setMaximumSize(900, 5000);
 }
 
 void TabDeckEditor::refreshShortcuts()
@@ -756,6 +758,7 @@ void TabDeckEditor::retranslateUi()
     cardInfoDock->setWindowTitle(tr("Card Info"));
     deckDock->setWindowTitle(tr("Deck"));
     filterDock->setWindowTitle(tr("Filters"));
+    printingSelectorDock->setWindowTitle(tr("Printing Selector"));
 
     viewMenu->setTitle(tr("&View"));
     cardInfoDockMenu->setTitle(tr("Card Info"));
@@ -841,7 +844,6 @@ void TabDeckEditor::updatePrintingSelectorDeckView(const QModelIndex &current, c
     }
 
     const QString zoneName = gparent.sibling(gparent.row(), 1).data(Qt::EditRole).toString();
-    const QString otherZoneName = zoneName == DECK_ZONE_MAIN ? DECK_ZONE_SIDE : DECK_ZONE_MAIN;
 
     if (!current.isValid()) {
         return;

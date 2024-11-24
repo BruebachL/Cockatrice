@@ -43,7 +43,7 @@ PrintingSelector::PrintingSelector(QWidget *parent,
 
     // Add the search bar
     searchBar = new QLineEdit(this);
-    searchBar->setPlaceholderText(tr("Search..."));
+    searchBar->setPlaceholderText(tr("Search by set name or set code"));
     layout->addWidget(searchBar);
 
     // Add a debounce timer for the search bar
@@ -282,7 +282,7 @@ void PrintingSelector::getAllSetsForCurrentCard()
     const QList<CardInfoPerSet> filteredSets = filterSets(sortedSets);
     const QList<CardInfoPerSet> prependedSets = prependPrintingsInDeck(filteredSets);
 
-    for (auto cardInfoPerSet : prependedSets) {
+    for (const auto& cardInfoPerSet : prependedSets) {
         auto *cardDisplayWidget = new PrintingSelectorCardDisplayWidget(
             this, deckEditor, deckModel, deckView, cardSizeSlider, selectedCard, cardInfoPerSet, currentZone);
         flowWidget->addWidget(cardDisplayWidget);
