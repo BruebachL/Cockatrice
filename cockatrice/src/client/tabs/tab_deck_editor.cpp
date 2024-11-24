@@ -276,6 +276,33 @@ void TabDeckEditor::createFiltersDock()
     connect(filterDock, SIGNAL(topLevelChanged(bool)), this, SLOT(dockTopLevelChanged(bool)));
 }
 
+void TabDeckEditor::createPrintingSelectorDock()
+{
+    printingSelector = new PrintingSelector(this, this, deckModel, deckView);
+    printingSelector->setObjectName("printingSelector");
+    auto *printingSelectorFrame = new QVBoxLayout;
+    printingSelectorFrame->setObjectName("printingSelectorFrame");
+    printingSelectorFrame->addWidget(printingSelector);
+
+    printingSelectorDock = new QDockWidget(this);
+    printingSelectorDock->setObjectName("printingSelectorDock");
+
+    printingSelectorDock->setMinimumSize(QSize(200, 41));
+    printingSelectorDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    printingSelectorDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetFloatable |
+                                      QDockWidget::DockWidgetMovable);
+    auto *printingSelectorDockContents = new QWidget();
+    printingSelectorDockContents->setObjectName("printingSelectorDockContents");
+    printingSelectorDockContents->setLayout(printingSelectorFrame);
+    printingSelectorDock->setWidget(printingSelectorDockContents);
+
+    printingSelectorDock->installEventFilter(this);
+    connect(printingSelectorDock, SIGNAL(topLevelChanged(bool)), this, SLOT(dockTopLevelChanged(bool)));
+
+    addDockWidget(Qt::RightDockWidgetArea, printingSelectorDock);
+    printingSelectorDock->setFloating(false);
+}
+
 void TabDeckEditor::createMenus()
 {
     aNewDeck = new QAction(QString(), this);
@@ -354,6 +381,7 @@ void TabDeckEditor::createMenus()
     cardInfoDockMenu = viewMenu->addMenu(QString());
     deckDockMenu = viewMenu->addMenu(QString());
     filterDockMenu = viewMenu->addMenu(QString());
+    printingSelectorDockMenu = viewMenu->addMenu(QString());
 
     aCardInfoDockVisible = cardInfoDockMenu->addAction(QString());
     aCardInfoDockVisible->setCheckable(true);
@@ -375,6 +403,13 @@ void TabDeckEditor::createMenus()
     aFilterDockFloating = filterDockMenu->addAction(QString());
     aFilterDockFloating->setCheckable(true);
     connect(aFilterDockFloating, SIGNAL(triggered()), this, SLOT(dockFloatingTriggered()));
+
+    aPrintingSelectorDockVisible = printingSelectorDockMenu->addAction(QString());
+    aPrintingSelectorDockVisible->setCheckable(true);
+    connect(aPrintingSelectorDockVisible, SIGNAL(triggered()), this, SLOT(dockVisibleTriggered()));
+    aPrintingSelectorDockFloating = printingSelectorDockMenu->addAction(QString());
+    aPrintingSelectorDockFloating->setCheckable(true);
+    connect(aPrintingSelectorDockFloating, SIGNAL(triggered()), this, SLOT(dockFloatingTriggered()));
 
     viewMenu->addSeparator();
 
@@ -489,7 +524,7 @@ void TabDeckEditor::databaseCustomMenu(QPoint point)
 
     connect(addToDeck, SIGNAL(triggered()), this, SLOT(actAddCard()));
     connect(addToSideboard, SIGNAL(triggered()), this, SLOT(actAddCardToSideboard()));
-    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->createPrintingSelector(); });
+    connect(selectPrinting, &QAction::triggered, this, [this, info] { this->showPrintingSelector(); });
 
     // filling out the related cards submenu
     auto *relatedMenu = new QMenu(tr("Show Related cards"));
@@ -515,16 +550,17 @@ void TabDeckEditor::decklistCustomMenu(QPoint point)
 
     QAction *selectPrinting = menu.addAction(tr("Select Printing"));
 
-    connect(selectPrinting, &QAction::triggered, this, &TabDeckEditor::createPrintingSelector);
+    connect(selectPrinting, &QAction::triggered, this, &TabDeckEditor::showPrintingSelector);
 
     menu.exec(deckView->mapToGlobal(point));
 }
 
-void TabDeckEditor::createPrintingSelector()
+void TabDeckEditor::showPrintingSelector()
 {
     printingSelector->setCard(cardInfo->getInfo(), DECK_ZONE_MAIN);
     printingSelector->updateDisplay();
-    printingSelector->show();
+    aPrintingSelectorDockVisible->setChecked(true);
+    printingSelectorDock->setVisible(true);
 }
 
 void TabDeckEditor::restartLayout()
@@ -532,25 +568,31 @@ void TabDeckEditor::restartLayout()
     deckDock->setVisible(true);
     cardInfoDock->setVisible(true);
     filterDock->setVisible(true);
+    printingSelectorDock->setVisible(false);
 
     deckDock->setFloating(false);
     cardInfoDock->setFloating(false);
     filterDock->setFloating(false);
+    printingSelectorDock->setFloating(false);
 
     aCardInfoDockVisible->setChecked(true);
     aDeckDockVisible->setChecked(true);
     aFilterDockVisible->setChecked(true);
+    aPrintingSelectorDockVisible->setChecked(false);
 
     aCardInfoDockFloating->setChecked(false);
     aDeckDockFloating->setChecked(false);
     aFilterDockFloating->setChecked(false);
+    aPrintingSelectorDockFloating->setChecked(false);
 
     addDockWidget(static_cast<Qt::DockWidgetArea>(2), deckDock);
     addDockWidget(static_cast<Qt::DockWidgetArea>(2), cardInfoDock);
     addDockWidget(static_cast<Qt::DockWidgetArea>(2), filterDock);
+    addDockWidget(static_cast<Qt::DockWidgetArea>(2), printingSelectorDock);
 
     splitDockWidget(cardInfoDock, deckDock, Qt::Horizontal);
     splitDockWidget(cardInfoDock, filterDock, Qt::Vertical);
+    splitDockWidget(deckDock, printingSelectorDock, Qt::Horizontal);
 
     deckDock->setMinimumWidth(360);
     deckDock->setMaximumWidth(360);
@@ -570,6 +612,9 @@ void TabDeckEditor::freeDocksSize()
 
     filterDock->setMinimumSize(100, 100);
     filterDock->setMaximumSize(5000, 5000);
+
+    printingSelectorDock->setMinimumSize(100, 100);
+    printingSelectorDock->setMaximumSize(5000, 5000);
 }
 
 void TabDeckEditor::refreshShortcuts()
@@ -612,14 +657,17 @@ void TabDeckEditor::loadLayout()
     aCardInfoDockVisible->setChecked(cardInfoDock->isVisible());
     aFilterDockVisible->setChecked(filterDock->isVisible());
     aDeckDockVisible->setChecked(deckDock->isVisible());
+    aPrintingSelectorDockVisible->setChecked(printingSelectorDock->isVisible());
 
     aCardInfoDockFloating->setEnabled(aCardInfoDockVisible->isChecked());
     aDeckDockFloating->setEnabled(aDeckDockVisible->isChecked());
     aFilterDockFloating->setEnabled(aFilterDockVisible->isChecked());
+    aPrintingSelectorDockFloating->setEnabled(aPrintingSelectorDockVisible->isChecked());
 
     aCardInfoDockFloating->setChecked(cardInfoDock->isFloating());
     aFilterDockFloating->setChecked(filterDock->isFloating());
     aDeckDockFloating->setChecked(deckDock->isFloating());
+    aPrintingSelectorDockFloating->setChecked(printingSelectorDock->isFloating());
 
     cardInfoDock->setMinimumSize(layouts.getDeckEditorCardSize());
     cardInfoDock->setMaximumSize(layouts.getDeckEditorCardSize());
@@ -629,6 +677,9 @@ void TabDeckEditor::loadLayout()
 
     deckDock->setMinimumSize(layouts.getDeckEditorDeckSize());
     deckDock->setMaximumSize(layouts.getDeckEditorDeckSize());
+
+    // printingSelectorDock->setMinimumSize(layouts.getPrintingSelectorSize());
+    // printingSelectorDock->setMaximumSize(layouts.getPrintingSelectorSize());
 
     QTimer::singleShot(100, this, SLOT(freeDocksSize()));
 }
@@ -645,7 +696,7 @@ TabDeckEditor::TabDeckEditor(TabSupervisor *_tabSupervisor, QWidget *parent)
     createDeckDock();
     createCardInfoDock();
     createFiltersDock();
-    printingSelector = new PrintingSelector(nullptr, this, deckModel, deckView);
+    createPrintingSelectorDock();
 
     this->installEventFilter(this);
 
@@ -710,6 +761,7 @@ void TabDeckEditor::retranslateUi()
     cardInfoDockMenu->setTitle(tr("Card Info"));
     deckDockMenu->setTitle(tr("Deck"));
     filterDockMenu->setTitle(tr("Filters"));
+    printingSelectorDockMenu->setTitle(tr("Printing"));
 
     aCardInfoDockVisible->setText(tr("Visible"));
     aCardInfoDockFloating->setText(tr("Floating"));
@@ -719,6 +771,9 @@ void TabDeckEditor::retranslateUi()
 
     aFilterDockVisible->setText(tr("Visible"));
     aFilterDockFloating->setText(tr("Floating"));
+
+    aPrintingSelectorDockVisible->setText(tr("Visible"));
+    aPrintingSelectorDockFloating->setText(tr("Floating"));
 
     aResetLayout->setText(tr("Reset layout"));
 }
@@ -1338,6 +1393,9 @@ bool TabDeckEditor::eventFilter(QObject *o, QEvent *e)
         } else if (o == filterDock) {
             aFilterDockVisible->setChecked(false);
             aFilterDockFloating->setEnabled(false);
+        } else if (o == printingSelectorDock) {
+            aPrintingSelectorDockVisible->setChecked(false);
+            aPrintingSelectorDockFloating->setEnabled(false);
         }
     }
     if (o == this && e->type() == QEvent::Hide) {
@@ -1347,6 +1405,7 @@ bool TabDeckEditor::eventFilter(QObject *o, QEvent *e)
         layouts.setDeckEditorCardSize(cardInfoDock->size());
         layouts.setDeckEditorFilterSize(filterDock->size());
         layouts.setDeckEditorDeckSize(deckDock->size());
+        // layouts.setPrintingSelectorSize(printingSelectorDock->size());
     }
     return false;
 }
@@ -1371,6 +1430,12 @@ void TabDeckEditor::dockVisibleTriggered()
         aFilterDockFloating->setEnabled(aFilterDockVisible->isChecked());
         return;
     }
+
+    if (o == aPrintingSelectorDockVisible) {
+        printingSelectorDock->setVisible(aPrintingSelectorDockVisible->isChecked());
+        aPrintingSelectorDockFloating->setEnabled(aPrintingSelectorDockVisible->isChecked());
+        return;
+    }
 }
 
 void TabDeckEditor::dockFloatingTriggered()
@@ -1390,6 +1455,11 @@ void TabDeckEditor::dockFloatingTriggered()
         filterDock->setFloating(aFilterDockFloating->isChecked());
         return;
     }
+
+    if (o == aPrintingSelectorDockFloating) {
+        printingSelectorDock->setFloating(aPrintingSelectorDockFloating->isChecked());
+        return;
+    }
 }
 
 void TabDeckEditor::dockTopLevelChanged(bool topLevel)
@@ -1407,6 +1477,11 @@ void TabDeckEditor::dockTopLevelChanged(bool topLevel)
 
     if (o == filterDock) {
         aFilterDockFloating->setChecked(topLevel);
+        return;
+    }
+
+    if (o == printingSelectorDock) {
+        aPrintingSelectorDockFloating->setChecked(topLevel);
         return;
     }
 }

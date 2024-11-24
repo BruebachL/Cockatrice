@@ -194,12 +194,19 @@ QList<CardInfoPerSet> PrintingSelector::prependPrintingsInDeck(const QList<CardI
                   return a.second > b.second; // Ensure numerical comparison
               });
 
-    // Create the final list with the prepended sets
-    QList<CardInfoPerSet> result;
+    // Create a copy of the original list to modify
+    QList<CardInfoPerSet> result = sets;
+
+    // Prepend sorted sets and remove them from the original list
     for (const auto &pair : countList) {
-        result.append(pair.first); // Append sorted items to the result
+        auto it = std::find_if(result.begin(), result.end(), [&pair](const CardInfoPerSet &item) {
+            return item.getProperty("uuid") == pair.first.getProperty("uuid");
+        });
+        if (it != result.end()) {
+            result.erase(it); // Remove the matching entry
+        }
+        result.prepend(pair.first); // Prepend the sorted item
     }
-    result.append(sets); // Append the original list after the sorted items
 
     return result;
 }
