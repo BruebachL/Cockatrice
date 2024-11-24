@@ -10,8 +10,10 @@ AllZonesCardAmountWidget::AllZonesCardAmountWidget(QWidget *parent,
       setInfoForCard(setInfoForCard)
 {
     layout = new QVBoxLayout(this);
+    layout->setAlignment(Qt::AlignCenter);
     setLayout(layout);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     zoneLabelMainboard = new QLabel(tr("Mainboard"), this);
     zoneLabelMainboard->setStyleSheet(R"(
     QLabel {
@@ -37,10 +39,12 @@ AllZonesCardAmountWidget::AllZonesCardAmountWidget(QWidget *parent,
     buttonBoxSideboard =
         new CardAmountWidget(this, deckEditor, deckModel, deckView, rootCard, setInfoForCard, DECK_ZONE_SIDE);
 
-    layout->addWidget(zoneLabelMainboard, 0, Qt::AlignCenter);
-    layout->addWidget(buttonBoxMainboard, 0, Qt::AlignCenter);
-    layout->addWidget(zoneLabelSideboard, 0, Qt::AlignCenter);
-    layout->addWidget(buttonBoxSideboard, 0, Qt::AlignCenter);
+    layout->addWidget(zoneLabelMainboard, 0, Qt::AlignHCenter | Qt::AlignBottom);
+    layout->addWidget(buttonBoxMainboard, 0, Qt::AlignHCenter | Qt::AlignTop);
+    layout->addSpacing(25);
+    layout->addWidget(zoneLabelSideboard, 0, Qt::AlignHCenter | Qt::AlignBottom);
+    layout->addWidget(buttonBoxSideboard, 0, Qt::AlignHCenter | Qt::AlignTop);
+
     setMouseTracking(true);
 }
 
