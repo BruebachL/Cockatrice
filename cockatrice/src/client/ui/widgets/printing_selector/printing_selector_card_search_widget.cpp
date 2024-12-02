@@ -1,6 +1,8 @@
 #include "printing_selector_card_search_widget.h"
 
-PrintingSelectorCardSearchWidget::PrintingSelectorCardSearchWidget(PrintingSelector *parent) : parent(parent)
+PrintingSelectorCardSearchWidget::PrintingSelectorCardSearchWidget(QWidget *_parent,
+                                                                   PrintingSelector *_printingSelector)
+    : QWidget(_parent), printingSelector(_printingSelector)
 {
     layout = new QHBoxLayout(this);
     setLayout(layout);
@@ -16,7 +18,7 @@ PrintingSelectorCardSearchWidget::PrintingSelectorCardSearchWidget(PrintingSelec
         searchDebounceTimer->start(300); // 300ms debounce
     });
 
-    connect(searchDebounceTimer, &QTimer::timeout, parent, &PrintingSelector::updateDisplay);
+    connect(searchDebounceTimer, &QTimer::timeout, printingSelector, &PrintingSelector::updateDisplay);
 }
 
 QString PrintingSelectorCardSearchWidget::getSearchText()

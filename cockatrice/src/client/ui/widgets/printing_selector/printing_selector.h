@@ -16,9 +16,8 @@
 
 #define BATCH_SIZE 10
 
-class PrintingSelectorCardSearchWidget;
+class PrintingSelectorSortAndSearchToolbarWidget;
 class PrintingSelectorCardSelectionWidget;
-class PrintingSelectorCardSortingWidget;
 class TabDeckEditor;
 class PrintingSelector : public QWidget
 {
@@ -37,8 +36,7 @@ public slots:
 
 private:
     QVBoxLayout *layout;
-    PrintingSelectorCardSortingWidget *sortToolBar;
-    PrintingSelectorCardSearchWidget *searchBar;
+    PrintingSelectorSortAndSearchToolbarWidget *sortAndSearchToolbar;
     FlowWidget *flowWidget;
     CardSizeWidget *cardSizeWidget;
     PrintingSelectorCardSelectionWidget *cardSelectionBar;

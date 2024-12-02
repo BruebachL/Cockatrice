@@ -12,14 +12,16 @@ const QStringList PrintingSelectorCardSortingWidget::SORT_OPTIONS = {
     SORT_OPTIONS_ALPHABETICAL, SORT_OPTIONS_PREFERENCE, SORT_OPTIONS_RELEASE_DATE, SORT_OPTIONS_CONTAINED_IN_DECK,
     SORT_OPTIONS_POTENTIAL_CARDS};
 
-PrintingSelectorCardSortingWidget::PrintingSelectorCardSortingWidget(PrintingSelector *parent) : parent(parent)
+PrintingSelectorCardSortingWidget::PrintingSelectorCardSortingWidget(QWidget *_parent,
+                                                                     PrintingSelector *_printingSelector)
+    : QWidget(_parent), printingSelector(_printingSelector)
 {
     sortToolBar = new QHBoxLayout(this);
 
     sortOptionsSelector = new QComboBox(this);
     sortOptionsSelector->addItems(SORT_OPTIONS);
     sortOptionsSelector->setCurrentIndex(2);
-    connect(sortOptionsSelector, &QComboBox::currentTextChanged, parent, &PrintingSelector::updateDisplay);
+    connect(sortOptionsSelector, &QComboBox::currentTextChanged, printingSelector, &PrintingSelector::updateDisplay);
     sortToolBar->addWidget(sortOptionsSelector);
 
     toggleSortOrder = new QPushButton(this);
@@ -37,7 +39,7 @@ void PrintingSelectorCardSortingWidget::updateSortOrder()
         toggleSortOrder->setText(tr("Descending"));
     }
     descendingSort = !descendingSort;
-    parent->updateDisplay();
+    printingSelector->updateDisplay();
 }
 
 QList<CardInfoPerSet> PrintingSelectorCardSortingWidget::sortSets(CardInfoPerSetMap cardInfoPerSets)

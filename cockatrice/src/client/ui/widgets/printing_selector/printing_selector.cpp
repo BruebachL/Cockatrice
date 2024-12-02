@@ -2,9 +2,8 @@
 
 #include "../../../../settings/cache_settings.h"
 #include "printing_selector_card_display_widget.h"
-#include "printing_selector_card_search_widget.h"
 #include "printing_selector_card_selection_widget.h"
-#include "printing_selector_card_sorting_widget.h"
+#include "printing_selector_sort_and_search_toolbar_widget.h"
 
 #include <QComboBox>
 #include <QDebug>
@@ -22,12 +21,8 @@ PrintingSelector::PrintingSelector(QWidget *parent,
     setLayout(layout);
     widgetLoadingBufferTimer = new QTimer(this);
 
-    sortToolBar = new PrintingSelectorCardSortingWidget(this);
-    layout->addWidget(sortToolBar);
-
-    // Add the search bar
-    searchBar = new PrintingSelectorCardSearchWidget(this);
-    layout->addWidget(searchBar);
+    sortAndSearchToolbar = new PrintingSelectorSortAndSearchToolbarWidget(this, this);
+    layout->addWidget(sortAndSearchToolbar);
 
     flowWidget = new FlowWidget(this, Qt::ScrollBarAlwaysOff, Qt::ScrollBarAsNeeded);
     layout->addWidget(flowWidget);
@@ -134,13 +129,14 @@ void PrintingSelector::getAllSetsForCurrentCard()
     }
 
     CardInfoPerSetMap cardInfoPerSets = selectedCard->getSets();
-    const QList<CardInfoPerSet> sortedSets = sortToolBar->sortSets(cardInfoPerSets);
-    const QList<CardInfoPerSet> filteredSets =
-        sortToolBar->filterSets(sortedSets, searchBar->getSearchText().trimmed().toLower());
+    const QList<CardInfoPerSet> sortedSets = sortAndSearchToolbar->getSortingWidget()->sortSets(cardInfoPerSets);
+    const QList<CardInfoPerSet> filteredSets = sortAndSearchToolbar->getSortingWidget()->filterSets(
+        sortedSets, sortAndSearchToolbar->getSearchWidget()->getSearchText().trimmed().toLower());
     QList<CardInfoPerSet> setsToUse;
 
     if (SettingsCache::instance().getBumpSetsWithCardsInDeckToTop()) {
-        setsToUse = sortToolBar->prependPrintingsInDeck(filteredSets, selectedCard, deckModel);
+        setsToUse =
+            sortAndSearchToolbar->getSortingWidget()->prependPrintingsInDeck(filteredSets, selectedCard, deckModel);
     } else {
         setsToUse = filteredSets;
     }

@@ -9,7 +9,7 @@ class PrintingSelectorCardSortingWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit PrintingSelectorCardSortingWidget(PrintingSelector *parent);
+    explicit PrintingSelectorCardSortingWidget(QWidget *_parent, PrintingSelector *_printingSelector);
     QList<CardInfoPerSet> sortSets(CardInfoPerSetMap cardInfoPerSets);
     QList<CardInfoPerSet> filterSets(const QList<CardInfoPerSet> &sets, QString searchText) const;
     QList<CardInfoPerSet>
@@ -19,7 +19,8 @@ public slots:
     void updateSortOrder();
 
 private:
-    PrintingSelector *parent;
+    QWidget *parent;
+    PrintingSelector *printingSelector;
     QHBoxLayout *sortToolBar;
     static const QString SORT_OPTIONS_ALPHABETICAL;
     static const QString SORT_OPTIONS_PREFERENCE;

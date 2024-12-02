@@ -12,12 +12,12 @@ class PrintingSelectorCardSearchWidget : public QWidget
     Q_OBJECT
 
 public:
-    PrintingSelectorCardSearchWidget(PrintingSelector *parent);
+    PrintingSelectorCardSearchWidget(QWidget *_parent, PrintingSelector *_printingSelector);
     QString getSearchText();
 
 private:
     QHBoxLayout *layout;
-    PrintingSelector *parent;
+    PrintingSelector *printingSelector;
     QLineEdit *searchBar;
     QTimer *searchDebounceTimer;
 };
