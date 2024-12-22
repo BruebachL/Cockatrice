@@ -851,7 +851,7 @@ void TabDeckEditor::updateBannerCardComboBox()
     bannerCardComboBox->blockSignals(wasBlocked);
 }
 
-void TabDeckEditor::setBannerCard()
+void TabDeckEditor::setBannerCard(int /* changedIndex */)
 {
     qDebug() << "Banner card was set to: " << bannerCardComboBox->currentText();
     deckModel->getDeckList()->setBannerCard(bannerCardComboBox->currentText());
