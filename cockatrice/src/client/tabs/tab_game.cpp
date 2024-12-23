@@ -127,13 +127,16 @@ DeckViewContainer::DeckViewContainer(int _playerId, TabGame *parent)
     buttonHBox->addWidget(sideboardLockButton);
     buttonHBox->setContentsMargins(0, 0, 0, 0);
     buttonHBox->addStretch();
+
     deckView = new DeckView;
     connect(deckView, SIGNAL(newCardAdded(AbstractCardItem *)), this, SIGNAL(newCardAdded(AbstractCardItem *)));
     connect(deckView, SIGNAL(sideboardPlanChanged()), this, SLOT(sideboardPlanChanged()));
 
+    visualDeckStorageWidget = new VisualDeckStorageWidget(this);
+
     auto *deckViewLayout = new QVBoxLayout;
     deckViewLayout->addLayout(buttonHBox);
-    deckViewLayout->addWidget(deckView);
+    deckViewLayout->addWidget(visualDeckStorageWidget);
     deckViewLayout->setContentsMargins(0, 0, 0, 0);
     setLayout(deckViewLayout);
 
