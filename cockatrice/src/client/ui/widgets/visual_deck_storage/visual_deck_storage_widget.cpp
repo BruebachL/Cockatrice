@@ -30,8 +30,11 @@ VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(pare
     // Connect sorting change signal to refresh the file list
     connect(sortComboBox, &QComboBox::currentIndexChanged, this, [this, sortComboBox]() {
         sortOrder = static_cast<SortOrder>(sortComboBox->currentData().toInt());
+        SettingsCache::instance().setDeckStorageSortByIndex(sortOrder);
         refreshBannerCards(); // Refresh the banner cards with the new sort order
     });
+
+    sortComboBox->setCurrentIndex(SettingsCache::instance().getDeckStorageSortByIndex());
 
     refreshBannerCards();
 }
