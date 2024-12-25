@@ -273,6 +273,8 @@ SettingsCache::SettingsCache()
     zoneViewSortByIndex = settings->value("zoneview/sortby", 1).toInt();
     zoneViewPileView = settings->value("zoneview/pileview", true).toBool();
 
+    deckStorageSortByIndex = settings->value("decks/sortby", 0).toBool();
+
     soundEnabled = settings->value("sound/enabled", false).toBool();
     soundThemeName = settings->value("sound/theme").toString();
 
@@ -702,6 +704,12 @@ void SettingsCache::setZoneViewPileView(QT_STATE_CHANGED_T _zoneViewPileView)
 {
     zoneViewPileView = static_cast<bool>(_zoneViewPileView);
     settings->setValue("zoneview/pileview", zoneViewPileView);
+}
+
+void SettingsCache::setDeckStorageSortByIndex(int value)
+{
+    deckStorageSortByIndex = value;
+    settings->setValue("decks/sortby", deckStorageSortByIndex);
 }
 
 void SettingsCache::setSoundEnabled(QT_STATE_CHANGED_T _soundEnabled)

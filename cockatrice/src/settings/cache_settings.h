@@ -131,6 +131,7 @@ private:
     bool chatHighlightForeground;
     int zoneViewSortByIndex, zoneViewGroupByIndex;
     bool zoneViewPileView;
+    int deckStorageSortByIndex;
     bool soundEnabled;
     QString soundThemeName;
     bool ignoreUnregisteredUsers;
@@ -420,6 +421,13 @@ public:
     {
         return zoneViewPileView;
     }
+    /**
+     * Currently selected index for the visual deck editor's `Sort by X` QComboBox
+     */
+    bool getDeckStorageSortByIndex() const
+    {
+        return deckStorageSortByIndex;
+    }
     bool getSoundEnabled() const
     {
         return soundEnabled;
@@ -664,6 +672,7 @@ public slots:
     void setZoneViewGroupByIndex(const int _zoneViewGroupByIndex);
     void setZoneViewSortByIndex(const int _zoneViewSortByIndex);
     void setZoneViewPileView(QT_STATE_CHANGED_T _zoneViewPileView);
+    void setDeckStorageSortByIndex(const int value);
     void setSoundEnabled(QT_STATE_CHANGED_T _soundEnabled);
     void setSoundThemeName(const QString &_soundThemeName);
     void setIgnoreUnregisteredUsers(QT_STATE_CHANGED_T _ignoreUnregisteredUsers);

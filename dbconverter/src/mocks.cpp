@@ -232,6 +232,9 @@ void SettingsCache::setZoneViewSortByIndex(int /* _zoneViewSortByIndex */)
 void SettingsCache::setZoneViewPileView(QT_STATE_CHANGED_T /* _zoneViewPileView */)
 {
 }
+void SettingsCache::setDeckStorageSortByIndex(int /* value */)
+{
+}
 void SettingsCache::setSoundEnabled(QT_STATE_CHANGED_T /* _soundEnabled */)
 {
 }
