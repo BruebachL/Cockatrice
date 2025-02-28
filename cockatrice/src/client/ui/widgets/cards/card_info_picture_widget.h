@@ -15,7 +15,9 @@ class CardInfoPictureWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit CardInfoPictureWidget(QWidget *parent = nullptr, bool hoverToZoomEnabled = false);
+    explicit CardInfoPictureWidget(QWidget *parent = nullptr,
+                                   bool hoverToZoomEnabled = false,
+                                   bool followCursor = false);
     CardInfoPtr getInfo()
     {
         return info;
@@ -62,6 +64,7 @@ private:
     QPixmap resizedPixmap;
     bool pixmapDirty;
     bool hoverToZoomEnabled;
+    bool followCursor;
     int hoverActivateThresholdInMs = 500;
     CardInfoPictureEnlargedWidget *enlargedPixmapWidget;
     int enlargedPixmapOffset = 10;

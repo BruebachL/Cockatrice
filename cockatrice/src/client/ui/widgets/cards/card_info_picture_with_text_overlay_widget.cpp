@@ -22,9 +22,9 @@ CardInfoPictureWithTextOverlayWidget::CardInfoPictureWithTextOverlayWidget(QWidg
                                                                            const QColor &outlineColor,
                                                                            const int fontSize,
                                                                            const Qt::Alignment alignment)
-    : CardInfoPictureWidget(parent, hoverToZoomEnabled), textColor(textColor), outlineColor(outlineColor),
-      fontSize(fontSize), textAlignment(alignment)
+    : CardInfoPictureWidget(parent, true, false), textColor(textColor), outlineColor(outlineColor), fontSize(fontSize), textAlignment(alignment)
 {
+    Q_UNUSED(hoverToZoomEnabled);
     this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Store the widget's original position

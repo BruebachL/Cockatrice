@@ -4,6 +4,7 @@
 
 #include <QPainterPath>
 #include <QStylePainter>
+#include <qpropertyanimation.h>
 #include <utility>
 
 /**
@@ -15,8 +16,14 @@
 CardInfoPictureEnlargedWidget::CardInfoPictureEnlargedWidget(QWidget *parent)
     : QWidget(parent), pixmapDirty(true), info(nullptr)
 {
-    setWindowFlags(Qt::ToolTip); // Keeps this widget on top of everything
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::ToolTip); // Keeps this widget on top of everything
     setAttribute(Qt::WA_TranslucentBackground);
+
+    fadeInAnimation = new QPropertyAnimation(this, "windowOpacity");
+    fadeInAnimation->setDuration(1000);
+    fadeInAnimation->setStartValue(0.0);
+    fadeInAnimation->setEndValue(1.0);
+    fadeInAnimation->setEasingCurve(QEasingCurve::OutBack);
 }
 
 /**
@@ -45,12 +52,39 @@ void CardInfoPictureEnlargedWidget::loadPixmap(const QSize &size)
  */
 void CardInfoPictureEnlargedWidget::setCardPixmap(CardInfoPtr card, const QSize size)
 {
+    disconnect(info.data());
+    setFixedSize(size); // Set the widget size to the enlarged size
     info = std::move(card);
     loadPixmap(size);
+    connect(info.data(), &CardInfo::pixmapUpdated, this, &CardInfoPictureEnlargedWidget::fadeIn);
+}
 
-    setFixedSize(size); // Set the widget size to the enlarged size
+void CardInfoPictureEnlargedWidget::fadeIn()
+{
+    qDebug() << "Fade in should happen";
+    disconnect(fadeInAnimation);
+    show();
 
-    update(); // Trigger a repaint
+    if (fadeInAnimation->state() == QAbstractAnimation::Running) {
+        fadeInAnimation->pause(); // Pause current animation
+    } else {
+        fadeInAnimation->setStartValue(0.0);
+        fadeInAnimation->setEndValue(1.0);
+    }
+    fadeInAnimation->setDirection(QAbstractAnimation::Forward);
+    fadeInAnimation->start();
+}
+
+void CardInfoPictureEnlargedWidget::fadeOut()
+{
+    qDebug() << "Fade out should happen";
+    // Hide enlarged image with a fade-out animation
+    if (fadeInAnimation->state() == QAbstractAnimation::Running) {
+        fadeInAnimation->pause(); // Pause current animation
+    }
+    fadeInAnimation->setDirection(QAbstractAnimation::Backward);
+    fadeInAnimation->start();
+    connect(fadeInAnimation, &QPropertyAnimation::finished, this, &QWidget::hide);
 }
 
 /**
@@ -92,4 +126,10 @@ void CardInfoPictureEnlargedWidget::paintEvent(QPaintEvent *event)
     // Draw the pixmap scaled to the calculated size
     painter.drawItemPixmap(QRect(topLeft, scaledSize), Qt::AlignCenter,
                            enlargedPixmap.scaled(scaledSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+QSize CardInfoPictureEnlargedWidget::sizeHint() const
+{
+    return enlargedPixmap.size().scaled(size().width(), size().height(), Qt::KeepAspectRatio);
+    ;
 }

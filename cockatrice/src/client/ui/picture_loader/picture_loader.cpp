@@ -74,8 +74,10 @@ void PictureLoader::getPixmap(QPixmap &pixmap, CardInfoPtr card, QSize size)
     // search for an exact size copy of the picture in cache
     QString key = card->getPixmapCacheKey();
     QString sizeKey = key + QLatin1Char('_') + QString::number(size.width()) + QString::number(size.height());
-    if (QPixmapCache::find(sizeKey, &pixmap))
+    if (QPixmapCache::find(sizeKey, &pixmap)) {
+        emit card->pixmapUpdated();
         return;
+    }
 
     // load the image and create a copy of the correct size
     QPixmap bigPixmap;
@@ -95,6 +97,7 @@ void PictureLoader::getPixmap(QPixmap &pixmap, CardInfoPtr card, QSize size)
 
 void PictureLoader::imageLoaded(CardInfoPtr card, const QImage &image)
 {
+    qDebug() << "Loading an image and emitting!";
     if (image.isNull()) {
         QPixmapCache::insert(card->getPixmapCacheKey(), QPixmap());
     } else {

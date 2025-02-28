@@ -5,6 +5,7 @@
 
 #include <QPixmap>
 #include <QWidget>
+#include <qpropertyanimation.h>
 
 class CardInfoPictureEnlargedWidget final : public QWidget
 {
@@ -17,13 +18,19 @@ public:
     // Sets the card pixmap to display
     void setCardPixmap(CardInfoPtr card, QSize size);
 
+public slots:
+    void fadeIn();
+    void fadeOut();
+
 protected:
     // Handles the painting event for the enlarged card
     void paintEvent(QPaintEvent *event) override;
+    QSize sizeHint() const override;
 
 private:
     // Cached pixmap for the enlarged card
     QPixmap enlargedPixmap;
+    QPropertyAnimation *fadeInAnimation;
 
     // Tracks if the pixmap needs to be refreshed/redrawn
     bool pixmapDirty;

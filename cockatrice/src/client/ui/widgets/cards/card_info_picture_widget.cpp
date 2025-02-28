@@ -30,8 +30,9 @@
  *
  * Initializes the widget with a minimum height and sets the pixmap to a dirty state for initial loading.
  */
-CardInfoPictureWidget::CardInfoPictureWidget(QWidget *parent, const bool hoverToZoomEnabled)
-    : QWidget(parent), info(nullptr), pixmapDirty(true), hoverToZoomEnabled(hoverToZoomEnabled)
+CardInfoPictureWidget::CardInfoPictureWidget(QWidget *parent, const bool hoverToZoomEnabled, const bool followCursor)
+    : QWidget(parent), info(nullptr), pixmapDirty(true), hoverToZoomEnabled(hoverToZoomEnabled),
+      followCursor(followCursor)
 {
     setMinimumHeight(baseHeight);
     if (hoverToZoomEnabled) {
@@ -222,9 +223,11 @@ void CardInfoPictureWidget::leaveEvent(QEvent *event)
     QWidget::leaveEvent(event);
     if (hoverToZoomEnabled) {
         hoverTimer->stop();
-        enlargedPixmapWidget->hide();
+
+        enlargedPixmapWidget->fadeOut();
     }
 }
+
 
 /**
  * @brief Moves the enlarged pixmap widget to follow the mouse cursor.
@@ -233,7 +236,7 @@ void CardInfoPictureWidget::leaveEvent(QEvent *event)
 void CardInfoPictureWidget::mouseMoveEvent(QMouseEvent *event)
 {
     QWidget::mouseMoveEvent(event);
-    if (hoverToZoomEnabled && enlargedPixmapWidget->isVisible()) {
+    if (hoverToZoomEnabled && enlargedPixmapWidget->isVisible() && followCursor) {
         const QPointF cursorPos = QCursor::pos();
         enlargedPixmapWidget->move(QPoint(static_cast<int>(cursorPos.x()) + enlargedPixmapOffset,
                                           static_cast<int>(cursorPos.y()) + enlargedPixmapOffset));
@@ -334,13 +337,33 @@ void CardInfoPictureWidget::showEnlargedPixmap() const
         return;
     }
 
-    const QSize enlargedSize(static_cast<int>(size().width() * scaleFactor),
-                             static_cast<int>(size().width() * aspectRatio * scaleFactor));
+    const QSize enlargedSize(static_cast<int>(size().width() / 100.0 * 150.0),
+                             static_cast<int>(size().width() * aspectRatio / 100.0 * 150.0));
+
     enlargedPixmapWidget->setCardPixmap(info, enlargedSize);
 
-    const QPointF cursorPos = QCursor::pos();
-    enlargedPixmapWidget->move(static_cast<int>(cursorPos.x()) + enlargedPixmapOffset,
-                               static_cast<int>(cursorPos.y()) + enlargedPixmapOffset);
+    QPoint targetPos;
 
+    if (followCursor) {
+        // Position near cursor
+        const QPoint cursorPos = QCursor::pos();
+        targetPos = QPoint(cursorPos.x() + enlargedPixmapOffset, cursorPos.y() + enlargedPixmapOffset);
+    } else {
+        // Position relative to the widget, converting local coordinates to global
+        const QRect widgetRect = this->geometry();
+        QPoint globalPos = mapToGlobal(QPoint(0, 0)); // Convert widget position to global coordinates
+        int availableRight =
+            QGuiApplication::primaryScreen()->availableGeometry().width() - (globalPos.x() + enlargedSize.width());
+
+        if (availableRight > 0) {
+            // Place on the right
+            targetPos = globalPos + QPoint(widgetRect.width() + 5, 0);
+        } else {
+            // Place on the left
+            targetPos = globalPos - QPoint(enlargedSize.width() + 5, 0);
+        }
+    }
+
+    enlargedPixmapWidget->move(targetPos);
     enlargedPixmapWidget->show();
 }
