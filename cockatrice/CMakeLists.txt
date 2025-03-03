@@ -82,9 +82,11 @@ set(cockatrice_SOURCES
     src/utility/logger.cpp
     src/client/ui/widgets/cards/card_info_picture_enlarged_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_with_text_overlay_widget.cpp
+    src/client/ui/widgets/cards/additional_info/card_info_nameplate_widget.cpp
     src/client/ui/widgets/cards/additional_info/color_identity_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_cost_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_symbol_widget.cpp
+    src/client/ui/widgets/cards/additional_info/card_info_name_and_cost_widget.cpp
     src/client/ui/widgets/general/display/banner_widget.cpp
     src/client/ui/widgets/general/display/labeled_input.cpp
     src/client/ui/widgets/general/display/dynamic_font_size_label.cpp

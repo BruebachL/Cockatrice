@@ -2,6 +2,8 @@
 
 #include "../../../../../game/cards/card_database_manager.h"
 #include "../../../../../settings/cache_settings.h"
+#include "../../cards/additional_info/card_info_name_and_cost_widget.h"
+#include "../../cards/additional_info/card_info_nameplate_widget.h"
 #include "../../cards/additional_info/color_identity_widget.h"
 #include "../../cards/deck_preview_card_picture_widget.h"
 #include "deck_preview_deck_tags_display_widget.h"
@@ -77,6 +79,11 @@ void DeckPreviewWidget::initializeUi(const bool deckLoadSuccess)
     bannerCardDisplayWidget->setFontSize(24);
     refreshBannerCardText();
     setFilePath(deckLoader->getLastFileName());
+
+    if (bannerCard != CardInfoPtr()) {
+        auto namePlateWidget = new CardInfoNameAndCostWidget(this, bannerCard);
+        layout->addWidget(namePlateWidget);
+    }
 
     colorIdentityWidget = new ColorIdentityWidget(this, getColorIdentity());
     deckTagsDisplayWidget = new DeckPreviewDeckTagsDisplayWidget(this, deckLoader);
