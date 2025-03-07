@@ -449,6 +449,12 @@ void SettingsCache::setDeckPath(const QString &_deckPath)
     settings->setValue("paths/decks", deckPath);
 }
 
+void SettingsCache::setFiltersPath(const QString &_filtersPath)
+{
+    filtersPath = _filtersPath;
+    settings->setValue("paths/filters", filtersPath);
+}
+
 void SettingsCache::setReplaysPath(const QString &_replaysPath)
 {
     replaysPath = _replaysPath;
@@ -1290,6 +1296,7 @@ void SettingsCache::loadPaths()
 {
     QString dataPath = getDataPath();
     deckPath = getSafeConfigPath("paths/decks", dataPath + "/decks/");
+    filtersPath = getSafeConfigPath("paths/filters", dataPath + "/filters/");
     replaysPath = getSafeConfigPath("paths/replays", dataPath + "/replays/");
     themesPath = getSafeConfigPath("paths/themes", dataPath + "/themes/");
     picsPath = getSafeConfigPath("paths/pics", dataPath + "/pics/");
