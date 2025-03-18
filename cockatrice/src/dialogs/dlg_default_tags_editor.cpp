@@ -55,7 +55,7 @@ void DlgDefaultTagsEditor::retranslateUi()
 void DlgDefaultTagsEditor::loadStringList()
 {
     listWidget->clear();
-    QStringList tags = SettingsCache::instance().getVisualDeckStorageDefaultTagsList();
+    QStringList tags = SettingsCache::instance().tags().getDefaultTags();
     for (const QString &tag : tags) {
         auto *item = new QListWidgetItem(listWidget);
         QWidget *widget = new QWidget(this);
@@ -144,6 +144,6 @@ void DlgDefaultTagsEditor::confirmChanges()
             updatedList.append(lineEdit->text());
         }
     }
-    SettingsCache::instance().setVisualDeckStorageDefaultTagsList(updatedList);
+    SettingsCache::instance().tags().setDefaultTags(updatedList);
     accept(); // Close dialog and confirm changes
 }

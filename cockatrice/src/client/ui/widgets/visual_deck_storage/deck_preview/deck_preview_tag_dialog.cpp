@@ -17,7 +17,7 @@ DeckPreviewTagDialog::DeckPreviewTagDialog(const QStringList &knownTags, const Q
 {
     resize(400, 500);
 
-    QStringList defaultTags = SettingsCache::instance().getVisualDeckStorageDefaultTagsList();
+    QStringList defaultTags = SettingsCache::instance().tags().getDefaultTags();
 
     // Merge knownTags with defaultTags, ensuring no duplicates
     QStringList combinedTags = defaultTags + knownTags + activeTags;
@@ -80,7 +80,7 @@ DeckPreviewTagDialog::DeckPreviewTagDialog(const QStringList &knownTags, const Q
     connect(okButton, &QPushButton::clicked, this, &DeckPreviewTagDialog::accept);
     connect(cancelButton, &QPushButton::clicked, this, &DeckPreviewTagDialog::reject);
 
-    connect(&SettingsCache::instance(), &SettingsCache::visualDeckStorageDefaultTagsListChanged, this,
+    connect(&SettingsCache::instance().tags(), &TagsSettings::defaultTagsChanged, this,
             &DeckPreviewTagDialog::refreshTagList);
 
     retranslateUi();
@@ -104,7 +104,7 @@ void DeckPreviewTagDialog::refreshTagList()
     tagListView_->clear();
 
     // Get the updated list of tags from SettingsCache
-    QStringList defaultTags = SettingsCache::instance().getVisualDeckStorageDefaultTagsList();
+    QStringList defaultTags = SettingsCache::instance().tags().getDefaultTags();
     QStringList combinedTags = defaultTags + knownTags_ + activeTags_;
     combinedTags.removeDuplicates();
 

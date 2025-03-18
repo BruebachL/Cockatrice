@@ -176,6 +176,7 @@ SettingsCache::SettingsCache()
     layoutsSettings = new LayoutsSettings(settingsPath, this);
     downloadSettings = new DownloadSettings(settingsPath, this);
     recentsSettings = new RecentsSettings(settingsPath, this);
+    tagsSettings = new TagsSettings(settingsPath, this);
     cardOverrideSettings = new CardOverrideSettings(settingsPath, this);
     debugSettings = new DebugSettings(settingsPath, this);
 
@@ -265,8 +266,6 @@ SettingsCache::SettingsCache()
     visualDeckStorageSortingOrder = settings->value("interface/visualdeckstoragesortingorder", 0).toInt();
     visualDeckStorageShowFolders = settings->value("interface/visualdeckstorageshowfolders", true).toBool();
     visualDeckStorageShowTagFilter = settings->value("interface/visualdeckstorageshowtagfilter", true).toBool();
-    visualDeckStorageDefaultTagsList =
-        settings->value("interface/visualdeckstoragedefaulttagslist", defaultTags).toStringList();
     visualDeckStorageSearchFolderNames = settings->value("interface/visualdeckstoragesearchfoldernames", true).toBool();
     visualDeckStorageShowBannerCardComboBox =
         settings->value("interface/visualdeckstorageshowbannercardcombobox", true).toBool();
@@ -680,13 +679,6 @@ void SettingsCache::setVisualDeckStorageShowTagFilter(QT_STATE_CHANGED_T _showTa
     visualDeckStorageShowTagFilter = _showTags;
     settings->setValue("interface/visualdeckstorageshowtagfilter", visualDeckStorageShowTagFilter);
     emit visualDeckStorageShowTagFilterChanged(visualDeckStorageShowTagFilter);
-}
-
-void SettingsCache::setVisualDeckStorageDefaultTagsList(QStringList _defaultTagsList)
-{
-    visualDeckStorageDefaultTagsList = _defaultTagsList;
-    settings->setValue("interface/visualdeckstoragedefaulttagslist", visualDeckStorageDefaultTagsList);
-    emit visualDeckStorageDefaultTagsListChanged();
 }
 
 void SettingsCache::setVisualDeckStorageSearchFolderNames(QT_STATE_CHANGED_T value)
