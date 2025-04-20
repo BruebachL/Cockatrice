@@ -4,7 +4,7 @@
 #include "../../../../game/cards/card_database_manager.h"
 #include "../../../../settings/cache_settings.h"
 #include "card_info_display_widget.h"
-#include "card_info_picture_widget.h"
+#include "card_info_picture_foil_widget.h"
 #include "card_info_text_widget.h"
 
 #include <QSplitter>
@@ -15,7 +15,7 @@ CardInfoFrameWidget::CardInfoFrameWidget(QWidget *parent)
     : QTabWidget(parent), viewTransformationButton(nullptr), cardTextOnly(false)
 {
     setContentsMargins(3, 3, 3, 3);
-    pic = new CardInfoPictureWidget();
+    pic = new CardInfoPictureFoilWidget();
     pic->setObjectName("pic");
     connect(pic, &CardInfoPictureWidget::cardChanged, this,
             qOverload<const ExactCard &>(&CardInfoFrameWidget::setCard));

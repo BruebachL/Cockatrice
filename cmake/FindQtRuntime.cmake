@@ -20,6 +20,8 @@ if(WITH_CLIENT)
       Multimedia
       Network
       PrintSupport
+      Quick
+      QuickWidgets
       Svg
       WebSockets
       Widgets

@@ -8,6 +8,7 @@
 #include "../../../../settings/cache_settings.h"
 #include "../../../../utility/card_info_comparator.h"
 #include "../../pixel_map_generator.h"
+#include "../cards/card_info_picture_foil_widget.h"
 #include "../cards/card_info_picture_with_text_overlay_widget.h"
 #include "../quick_settings/settings_button_widget.h"
 #include "visual_database_display_color_filter_widget.h"
@@ -213,7 +214,7 @@ void VisualDatabaseDisplayWidget::resizeEvent(QResizeEvent *event)
     loadCurrentPage();
 }
 
-void VisualDatabaseDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance)
+void VisualDatabaseDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWidget *instance)
 {
     emit cardClickedDatabaseDisplay(event, instance);
 }
@@ -226,12 +227,17 @@ void VisualDatabaseDisplayWidget::onHover(const ExactCard &hoveredCard)
 void VisualDatabaseDisplayWidget::addCard(const ExactCard &cardToAdd)
 {
     cards->append(cardToAdd);
-    auto *display = new CardInfoPictureWithTextOverlayWidget(flowWidget, false);
+    CardInfoPictureWidget *display;
+    if (cardToAdd.getPrinting().getProperty("isFoil") == "true") {
+        display = new CardInfoPictureFoilWidget(flowWidget, false);
+    } else {
+        display = new CardInfoPictureWithTextOverlayWidget(flowWidget, false);
+    }
     display->setScaleFactor(cardSizeWidget->getSlider()->value());
     display->setCard(cardToAdd);
     flowWidget->addWidget(display);
-    connect(display, &CardInfoPictureWithTextOverlayWidget::imageClicked, this, &VisualDatabaseDisplayWidget::onClick);
-    connect(display, &CardInfoPictureWithTextOverlayWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
+    connect(display, &CardInfoPictureWidget::imageClicked, this, &VisualDatabaseDisplayWidget::onClick);
+    connect(display, &CardInfoPictureWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
     connect(cardSizeWidget->getSlider(), &QSlider::valueChanged, display, &CardInfoPictureWidget::setScaleFactor);
 }
 

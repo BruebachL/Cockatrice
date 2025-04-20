@@ -28,7 +28,7 @@ public:
     [[nodiscard]] QSize sizeHint() const override;
 
 public slots:
-    void setCard(const ExactCard &card);
+    virtual void setCard(const ExactCard &card);
     void setScaleFactor(int scale); // New slot for scaling
     void setHoverToZoomEnabled(bool enabled);
     void setRaiseOnEnterEnabled(bool enabled);
@@ -39,6 +39,7 @@ signals:
     void cardScaleFactorChanged(int _scale);
     void cardChanged(const ExactCard &card);
     void cardClicked();
+    void imageClicked(QMouseEvent *event, CardInfoPictureWidget *instance);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

@@ -4,7 +4,9 @@
 #include "../../../../server/remote/remote_client.h"
 #include "../../../../settings/cache_settings.h"
 #include "../../../tabs/tab_supervisor.h"
+#include "../../picture_loader/picture_loader.h"
 #include "../../window_main.h"
+#include "../quick_test.h"
 #include "background_sources.h"
 #include "home_styled_button.h"
 

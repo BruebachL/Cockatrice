@@ -82,11 +82,6 @@ void CardInfoPictureWithTextOverlayWidget::setTextAlignment(const Qt::Alignment 
     update();
 }
 
-void CardInfoPictureWithTextOverlayWidget::mousePressEvent(QMouseEvent *event)
-{
-    emit imageClicked(event, this);
-}
-
 /**
  * @brief Paints the widget, including both the card image and the text overlay.
  * @param event The paint event.

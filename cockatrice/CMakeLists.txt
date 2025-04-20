@@ -77,6 +77,8 @@ set(cockatrice_SOURCES
     src/client/ui/pixel_map_generator.cpp
     src/client/ui/theme_manager.cpp
     src/client/ui/tip_of_the_day.cpp
+    src/client/ui/widgets/pixmap_provider.cpp
+    src/client/ui/widgets/quick_test.cpp
     src/client/ui/widgets/cards/additional_info/color_identity_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_cost_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_symbol_widget.cpp
@@ -88,6 +90,7 @@ set(cockatrice_SOURCES
     src/client/ui/widgets/cards/card_info_picture_art_crop_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_enlarged_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_widget.cpp
+    src/client/ui/widgets/cards/card_info_picture_foil_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_with_text_overlay_widget.cpp
     src/client/ui/widgets/cards/card_info_text_widget.cpp
     src/client/ui/widgets/cards/card_size_widget.cpp
@@ -569,6 +572,14 @@ if(Qt6_FOUND AND Qt6LinguistTools_FOUND)
     install(FILES ${cockatrice_QM} DESTINATION ${COCKATRICE_WIN32_QM_INSTALL_DIR})
   endif()
 endif()
+
+if (Qt6_FOUND AND QT_VERSION VERSION_GREATER_EQUAL "6.6")
+  qt_add_shaders(cockatrice "cockatrice_SHADERS"
+      PREFIX "/shaders"
+      FILES
+      resources/shaders/FoilEffect.frag
+  )
+endif ()
 
 if(Qt6_FOUND)
   qt6_finalize_target(cockatrice)

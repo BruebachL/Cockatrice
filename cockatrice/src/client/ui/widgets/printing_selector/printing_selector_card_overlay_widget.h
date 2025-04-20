@@ -5,6 +5,7 @@
 #include "../../../../deck/deck_list_model.h"
 #include "../../../../game/cards/card_info.h"
 #include "../../../tabs/abstract_tab_deck_editor.h"
+#include "../cards/card_info_picture_foil_widget.h"
 #include "all_zones_card_amount_widget.h"
 #include "card_amount_widget.h"
 #include "set_name_and_collectors_number_display_widget.h"
@@ -37,6 +38,7 @@ signals:
 
 private:
     CardInfoPictureWidget *cardInfoPicture;
+    CardInfoPictureFoilWidget *cardInfoPictureFoil;
     AllZonesCardAmountWidget *allZonesCardAmountWidget;
     AbstractTabDeckEditor *deckEditor;
     DeckListModel *deckModel;

@@ -218,6 +218,11 @@ static QString getStringPropertyFromMap(const QVariantMap &card, const QString &
     return card.contains(propertyName) ? card.value(propertyName).toString() : QString("");
 }
 
+static QStringList getStringListPropertyFromMap(const QVariantMap &card, const QString &propertyName)
+{
+    return card.contains(propertyName) ? card.value(propertyName).toStringList() : QStringList("");
+}
+
 int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList<QVariant> &cardsList)
 {
     // mtgjson name => xml name
@@ -228,8 +233,11 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
     };
 
     // mtgjson name => xml name
-    static const QMap<QString, QString> setInfoProperties{
-        {"number", "num"}, {"rarity", "rarity"}, {"isOnlineOnly", "isOnlineOnly"}, {"isRebalanced", "isRebalanced"}};
+    static const QMap<QString, QString> setInfoProperties{{"number", "num"},
+                                                          {"rarity", "rarity"},
+                                                          {"isOnlineOnly", "isOnlineOnly"},
+                                                          {"isRebalanced", "isRebalanced"},
+                                                          {"finishes", "finishes"}};
 
     // mtgjson name => xml name
     static const QMap<QString, QString> identifierProperties{{"multiverseId", "muid"}, {"scryfallId", "uuid"}};
@@ -287,9 +295,17 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
             it2.next();
             QString mtgjsonProperty = it2.key();
             QString xmlPropertyName = it2.value();
-            QString propertyValue = getStringPropertyFromMap(card, mtgjsonProperty);
-            if (!propertyValue.isEmpty())
-                printingInfo.setProperty(xmlPropertyName, propertyValue);
+            if (mtgjsonProperty == "finishes") {
+                QStringList propertyValues = getStringListPropertyFromMap(card, mtgjsonProperty);
+                for (QString propertyValue : propertyValues) {
+                    if (!propertyValue.isEmpty())
+                        printingInfo.setProperty(xmlPropertyName, propertyValue);
+                }
+            } else {
+                QString propertyValue = getStringPropertyFromMap(card, mtgjsonProperty);
+                if (!propertyValue.isEmpty())
+                    printingInfo.setProperty(xmlPropertyName, propertyValue);
+            }
         }
 
         // Identifiers
@@ -404,8 +420,43 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
                 }
             }
 
-            CardInfoPtr newCard = addCard(name + numComponent, text, isToken, properties, relatedCards, printingInfo);
+            // Foil/nonfoil handling using 'finishes'
+            QStringList finishes = getStringListPropertyFromMap(card, "finishes");
+            bool hasFoil = finishes.contains("foil");
+            bool hasNonfoil = finishes.contains("nonfoil");
+
+            bool isFoil = false;
+            bool needsDuplicateFoil = false;
+
+            if (hasFoil && hasNonfoil) {
+                needsDuplicateFoil = true;
+            } else if (hasFoil) {
+                isFoil = true;
+            }
+
+            // Add original card (either the single entry or the nonfoil entry)
+            PrintingInfo basePrintingInfo = printingInfo; // copy so we don't mutate the loop variable unexpectedly
+            basePrintingInfo.setProperty("isFoil", isFoil ? "true" : "false");
+            CardInfoPtr newCard =
+                addCard(name + numComponent, text, isToken, properties, relatedCards, basePrintingInfo);
             numCards++;
+
+            // Add duplicate foil entry if needed (collector number suffixed with "F")
+            if (needsDuplicateFoil) {
+                PrintingInfo foilPrintingInfo = printingInfo; // fresh copy
+                if (getStringListPropertyFromMap(card, "frameEffects").contains("fullart") || getStringPropertyFromMap(card, "isFullArt") == "true") {
+                    foilPrintingInfo.setProperty("isFoil", "fullart");
+                } else {
+                    foilPrintingInfo.setProperty("isFoil", "true");
+                }
+
+                QString foilCollectorNum = printingInfo.getProperty("num") + " *F*";
+                foilPrintingInfo.setProperty("num", foilCollectorNum);
+
+                CardInfoPtr foilCard =
+                    addCard(name + numComponent, text, isToken, properties, relatedCards, foilPrintingInfo);
+                numCards++;
+            }
         }
     }
 
@@ -457,6 +508,7 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
 
     return numCards;
 }
+
 
 int OracleImporter::startImport()
 {

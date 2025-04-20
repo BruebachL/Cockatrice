@@ -57,14 +57,14 @@ void TabDeckEditorVisualTabWidget::onCardChangedDatabaseDisplay(const ExactCard 
 }
 
 void TabDeckEditorVisualTabWidget::onCardClickedDeckEditor(QMouseEvent *event,
-                                                           CardInfoPictureWithTextOverlayWidget *instance,
+                                                           CardInfoPictureWidget *instance,
                                                            QString zoneName)
 {
     emit cardClicked(event, instance, zoneName);
 }
 
 void TabDeckEditorVisualTabWidget::onCardClickedDatabaseDisplay(QMouseEvent *event,
-                                                                CardInfoPictureWithTextOverlayWidget *instance)
+                                                                CardInfoPictureWidget *instance)
 {
     emit cardClickedDatabaseDisplay(event, instance);
 }

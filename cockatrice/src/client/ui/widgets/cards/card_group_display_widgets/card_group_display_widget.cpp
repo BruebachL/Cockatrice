@@ -57,8 +57,8 @@ QWidget *CardGroupDisplayWidget::constructWidgetForIndex(QPersistentModelIndex i
     widget->setScaleFactor(cardSizeWidget->getSlider()->value());
     widget->setCard(CardDatabaseManager::getInstance()->getCard({cardName, cardProviderId}));
 
-    connect(widget, &CardInfoPictureWithTextOverlayWidget::imageClicked, this, &CardGroupDisplayWidget::onClick);
-    connect(widget, &CardInfoPictureWithTextOverlayWidget::hoveredOnCard, this, &CardGroupDisplayWidget::onHover);
+    connect(widget, &CardInfoPictureWidget::imageClicked, this, &CardGroupDisplayWidget::onClick);
+    connect(widget, &CardInfoPictureWidget::hoveredOnCard, this, &CardGroupDisplayWidget::onHover);
     connect(cardSizeWidget->getSlider(), &QSlider::valueChanged, widget, &CardInfoPictureWidget::setScaleFactor);
 
     indexToWidgetMap.insert(index, widget);
@@ -138,7 +138,7 @@ void CardGroupDisplayWidget::onActiveSortCriteriaChanged(QStringList _activeSort
     updateCardDisplays();
 }
 
-void CardGroupDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *card)
+void CardGroupDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWidget *card)
 {
     emit cardClicked(event, card);
 }

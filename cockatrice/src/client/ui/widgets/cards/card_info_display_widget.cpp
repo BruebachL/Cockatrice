@@ -3,7 +3,7 @@
 #include "../../../../game/board/card_item.h"
 #include "../../../../game/cards/card_database_manager.h"
 #include "../../../../main.h"
-#include "card_info_picture_widget.h"
+#include "card_info_picture_foil_widget.h"
 #include "card_info_text_widget.h"
 
 #include <QApplication>
@@ -15,7 +15,7 @@ CardInfoDisplayWidget::CardInfoDisplayWidget(const CardRef &cardRef, QWidget *pa
     : QFrame(parent, flags), aspectRatio((qreal)CARD_HEIGHT / (qreal)CARD_WIDTH)
 {
     setContentsMargins(3, 3, 3, 3);
-    pic = new CardInfoPictureWidget();
+    pic = new CardInfoPictureFoilWidget();
     pic->setObjectName("pic");
     text = new CardInfoTextWidget();
     text->setObjectName("text");

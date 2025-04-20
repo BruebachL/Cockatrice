@@ -35,7 +35,7 @@ public:
     void resizeEvent(QResizeEvent *event) override;
 
 public slots:
-    void onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *card);
+    void onClick(QMouseEvent *event, CardInfoPictureWidget *card);
     void onHover(const ExactCard &card);
     void cleanupInvalidCardGroup(CardGroupDisplayWidget *displayWidget);
     void constructAppropriateWidget(QPersistentModelIndex index);
@@ -48,7 +48,7 @@ public slots:
     void onCategoryRemoval(const QModelIndex &parent, int first, int last);
 
 signals:
-    void cardClicked(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *card, QString zoneName);
+    void cardClicked(QMouseEvent *event, CardInfoPictureWidget *card, QString zoneName);
     void cardHovered(const ExactCard &card);
     void activeSortCriteriaChanged(QStringList activeSortCriteria);
     void requestCleanup(DeckCardZoneDisplayWidget *displayWidget);

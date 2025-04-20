@@ -339,6 +339,7 @@ void CardInfoPictureWidget::mousePressEvent(QMouseEvent *event)
     }
 
     emit cardClicked();
+    emit imageClicked(event, this);
 }
 
 void CardInfoPictureWidget::hideEvent(QHideEvent *event)
