@@ -335,10 +335,10 @@ void CardInfoPictureWidget::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::RightButton) {
         createRightClickMenu()->popup(QCursor::pos());
     } else {
-        emit cardClicked();
+        emit cardClicked(event, this);
     }
 
-    emit cardClicked();
+    emit cardClicked(event, this);
 }
 
 void CardInfoPictureWidget::hideEvent(QHideEvent *event)

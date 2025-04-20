@@ -88,6 +88,7 @@ set(cockatrice_SOURCES
     src/client/ui/widgets/cards/card_info_picture_art_crop_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_enlarged_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_widget.cpp
+    src/client/ui/widgets/cards/card_info_picture_foil_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_with_text_overlay_widget.cpp
     src/client/ui/widgets/cards/card_info_text_widget.cpp
     src/client/ui/widgets/cards/card_size_widget.cpp

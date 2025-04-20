@@ -64,7 +64,7 @@ void TabDeckEditorVisualTabWidget::onCardClickedDeckEditor(QMouseEvent *event,
 }
 
 void TabDeckEditorVisualTabWidget::onCardClickedDatabaseDisplay(QMouseEvent *event,
-                                                                CardInfoPictureWithTextOverlayWidget *instance)
+                                                                CardInfoPictureWidget *instance)
 {
     emit cardClickedDatabaseDisplay(event, instance);
 }

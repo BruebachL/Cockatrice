@@ -43,7 +43,7 @@ public slots:
     void showPrintingSelector() override;
     void
     processMainboardCardClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance, QString zoneName);
-    void processCardClickDatabaseDisplay(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance);
+    void processCardClickDatabaseDisplay(QMouseEvent *event, CardInfoPictureWidget *instance);
     bool actSaveDeckAs() override;
 };
 

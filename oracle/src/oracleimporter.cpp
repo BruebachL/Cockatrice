@@ -218,6 +218,11 @@ static QString getStringPropertyFromMap(const QVariantMap &card, const QString &
     return card.contains(propertyName) ? card.value(propertyName).toString() : QString("");
 }
 
+QStringList OracleImporter::getStringListPropertyFromMap(const QVariantMap &card, const QString &propertyName)
+{
+    return card.contains(propertyName) ? card.value(propertyName).toStringList() : QStringList("");
+}
+
 int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList<QVariant> &cardsList)
 {
     // mtgjson name => xml name
@@ -228,8 +233,11 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
     };
 
     // mtgjson name => xml name
-    static const QMap<QString, QString> setInfoProperties{
-        {"number", "num"}, {"rarity", "rarity"}, {"isOnlineOnly", "isOnlineOnly"}, {"isRebalanced", "isRebalanced"}};
+    static const QMap<QString, QString> setInfoProperties{{"number", "num"},
+                                                          {"rarity", "rarity"},
+                                                          {"isOnlineOnly", "isOnlineOnly"},
+                                                          {"isRebalanced", "isRebalanced"},
+                                                          {"finishes", "finishes"}};
 
     // mtgjson name => xml name
     static const QMap<QString, QString> identifierProperties{{"multiverseId", "muid"}, {"scryfallId", "uuid"}};
@@ -287,9 +295,17 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
             it2.next();
             QString mtgjsonProperty = it2.key();
             QString xmlPropertyName = it2.value();
-            QString propertyValue = getStringPropertyFromMap(card, mtgjsonProperty);
-            if (!propertyValue.isEmpty())
-                printingInfo.setProperty(xmlPropertyName, propertyValue);
+            if (mtgjsonProperty == "finishes") {
+                QStringList propertyValues = getStringListPropertyFromMap(card, mtgjsonProperty);
+                for (QString propertyValue : propertyValues) {
+                    if (!propertyValue.isEmpty())
+                        printingInfo.setProperty(xmlPropertyName, propertyValue);
+                }
+            } else {
+                QString propertyValue = getStringPropertyFromMap(card, mtgjsonProperty);
+                if (!propertyValue.isEmpty())
+                    printingInfo.setProperty(xmlPropertyName, propertyValue);
+            }
         }
 
         // Identifiers

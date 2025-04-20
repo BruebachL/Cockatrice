@@ -175,7 +175,7 @@ void TabDeckEditorVisual::processMainboardCardClick(QMouseEvent *event,
 }
 
 void TabDeckEditorVisual::processCardClickDatabaseDisplay(QMouseEvent *event,
-                                                          CardInfoPictureWithTextOverlayWidget *instance)
+                                                          CardInfoPictureWidget *instance)
 {
     if (event->button() == Qt::LeftButton) {
         actAddCard(instance->getCard());
