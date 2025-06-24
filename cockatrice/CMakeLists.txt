@@ -83,10 +83,13 @@ set(cockatrice_SOURCES
     src/client/ui/widgets/cards/card_group_display_widgets/flat_card_group_display_widget.cpp
     src/client/ui/widgets/cards/card_group_display_widgets/overlapped_card_group_display_widget.cpp
     src/client/ui/widgets/cards/card_info_display_widget.cpp
+    src/client/ui/widgets/cards/card_info_edit_widget.cpp
     src/client/ui/widgets/cards/card_info_frame_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_enlarged_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_widget.cpp
     src/client/ui/widgets/cards/card_info_picture_with_text_overlay_widget.cpp
+    src/client/ui/widgets/cards/card_info_property_display_widget.cpp
+    src/client/ui/widgets/cards/card_info_property_edit_widget.cpp
     src/client/ui/widgets/cards/card_info_text_widget.cpp
     src/client/ui/widgets/cards/card_size_widget.cpp
     src/client/ui/widgets/cards/deck_card_zone_display_widget.cpp
@@ -176,6 +179,7 @@ set(cockatrice_SOURCES
     src/dialogs/dlg_update.cpp
     src/dialogs/dlg_view_log.cpp
     src/game/board/abstract_card_drag_item.cpp
+    src/game/board/abstract_card_hover_item.cpp
     src/game/board/abstract_card_item.cpp
     src/game/board/abstract_counter.cpp
     src/game/board/abstract_graphics_item.cpp

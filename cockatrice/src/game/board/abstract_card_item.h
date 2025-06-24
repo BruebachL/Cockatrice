@@ -2,6 +2,7 @@
 #define ABSTRACTCARDITEM_H
 
 #include "../cards/card_info.h"
+#include "abstract_card_hover_item.h"
 #include "arrow_target.h"
 
 class Player;
@@ -9,6 +10,7 @@ class Player;
 const int CARD_WIDTH = 72;
 const int CARD_HEIGHT = 102;
 
+class AbstractCardHoverItem;
 class AbstractCardItem : public ArrowTarget
 {
     Q_OBJECT
@@ -25,7 +27,12 @@ protected:
 
 private:
     bool isHovered;
+    AbstractCardHoverItem *popup = nullptr;
+    QTimer *hideTimer = nullptr;
     qreal realZValue;
+    void checkMouseLeave();
+    [[nodiscard]] bool isMouseOverPopup() const;
+
 private slots:
     void pixmapUpdated();
 
@@ -102,16 +109,21 @@ public:
         return facedown;
     }
     void setFaceDown(bool _facedown);
+    void setPopup(AbstractCardHoverItem *p);
     void processHoverEvent();
     void deleteCardInfoPopup()
     {
         emit deleteCardInfoPopup(name);
     }
+    void cancelHideTimer();
+    void startHideTimerIfNotHovered();
 
 protected:
     void transformPainter(QPainter *painter, const QSizeF &translatedSize, int angle);
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
     QVariant itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value) override;
     void cacheBgColor();
 };

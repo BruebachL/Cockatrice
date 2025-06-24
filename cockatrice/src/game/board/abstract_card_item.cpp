@@ -9,6 +9,7 @@
 #include <QCursor>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsView>
 #include <QPainter>
 #include <algorithm>
 
@@ -23,6 +24,16 @@ AbstractCardItem::AbstractCardItem(QGraphicsItem *parent,
     setCursor(Qt::OpenHandCursor);
     setFlag(ItemIsSelectable);
     setCacheMode(DeviceCoordinateCache);
+    setAcceptHoverEvents(true);
+
+    popup = new AbstractCardHoverItem(this);
+    popup->setHidden(true);
+
+    hideTimer = new QTimer(this);
+    hideTimer->setInterval(1500);
+    hideTimer->setSingleShot(true);
+
+    setPopup(popup);
 
     connect(&SettingsCache::instance(), &SettingsCache::displayCardNamesChanged, this, [this] { update(); });
     refreshCardInfo();
@@ -296,6 +307,30 @@ void AbstractCardItem::setFaceDown(bool _facedown)
     update();
 }
 
+void AbstractCardItem::setPopup(AbstractCardHoverItem *p)
+{
+    if (popup == p)
+        return;
+
+    popup = p;
+    if (!popup)
+        return;
+
+    popup->setAttribute(Qt::WA_ShowWithoutActivating);
+    connect(hideTimer, &QTimer::timeout, popup, &QWidget::hide);
+}
+
+void AbstractCardItem::cancelHideTimer()
+{
+    if (hideTimer)
+        hideTimer->stop();
+}
+
+void AbstractCardItem::startHideTimerIfNotHovered()
+{
+    checkMouseLeave();
+}
+
 void AbstractCardItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if ((event->modifiers() & Qt::AltModifier) && event->button() == Qt::LeftButton) {
@@ -322,9 +357,43 @@ void AbstractCardItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     event->accept();
 }
 
+void AbstractCardItem::hoverEnterEvent(QGraphicsSceneHoverEvent *)
+{
+    cancelHideTimer();
+
+    if (!popup)
+        return;
+
+    // Calculate screen position of this card
+    QPoint globalPos = scene()->views().first()->viewport()->mapToGlobal(
+        scene()->views().first()->mapFromScene(mapToScene(boundingRect().bottomRight())));
+    popup->move(globalPos);
+    popup->show();
+    popup->raise();
+}
+
+void AbstractCardItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *)
+{
+    QTimer::singleShot(10, this, [this]() { checkMouseLeave(); });
+}
+
 void AbstractCardItem::processHoverEvent()
 {
     emit hovered(this);
+}
+
+void AbstractCardItem::checkMouseLeave()
+{
+    if (!popup)
+        return;
+
+    if (!isMouseOverPopup())
+        hideTimer->start();
+}
+
+bool AbstractCardItem::isMouseOverPopup() const
+{
+    return popup && popup->geometry().contains(QCursor::pos());
 }
 
 QVariant AbstractCardItem::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)
