@@ -131,6 +131,7 @@ private:
     QString comments;                              ///< Free-form comments or notes.
     CardRef bannerCard;                            ///< Optional representative card for the deck.
     QString lastLoadedTimestamp;                   ///< Timestamp string of last load.
+    QString gameFormat;                            ///< The name of the game format this deck contains legal cards for
     QStringList tags;                              ///< User-defined tags for deck classification.
     QMap<QString, SideboardPlan *> sideboardPlans; ///< Named sideboard plans.
     InnerDecklistNode *root;                       ///< Root of the deck tree (zones + cards).
@@ -175,6 +176,8 @@ signals:
     void deckHashChanged();
     /// Emitted when the deck tags are modified.
     void deckTagsChanged();
+    /// Emitted when the game format has changed.
+    void gameFormatChanged();
 
 public slots:
     /// @name Metadata setters
@@ -210,6 +213,11 @@ public slots:
     {
         lastLoadedTimestamp = _lastLoadedTimestamp;
     }
+    void setGameFormat(const QString &_gameFormat = QString())
+    {
+        gameFormat = _gameFormat;
+        emit gameFormatChanged();
+    }
     ///@}
 
 public:
@@ -242,6 +250,10 @@ public:
     QString getLastLoadedTimestamp() const
     {
         return lastLoadedTimestamp;
+    }
+    QString getGameFormat() const
+    {
+        return gameFormat;
     }
     ///@}
 
@@ -299,7 +311,8 @@ public:
                               int position,
                               const QString &cardSetName = QString(),
                               const QString &cardSetCollectorNumber = QString(),
-                              const QString &cardProviderId = QString());
+                              const QString &cardProviderId = QString(),
+                              const bool formatLegal = true);
     bool deleteNode(AbstractDecklistNode *node, InnerDecklistNode *rootNode = nullptr);
     ///@}
 

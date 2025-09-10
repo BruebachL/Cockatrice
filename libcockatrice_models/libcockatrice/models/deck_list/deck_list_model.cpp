@@ -165,6 +165,10 @@ QVariant DeckListModel::data(const QModelIndex &index, int role) const
             return card->depth();
         }
 
+        case DeckRoles::IsLegalRole: {
+            return card->getFormatLegality();
+        }
+
         default: {
             return {};
         }
@@ -410,8 +414,9 @@ QModelIndex DeckListModel::addCard(const ExactCard &card, const QString &zoneNam
         // Determine the correct index
         int insertRow = findSortedInsertRow(groupNode, cardInfo);
 
-        auto *decklistCard = deckList->addCard(cardInfo->getName(), zoneName, insertRow, cardSetName,
-                                               printingInfo.getProperty("num"), printingInfo.getProperty("uuid"));
+        auto *decklistCard =
+            deckList->addCard(cardInfo->getName(), zoneName, insertRow, cardSetName, printingInfo.getProperty("num"),
+                              printingInfo.getProperty("uuid"), isCardLegalForCurrentFormat(cardInfo));
 
         beginInsertRows(parentIndex, insertRow, insertRow);
         cardNode = new DecklistModelCardNode(decklistCard, groupNode, insertRow);
@@ -527,6 +532,13 @@ void DeckListModel::setActiveGroupCriteria(DeckListModelGroupCriteria::Type newC
     rebuildTree();
 }
 
+void DeckListModel::setActiveFormat(const QString &_format)
+{
+    deckList->setGameFormat(_format);
+    refreshCardFormatLegalities();
+    emitBackgroundUpdates(QModelIndex()); // start from root
+}
+
 void DeckListModel::cleanList()
 {
     setDeckList(new DeckList);
@@ -627,4 +639,70 @@ QList<QString> *DeckListModel::getZones() const
         zones->append(currentZone->getName());
     }
     return zones;
+}
+
+bool DeckListModel::isCardLegalForCurrentFormat(const CardInfoPtr cardInfo)
+{
+    if (!deckList->getGameFormat().isEmpty()) {
+        if (cardInfo->getProperties().contains("format-" + deckList->getGameFormat())) {
+            QString formatLegality = cardInfo->getProperty("format-" + deckList->getGameFormat());
+            return formatLegality == "legal" || formatLegality == "restricted";
+        }
+        return false;
+    }
+    return true;
+}
+
+bool DeckListModel::isCardQuantityLegalForCurrentFormat(const CardInfoPtr cardInfo, int quantity)
+{
+    if (cardInfo->getCardType().contains("Basic Land")) {
+        return true;
+    }
+    if (cardInfo->getText().contains("A deck can have any number")) {
+        return true;
+    }
+    if (!deckList->getGameFormat().isEmpty()) {
+        if (cardInfo->getProperties().contains("format-" + deckList->getGameFormat())) {
+            QString formatLegality = cardInfo->getProperty("format-" + deckList->getGameFormat());
+            if (formatLegality == "legal" && quantity <= 4) {
+                return true;
+            }
+            if (formatLegality == "restricted" && quantity <= 1) {
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+    return true;
+}
+
+void DeckListModel::refreshCardFormatLegalities()
+{
+    InnerDecklistNode *listRoot = deckList->getRoot();
+
+    for (int i = 0; i < listRoot->size(); i++) {
+        auto *currentZone = static_cast<InnerDecklistNode *>(listRoot->at(i));
+        for (int j = 0; j < currentZone->size(); j++) {
+            auto *currentCard = static_cast<DecklistCardNode *>(currentZone->at(j));
+
+            // TODO: better sanity checking
+            if (currentCard == nullptr) {
+                continue;
+            }
+
+            ExactCard exactCard = CardDatabaseManager::query()->getCard(currentCard->toCardRef());
+            if (!exactCard) {
+                continue;
+            }
+
+            bool legal = isCardLegalForCurrentFormat(exactCard.getCardPtr());
+
+            if (legal) {
+                legal = isCardQuantityLegalForCurrentFormat(exactCard.getCardPtr(), currentCard->getNumber());
+            }
+
+            currentCard->setFormatLegality(legal);
+        }
+    }
 }

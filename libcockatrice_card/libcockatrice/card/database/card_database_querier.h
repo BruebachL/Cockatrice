@@ -214,6 +214,7 @@ public:
      * @return Map of subtype string to count.
      */
     [[nodiscard]] QMap<QString, int> getAllSubCardTypesWithCount() const;
+    QMap<QString, int> getAllFormatsWithCount() const;
 
 private:
     const CardDatabase *db;               //!< Card database used for all lookups.
