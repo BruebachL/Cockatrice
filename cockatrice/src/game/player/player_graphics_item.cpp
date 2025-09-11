@@ -206,9 +206,8 @@ void PlayerGraphicsItem::updateBoundingRect()
     prepareGeometryChange();
     qreal width = CARD_HEIGHT + 15 + counterAreaWidth + stackZoneGraphicsItem->boundingRect().width();
     if (SettingsCache::instance().getHorizontalHand()) {
-        qreal handHeight = player->getHandVisible() ? handZoneGraphicsItem->boundingRect().height() : 0;
         bRect = QRectF(0, 0, width + tableZoneGraphicsItem->boundingRect().width(),
-                       tableZoneGraphicsItem->boundingRect().height() + handHeight);
+                       tableZoneGraphicsItem->boundingRect().height() + handZoneGraphicsItem->boundingRect().height());
     } else {
         bRect = QRectF(
             0, 0, width + handZoneGraphicsItem->boundingRect().width() + tableZoneGraphicsItem->boundingRect().width(),
