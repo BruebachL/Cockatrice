@@ -228,7 +228,7 @@ void VisualDatabaseDisplayWidget::addCard(const ExactCard &cardToAdd)
 {
     cards->append(cardToAdd);
     CardInfoPictureWidget *display;
-    if (cardToAdd.getPrinting().getProperty("finishes") == "foil") {
+    if (cardToAdd.getPrinting().getProperty("isFoil") == "true") {
         display = new CardInfoPictureFoilWidget(flowWidget, false);
     } else {
         display = new CardInfoPictureWithTextOverlayWidget(flowWidget, false);

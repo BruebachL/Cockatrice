@@ -51,7 +51,7 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
 
     cardInfoPictureFoil->setCard(_rootCard);
 
-    if (rootCard.getPrinting().getProperty("finishes") == "foil") {
+    if (rootCard.getPrinting().getProperty("isFoil") == "true") {
         mainLayout->addWidget(cardInfoPictureFoil);
         cardInfoPicture->hide();
     } else {
