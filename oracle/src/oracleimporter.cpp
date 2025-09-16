@@ -444,7 +444,11 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
             // Add duplicate foil entry if needed (collector number suffixed with "F")
             if (needsDuplicateFoil) {
                 PrintingInfo foilPrintingInfo = printingInfo; // fresh copy
-                foilPrintingInfo.setProperty("isFoil", "true");
+                if (getStringListPropertyFromMap(card, "frameEffects").contains("fullart") || getStringPropertyFromMap(card, "isFullArt") == "true") {
+                    foilPrintingInfo.setProperty("isFoil", "fullart");
+                } else {
+                    foilPrintingInfo.setProperty("isFoil", "true");
+                }
 
                 QString foilCollectorNum = printingInfo.getProperty("num") + " *F*";
                 foilPrintingInfo.setProperty("num", foilCollectorNum);

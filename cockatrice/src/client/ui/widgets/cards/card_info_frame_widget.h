@@ -8,7 +8,7 @@
 #include <QTabWidget>
 
 class AbstractCardItem;
-class CardInfoPictureWidget;
+class CardInfoPictureFoilWidget;
 class CardInfoTextWidget;
 class QVBoxLayout;
 class QSplitter;
@@ -18,7 +18,7 @@ class CardInfoFrameWidget : public QTabWidget
     Q_OBJECT
 private:
     ExactCard exactCard;
-    CardInfoPictureWidget *pic;
+    CardInfoPictureFoilWidget *pic;
     CardInfoTextWidget *text;
     QPushButton *viewTransformationButton;
     bool cardTextOnly;

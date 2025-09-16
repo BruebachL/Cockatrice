@@ -17,8 +17,10 @@ class CardInfoPictureFoilWidget : public CardInfoPictureWidget
 
 public:
     explicit CardInfoPictureFoilWidget(QWidget *parent = nullptr,
-                                       bool hoverToZoomEnabled = true,
-                                       bool applyToArtOnly = false);
+                                       bool hoverToZoomEnabled = true);
+
+    public slots:
+    void setCard(const ExactCard &card) override;
 
 protected:
     void paintEvent(QPaintEvent *event) override;

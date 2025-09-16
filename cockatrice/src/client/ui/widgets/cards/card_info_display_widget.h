@@ -8,7 +8,7 @@
 #include <QFrame>
 #include <QStringList>
 
-class CardInfoPictureWidget;
+class CardInfoPictureFoilWidget;
 class CardInfoTextWidget;
 class AbstractCardItem;
 
@@ -19,7 +19,7 @@ class CardInfoDisplayWidget : public QFrame
 private:
     qreal aspectRatio;
     ExactCard exactCard;
-    CardInfoPictureWidget *pic;
+    CardInfoPictureFoilWidget *pic;
     CardInfoTextWidget *text;
 
 public:

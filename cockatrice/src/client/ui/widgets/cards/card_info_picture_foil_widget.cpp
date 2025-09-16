@@ -28,8 +28,8 @@
  *
  * Initializes the widget with a minimum height and sets the pixmap to a dirty state for initial loading.
  */
-CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hoverToZoomEnabled, bool applyToArtOnly)
-    : CardInfoPictureWidget(parent, hoverToZoomEnabled), gradientOffset(0), applyToArtOnly(applyToArtOnly),
+CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hoverToZoomEnabled)
+    : CardInfoPictureWidget(parent, hoverToZoomEnabled), gradientOffset(0),
       isGradientForward(true)
 {
     setMouseTracking(true);
@@ -37,6 +37,12 @@ CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hover
     foilThemes = {{"Iridescent", {QColor(255, 0, 255, 100), QColor(0, 255, 255, 100), QColor(0, 255, 0, 100)}},
                   {"Warm Spectrum", {QColor(255, 128, 0, 80), QColor(255, 0, 64, 80), QColor(128, 0, 255, 80)}},
                   {"Cool Spectrum", {QColor(0, 128, 255, 90), QColor(0, 255, 128, 90), QColor(0, 64, 255, 90)}}};
+
+    if (getCard().getPrinting().getProperty("isFoil") == "fullart") {
+        applyToArtOnly = false;
+    } else {
+        applyToArtOnly = true;
+    }
 
     auto *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &CardInfoPictureFoilWidget::updateFoilEffect);
@@ -46,6 +52,10 @@ CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hover
 void CardInfoPictureFoilWidget::paintEvent(QPaintEvent *event)
 {
     CardInfoPictureWidget::paintEvent(event);
+
+    if (getCard().getPrinting().getProperty("isFoil") == "false") {
+        return;
+    }
 
     if (width() == 0 || height() == 0 || getResizedPixmap().isNull())
         return;
@@ -95,6 +105,17 @@ void CardInfoPictureFoilWidget::mouseMoveEvent(QMouseEvent *event)
 {
     highlightX = event->pos().x();
     update();
+}
+
+void CardInfoPictureFoilWidget::setCard(const ExactCard &card)
+{
+    CardInfoPictureWidget::setCard(card);
+
+    if (getCard().getPrinting().getProperty("isFoil") == "fullart") {
+        applyToArtOnly = false;
+    } else {
+        applyToArtOnly = true;
+    }
 }
 
 void CardInfoPictureFoilWidget::updateFoilEffect()

@@ -28,7 +28,7 @@ public:
     [[nodiscard]] QSize sizeHint() const override;
 
 public slots:
-    void setCard(const ExactCard &card);
+    virtual void setCard(const ExactCard &card);
     void setScaleFactor(int scale); // New slot for scaling
     void setHoverToZoomEnabled(bool enabled);
     void setRaiseOnEnterEnabled(bool enabled);
