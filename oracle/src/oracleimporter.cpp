@@ -218,7 +218,7 @@ static QString getStringPropertyFromMap(const QVariantMap &card, const QString &
     return card.contains(propertyName) ? card.value(propertyName).toString() : QString("");
 }
 
-QStringList OracleImporter::getStringListPropertyFromMap(const QVariantMap &card, const QString &propertyName)
+static QStringList getStringListPropertyFromMap(const QVariantMap &card, const QString &propertyName)
 {
     return card.contains(propertyName) ? card.value(propertyName).toStringList() : QStringList("");
 }
