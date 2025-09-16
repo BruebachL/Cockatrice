@@ -39,6 +39,7 @@ signals:
     void cardScaleFactorChanged(int _scale);
     void cardChanged(const ExactCard &card);
     void cardClicked();
+    void imageClicked(QMouseEvent *event, CardInfoPictureWidget *instance);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

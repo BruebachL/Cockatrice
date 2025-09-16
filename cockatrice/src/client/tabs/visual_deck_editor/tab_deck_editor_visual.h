@@ -41,8 +41,7 @@ public:
 public slots:
     void onDeckChanged() override;
     void showPrintingSelector() override;
-    void
-    processMainboardCardClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance, QString zoneName);
+    void processMainboardCardClick(QMouseEvent *event, CardInfoPictureWidget *instance, QString zoneName);
     void processCardClickDatabaseDisplay(QMouseEvent *event, CardInfoPictureWidget *instance);
     bool actSaveDeckAs() override;
 };

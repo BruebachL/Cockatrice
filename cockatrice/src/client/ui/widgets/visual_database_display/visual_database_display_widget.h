@@ -66,7 +66,6 @@ protected slots:
     void onClick(QMouseEvent *event, CardInfoPictureWidget *instance);
     void onHover(const ExactCard &hoveredCard);
     void addCard(const ExactCard &cardToAdd);
-    void addFoilCard(const ExactCard &cardToAdd);
     void databaseDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     void wheelEvent(QWheelEvent *event) override;
     void modelDirty() const;

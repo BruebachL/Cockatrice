@@ -27,12 +27,9 @@ public:
     void setTextAlignment(Qt::Alignment alignment);
 
     [[nodiscard]] QSize sizeHint() const override;
-signals:
-    void imageClicked(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
-    void mousePressEvent(QMouseEvent *event) override;
     [[nodiscard]] QSize minimumSizeHint() const override;
 
 private:

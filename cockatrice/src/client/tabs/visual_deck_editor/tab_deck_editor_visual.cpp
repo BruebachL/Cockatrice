@@ -162,7 +162,7 @@ void TabDeckEditorVisual::changeModelIndexToCard(const ExactCard &activeCard)
 }
 
 void TabDeckEditorVisual::processMainboardCardClick(QMouseEvent *event,
-                                                    CardInfoPictureWithTextOverlayWidget *instance,
+                                                    CardInfoPictureWidget *instance,
                                                     QString zoneName)
 {
     if (event->button() == Qt::LeftButton) {

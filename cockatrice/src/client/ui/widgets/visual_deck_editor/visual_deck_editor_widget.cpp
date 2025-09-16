@@ -373,9 +373,7 @@ void VisualDeckEditorWidget::onHover(const ExactCard &hoveredCard)
     emit activeCardChanged(hoveredCard);
 }
 
-void VisualDeckEditorWidget::onCardClick(QMouseEvent *event,
-                                         CardInfoPictureWithTextOverlayWidget *instance,
-                                         QString zoneName)
+void VisualDeckEditorWidget::onCardClick(QMouseEvent *event, CardInfoPictureWidget *instance, QString zoneName)
 {
     emit cardClicked(event, instance, zoneName);
 }

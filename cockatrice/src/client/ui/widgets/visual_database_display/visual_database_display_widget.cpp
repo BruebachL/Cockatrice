@@ -236,8 +236,8 @@ void VisualDatabaseDisplayWidget::addCard(const ExactCard &cardToAdd)
     display->setScaleFactor(cardSizeWidget->getSlider()->value());
     display->setCard(cardToAdd);
     flowWidget->addWidget(display);
-    connect(display, &CardInfoPictureWithTextOverlayWidget::imageClicked, this, &VisualDatabaseDisplayWidget::onClick);
-    connect(display, &CardInfoPictureWithTextOverlayWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
+    connect(display, &CardInfoPictureWidget::imageClicked, this, &VisualDatabaseDisplayWidget::onClick);
+    connect(display, &CardInfoPictureWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
     connect(cardSizeWidget->getSlider(), &QSlider::valueChanged, display, &CardInfoPictureWidget::setScaleFactor);
 }
 

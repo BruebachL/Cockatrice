@@ -153,7 +153,7 @@ void DeckCardZoneDisplayWidget::resizeEvent(QResizeEvent *event)
         }
     }
 }
-void DeckCardZoneDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *card)
+void DeckCardZoneDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWidget *card)
 {
     emit cardClicked(event, card, zoneName);
 }
