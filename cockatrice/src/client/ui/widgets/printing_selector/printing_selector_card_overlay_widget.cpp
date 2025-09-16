@@ -38,25 +38,20 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
     mainLayout->setSpacing(0);
     setLayout(mainLayout);
 
-    setCard = CardDatabaseManager::getInstance()->getCardByNameAndProviderId(rootCard->getName(),
-                                                                             setInfoForCard.getProperty("uuid"));
-
     // Add CardInfoPictureWidget
     cardInfoPicture = new CardInfoPictureWidget(this);
     cardInfoPicture->setMinimumSize(0, 0);
     cardInfoPicture->setScaleFactor(cardSizeSlider->value());
 
-    cardInfoPicture->setCard(setCard);
+    cardInfoPicture->setCard(_rootCard);
 
     cardInfoPictureFoil = new CardInfoPictureFoilWidget(this);
     cardInfoPictureFoil->setMinimumSize(0, 0);
     cardInfoPictureFoil->setScaleFactor(cardSizeSlider->value());
 
-    cardInfoPictureFoil->setCard(setCard);
+    cardInfoPictureFoil->setCard(_rootCard);
 
-    qInfo() << setInfoForCard.getProperties();
-
-    if (setInfoForCard.getProperty("finishes") == "foil") {
+    if (rootCard.getPrinting().getProperty("finishes") == "foil") {
         mainLayout->addWidget(cardInfoPictureFoil);
         cardInfoPicture->hide();
     } else {

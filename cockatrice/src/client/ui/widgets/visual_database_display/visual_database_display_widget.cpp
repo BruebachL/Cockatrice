@@ -214,7 +214,7 @@ void VisualDatabaseDisplayWidget::resizeEvent(QResizeEvent *event)
     loadCurrentPage();
 }
 
-void VisualDatabaseDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance)
+void VisualDatabaseDisplayWidget::onClick(QMouseEvent *event, CardInfoPictureWidget *instance)
 {
     emit cardClickedDatabaseDisplay(event, instance);
 }
@@ -227,77 +227,18 @@ void VisualDatabaseDisplayWidget::onHover(const ExactCard &hoveredCard)
 void VisualDatabaseDisplayWidget::addCard(const ExactCard &cardToAdd)
 {
     cards->append(cardToAdd);
-    auto *display = new CardInfoPictureWithTextOverlayWidget(flowWidget, false);
+    CardInfoPictureWidget *display;
+    if (cardToAdd.getPrinting().getProperty("finishes") == "foil") {
+        display = new CardInfoPictureFoilWidget(flowWidget, false);
+    } else {
+        display = new CardInfoPictureWithTextOverlayWidget(flowWidget, false);
+    }
     display->setScaleFactor(cardSizeWidget->getSlider()->value());
     display->setCard(cardToAdd);
     flowWidget->addWidget(display);
     connect(display, &CardInfoPictureWithTextOverlayWidget::imageClicked, this, &VisualDatabaseDisplayWidget::onClick);
     connect(display, &CardInfoPictureWithTextOverlayWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
     connect(cardSizeWidget->getSlider(), &QSlider::valueChanged, display, &CardInfoPictureWidget::setScaleFactor);
-}
-
-void VisualDatabaseDisplayWidget::addFoilCard(const CardInfoPtr &cardToAdd)
-{
-    cards->append(cardToAdd);
-    auto *display = new CardInfoPictureFoilWidget(flowWidget, false);
-    display->setScaleFactor(cardSizeWidget->getSlider()->value());
-    display->setCard(cardToAdd);
-    flowWidget->addWidget(display);
-    connect(display, &CardInfoPictureWidget::cardClicked, this, &VisualDatabaseDisplayWidget::onClick);
-    connect(display, &CardInfoPictureWidget::hoveredOnCard, this, &VisualDatabaseDisplayWidget::onHover);
-    connect(cardSizeWidget->getSlider(), &QSlider::valueChanged, display, &CardInfoPictureWidget::setScaleFactor);
-}
-
-void VisualDatabaseDisplayWidget::populateCards()
-{
-    int rowCount = databaseDisplayModel->rowCount();
-    cards->clear();
-
-    // Calculate the start and end indices for the current page
-    int start = currentPage * cardsPerPage;
-    int end = qMin(start + cardsPerPage, rowCount);
-
-    qCDebug(VisualDatabaseDisplayLog) << "Fetching from " << start << " to " << end << " cards";
-    // Load more cards if we are at the end of the current list and can fetch more
-    if (end >= rowCount && databaseDisplayModel->canFetchMore(QModelIndex())) {
-        qCDebug(VisualDatabaseDisplayLog) << "We gotta load more";
-        databaseDisplayModel->fetchMore(QModelIndex());
-    }
-
-    QList<const CardFilter *> setFilters = filterModel->getFiltersOfType(CardFilter::AttrSet);
-    const CardFilter *setFilter = nullptr;
-    if (setFilters.length() == 1) {
-        setFilter = setFilters.at(0);
-    }
-
-    for (int row = start; row < end; ++row) {
-        qCDebug(VisualDatabaseDisplayLog) << "Adding " << row;
-        QModelIndex index = databaseDisplayModel->index(row, CardDatabaseModel::NameColumn);
-        QVariant name = databaseDisplayModel->data(index, Qt::DisplayRole);
-        qCDebug(VisualDatabaseDisplayLog) << name.toString();
-
-        if (CardInfoPtr info = CardDatabaseManager::getInstance()->getCard(name.toString())) {
-            if (setFilter) {
-                CardInfoPerSetMap setMap = info->getSets();
-                if (setMap.contains(setFilter->term())) {
-                    for (CardInfoPerSet cardSetInstance : setMap[setFilter->term()]) {
-                        if (cardSetInstance.getProperty("finishes") == "foil") {
-                            addFoilCard(CardDatabaseManager::getInstance()->getCardByNameAndProviderId(
-                                name.toString(), cardSetInstance.getProperty("uuid")));
-                        } else {
-                            addCard(CardDatabaseManager::getInstance()->getCardByNameAndProviderId(
-                                name.toString(), cardSetInstance.getProperty("uuid")));
-                        }
-                    }
-                }
-            } else {
-                addCard(info);
-            }
-        } else {
-            qCDebug(VisualDatabaseDisplayLog) << "Card not found in database!";
-        }
-    }
-    currentPage++;
 }
 
 void VisualDatabaseDisplayWidget::updateSearch(const QString &search) const

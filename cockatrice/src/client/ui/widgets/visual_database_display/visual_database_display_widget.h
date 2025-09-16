@@ -58,15 +58,15 @@ public slots:
     void searchModelChanged();
 
 signals:
-    void cardClickedDatabaseDisplay(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance);
+    void cardClickedDatabaseDisplay(QMouseEvent *event, CardInfoPictureWidget *instance);
     void cardHoveredDatabaseDisplay(const ExactCard &hoveredCard);
 
 protected slots:
     void initialize();
-    void onClick(QMouseEvent *event, CardInfoPictureWithTextOverlayWidget *instance);
+    void onClick(QMouseEvent *event, CardInfoPictureWidget *instance);
     void onHover(const ExactCard &hoveredCard);
     void addCard(const ExactCard &cardToAdd);
-    void addFoilCard(const CardInfoPtr &cardToAdd);
+    void addFoilCard(const ExactCard &cardToAdd);
     void databaseDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     void wheelEvent(QWheelEvent *event) override;
     void modelDirty() const;

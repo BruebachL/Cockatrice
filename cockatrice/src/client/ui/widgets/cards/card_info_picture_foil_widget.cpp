@@ -1,6 +1,5 @@
 #include "card_info_picture_foil_widget.h"
 
-#include "../../../../game/cards/card_item.h"
 #include "../../../../main.h"
 
 #include <QDebug>
