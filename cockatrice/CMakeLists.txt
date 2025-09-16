@@ -571,6 +571,14 @@ if(Qt6_FOUND AND Qt6LinguistTools_FOUND)
   endif()
 endif()
 
+if (Qt6_FOUND AND QT_VERSION VERSION_GREATER_EQUAL "6.6")
+  qt_add_shaders(cockatrice "cockatrice_SHADERS"
+      PREFIX "/shaders"
+      FILES
+      resources/shaders/FoilEffect.frag
+  )
+endif ()
+
 if(Qt6_FOUND)
   qt6_finalize_target(cockatrice)
 endif()

@@ -383,5 +383,9 @@
 
         <file>resources/help/search.md</file>
         <file>resources/help/deck_search.md</file>
+
+        <file>resources/qml/FoilEffect.qml</file>
+        <file>resources/shaders/FoilEffect.frag</file>
+        <file>resources/shaders/FoilEffect.qsb</file>
     </qresource>
 </RCC>
