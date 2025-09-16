@@ -18,6 +18,16 @@ PrintingSelectorCardSearchWidget::PrintingSelectorCardSearchWidget(PrintingSelec
     searchBar->setPlaceholderText(tr("Search by set name or set code"));
     layout->addWidget(searchBar);
 
+    frameEffectsFilter = new SettingsButtonWidget(this);
+    frameEffectSelector = new PrintingSelectorFrameEffectSelector(this);
+    connect(frameEffectSelector, &PrintingSelectorFrameEffectSelector::frameEffectToggled, parent,
+            &PrintingSelector::updateDisplay);
+    connect(parent, &PrintingSelector::cardChanged, frameEffectSelector,
+            &PrintingSelectorFrameEffectSelector::updateVisibleFrameEffects);
+
+    frameEffectsFilter->addSettingsWidget(frameEffectSelector);
+    layout->addWidget(frameEffectsFilter);
+
     // Add a debounce timer for the search bar to limit frequent updates
     searchDebounceTimer = new QTimer(this);
     searchDebounceTimer->setSingleShot(true);
@@ -36,4 +46,9 @@ PrintingSelectorCardSearchWidget::PrintingSelectorCardSearchWidget(PrintingSelec
 QString PrintingSelectorCardSearchWidget::getSearchText()
 {
     return searchBar->text();
+}
+
+QStringList PrintingSelectorCardSearchWidget::checkedFrameEffects()
+{
+    return frameEffectSelector->checkedFrameEffects();
 }

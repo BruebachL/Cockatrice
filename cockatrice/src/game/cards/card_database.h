@@ -103,6 +103,7 @@ public:
     LoadStatus loadFromFile(const QString &fileName);
     bool saveCustomTokensToFile();
     QStringList getAllMainCardTypes() const;
+    QStringList getAllFrameEffects() const;
     QMap<QString, int> getAllMainCardTypesWithCount() const;
     QMap<QString, int> getAllSubCardTypesWithCount() const;
     LoadStatus getLoadStatus() const

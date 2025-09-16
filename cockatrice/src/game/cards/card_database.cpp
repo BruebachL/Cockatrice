@@ -524,6 +524,25 @@ QStringList CardDatabase::getAllMainCardTypes() const
     return types.values();
 }
 
+QStringList CardDatabase::getAllFrameEffects() const
+{
+    QSet<QString> frameEffects;
+    for (const auto &card : cards.values()) {
+        for (auto &set : card->getSets()) {
+            for (auto &printing : set) {
+                for (auto &frameEffect : printing.getProperty("frameEffects").split(",")) {
+                    if (!frameEffect.isEmpty()) {
+                        qInfo() << "Card: " << card->getName() << " set: " << printing.getSet()->getCorrectedShortName()
+                                << "num " << printing.getProperty("num") << " effect:" << frameEffect;
+                        frameEffects.insert(frameEffect);
+                    }
+                }
+            }
+        }
+    }
+    return frameEffects.values();
+}
+
 QMap<QString, int> CardDatabase::getAllMainCardTypesWithCount() const
 {
     QMap<QString, int> typeCounts;

@@ -137,6 +137,8 @@ void PrintingSelector::setCard(const CardInfoPtr &newCard, const QString &_curre
     flowWidget->setMinimumSizeToMaxSizeHint();
     flowWidget->scrollArea->verticalScrollBar()->setValue(0);
     flowWidget->repaint();
+
+    emit cardChanged(selectedCard);
 }
 
 /**
@@ -191,6 +193,35 @@ void PrintingSelector::selectCard(const int changeBy)
     }
 }
 
+QList<PrintingInfo> PrintingSelector::filterByFrameEffects(const QList<PrintingInfo> &filteredPrintings)
+{
+    QList<PrintingInfo> filteredByFrameEffects;
+    const QStringList requiredEffects = searchBar->checkedFrameEffects();
+
+    if (!requiredEffects.isEmpty()) {
+        for (const PrintingInfo &pi : filteredPrintings) {
+            const QString effects = pi.getProperty("frameEffects"); // comma-separated string from import
+            const QStringList effectList = effects.split(',', Qt::SkipEmptyParts);
+
+            bool ok = true;
+            for (const QString &required : requiredEffects) {
+                qInfo() << "Checking " << required << " : " << effectList;
+                if (!effectList.contains(required)) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) {
+                filteredByFrameEffects.append(pi);
+            }
+        }
+    } else {
+        filteredByFrameEffects = filteredPrintings;
+    }
+
+    return filteredByFrameEffects;
+}
+
 /**
  * @brief Loads and displays all sets for the current selected card.
  */
@@ -202,16 +233,18 @@ void PrintingSelector::getAllSetsForCurrentCard()
 
     SetToPrintingsMap setMap = selectedCard->getSets();
     const QList<PrintingInfo> sortedPrintings = sortToolBar->sortSets(setMap);
-    const QList<PrintingInfo> filteredPrintings =
+    const QList<PrintingInfo> textFilteredPrintings =
         sortToolBar->filterSets(sortedPrintings, searchBar->getSearchText().trimmed().toLower());
-    QList<PrintingInfo> printingsToUse;
+    QList<PrintingInfo> orderedPrintings;
 
     if (SettingsCache::instance().getBumpSetsWithCardsInDeckToTop()) {
-        printingsToUse = sortToolBar->prependPrintingsInDeck(filteredPrintings, selectedCard, deckModel);
+        orderedPrintings = sortToolBar->prependPrintingsInDeck(textFilteredPrintings, selectedCard, deckModel);
     } else {
-        printingsToUse = filteredPrintings;
+        orderedPrintings = textFilteredPrintings;
     }
-    printingsToUse = sortToolBar->prependPinnedPrintings(printingsToUse, selectedCard->getName());
+    orderedPrintings = sortToolBar->prependPinnedPrintings(orderedPrintings, selectedCard->getName());
+
+    QList<PrintingInfo> printingsToUse = filterByFrameEffects(orderedPrintings);
 
     // Defer widget creation
     currentIndex = 0;

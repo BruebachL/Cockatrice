@@ -25,6 +25,9 @@ class PrintingSelector : public QWidget
 {
     Q_OBJECT
 
+signals:
+    void cardChanged(CardInfoPtr currentCard);
+
 public:
     PrintingSelector(QWidget *parent, AbstractTabDeckEditor *deckEditor);
 
@@ -64,6 +67,7 @@ private:
     QTimer *widgetLoadingBufferTimer;
     int currentIndex = 0;
     void selectCard(int changeBy);
+    QList<PrintingInfo> filterByFrameEffects(const QList<PrintingInfo> &filteredPrintings);
 };
 
 #endif // PRINTING_SELECTOR_H

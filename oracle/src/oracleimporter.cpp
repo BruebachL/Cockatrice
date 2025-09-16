@@ -350,6 +350,13 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QList
             properties.insert(QString("format-%1").arg(fmtName), legalities.value(fmtName).toString().toLower());
         }
 
+        QStringList frameEffects = card.value("frameEffects").toStringList();
+        if (!frameEffects.isEmpty()) {
+            // Join them with a comma separator
+            QString frameEffectsStr = frameEffects.join(",");
+            printingInfo.setProperty("frameEffects", frameEffectsStr);
+        }
+
         // split cards are considered a single card, enqueue for later merging
         if (layout == "split" || layout == "aftermath" || layout == "adventure") {
             auto _faceName = getStringPropertyFromMap(card, "faceName");
