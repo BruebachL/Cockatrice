@@ -77,6 +77,8 @@ set(cockatrice_SOURCES
     src/client/ui/pixel_map_generator.cpp
     src/client/ui/theme_manager.cpp
     src/client/ui/tip_of_the_day.cpp
+    src/client/ui/widgets/pixmap_provider.cpp
+    src/client/ui/widgets/quick_test.cpp
     src/client/ui/widgets/cards/additional_info/color_identity_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_cost_widget.cpp
     src/client/ui/widgets/cards/additional_info/mana_symbol_widget.cpp

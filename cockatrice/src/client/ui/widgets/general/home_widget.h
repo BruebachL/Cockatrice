@@ -3,6 +3,7 @@
 #include "../../../../server/abstract_client.h"
 #include "../../../tabs/tab_supervisor.h"
 #include "../cards/card_info_picture_art_crop_widget.h"
+#include "../quick_test.h"
 #include "home_styled_button.h"
 
 #include <QGridLayout>
@@ -33,11 +34,13 @@ private:
     QTimer *cardChangeTimer;
     TabSupervisor *tabSupervisor;
     QPixmap background;
-    CardInfoPictureArtCropWidget *backgroundSourceCard = nullptr;
+    CardInfoPictureArtCropWidget *backgroundSourceCard;
     DeckLoader *backgroundSourceDeck;
     QPixmap overlay;
     QPair<QColor, QColor> gradientColors;
     HomeStyledButton *connectButton;
+    QuickTestWidget *testWidget;
+    QPixmap buffer;
 };
 
 #endif // HOME_WIDGET_H

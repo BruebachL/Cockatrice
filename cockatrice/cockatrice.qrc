@@ -385,7 +385,11 @@
         <file>resources/help/deck_search.md</file>
 
         <file>resources/qml/FoilEffect.qml</file>
+        <file>resources/qml/QuickTest.qml</file>
         <file>resources/shaders/FoilEffect.frag</file>
         <file>resources/shaders/FoilEffect.qsb</file>
+        <file>resources/shaders/HueRotate.frag</file>
+        <file>resources/shaders/HueRotate.qsb</file>
+        <file>resources/shaders/HueRotateSimple.qsb</file>
     </qresource>
 </RCC>

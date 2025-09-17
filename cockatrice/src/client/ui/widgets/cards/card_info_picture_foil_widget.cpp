@@ -2,6 +2,7 @@
 
 #include <QMouseEvent>
 #include <QQmlContext>
+#include <QQuickItem>
 #include <QResizeEvent>
 
 CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hoverToZoomEnabled)
@@ -16,9 +17,26 @@ CardInfoPictureFoilWidget::CardInfoPictureFoilWidget(QWidget *parent, bool hover
     m_quick->setClearColor(Qt::transparent);
     m_quick->setAttribute(Qt::WA_TransparentForMouseEvents);
 
+    // Wait until QML root object is ready
+    connect(m_quick, &QQuickWidget::statusChanged, this, [this](QQuickWidget::Status status) {
+        if (status == QQuickWidget::Ready) {
+            // Find the cardImage element
+            QQuickItem *root = m_quick->rootObject();
+            QQuickItem *image = root->findChild<QQuickItem *>("cardImage");
+            if (image) {
+                // Set the image URL; ShaderEffect will now see a valid texture
+                image->setProperty("source", QUrl::fromLocalFile("/home/ascor/yuriko.png"));
+            }
+        }
+    });
+
+    // --- Initialize gradient animation ---
+    m_gradientOffset = 0.0;
+    m_gradientForward = true;
+
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &CardInfoPictureFoilWidget::updateFoilEffect);
-    m_timer->start(16); // ~60 FPS for smooth shader animation
+    m_timer->start(16); // ~60 FPS
 
     updateArtRectFromPixmap();
 }

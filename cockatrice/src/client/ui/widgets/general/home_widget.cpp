@@ -4,7 +4,9 @@
 #include "../../../../server/remote/remote_client.h"
 #include "../../../../settings/cache_settings.h"
 #include "../../../tabs/tab_supervisor.h"
+#include "../../picture_loader/picture_loader.h"
 #include "../../window_main.h"
+#include "../quick_test.h"
 #include "background_sources.h"
 #include "home_styled_button.h"
 
@@ -138,6 +140,8 @@ void HomeWidget::onBackgroundShuffleFrequencyChanged()
 void HomeWidget::updateBackgroundProperties()
 {
     background = backgroundSourceCard->getProcessedBackground(size());
+    PictureLoader::getPixmap(buffer, backgroundSourceCard->getCard(), testWidget->size());
+    testWidget->setPixmap(buffer);
     updateButtonsToBackgroundColor();
     update(); // Triggers repaint
 }
@@ -204,6 +208,11 @@ QGroupBox *HomeWidget::createButtons()
                 &MainWindow::actExit);
         boxLayout->addWidget(exitButton);
     }
+
+    testWidget = new QuickTestWidget(this);
+    testWidget->setPixmap(background);
+
+    boxLayout->addWidget(testWidget);
 
     box->setLayout(boxLayout);
     return box;
