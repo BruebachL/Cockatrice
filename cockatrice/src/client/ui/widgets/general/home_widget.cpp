@@ -140,8 +140,6 @@ void HomeWidget::onBackgroundShuffleFrequencyChanged()
 void HomeWidget::updateBackgroundProperties()
 {
     background = backgroundSourceCard->getProcessedBackground(size());
-    PictureLoader::getPixmap(buffer, backgroundSourceCard->getCard(), testWidget->size());
-    testWidget->setPixmap(buffer);
     updateButtonsToBackgroundColor();
     update(); // Triggers repaint
 }
@@ -208,11 +206,6 @@ QGroupBox *HomeWidget::createButtons()
                 &MainWindow::actExit);
         boxLayout->addWidget(exitButton);
     }
-
-    testWidget = new QuickTestWidget(this);
-    testWidget->setPixmap(background);
-
-    boxLayout->addWidget(testWidget);
 
     box->setLayout(boxLayout);
     return box;

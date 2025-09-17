@@ -39,8 +39,6 @@ private:
     QPixmap overlay;
     QPair<QColor, QColor> gradientColors;
     HomeStyledButton *connectButton;
-    QuickTestWidget *testWidget;
-    QPixmap buffer;
 };
 
 #endif // HOME_WIDGET_H

@@ -2,9 +2,6 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 
 Rectangle {
-    width: 400
-    height: 300
-    color: "black"
 
     // The image we want to shade
     Image {
@@ -28,7 +25,6 @@ Rectangle {
     ShaderEffect {
         anchors.fill: parent
 
-        // Property names MUST match the uniforms in the QSB
         property real uTime: 0
         property variant source: imgSource
 

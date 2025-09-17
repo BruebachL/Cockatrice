@@ -45,19 +45,21 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
 
     cardInfoPicture->setCard(_rootCard);
 
+    /*
     cardInfoPictureFoil = new CardInfoPictureFoilWidget(this);
     cardInfoPictureFoil->setMinimumSize(0, 0);
     cardInfoPictureFoil->setScaleFactor(cardSizeSlider->value());
 
     cardInfoPictureFoil->setCard(_rootCard);
+    */
 
-    if (rootCard.getPrinting().getProperty("isFoil") != "false") {
+    /*if (rootCard.getPrinting().getProperty("isFoil") != "false") {
         mainLayout->addWidget(cardInfoPictureFoil);
         cardInfoPicture->hide();
-    } else {
-        mainLayout->addWidget(cardInfoPicture);
-        cardInfoPictureFoil->hide();
-    }
+    } else {*/
+    mainLayout->addWidget(cardInfoPicture);
+    // cardInfoPictureFoil->hide();
+    // }
 
     // Add AllZonesCardAmountWidget
     allZonesCardAmountWidget =
