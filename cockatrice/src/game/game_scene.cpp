@@ -119,11 +119,17 @@ void GameScene::adjustPlayerRotation(int rotationAdjustment)
 void GameScene::rearrange()
 {
     int firstPlayerIndex = 0;
-    auto playersPlaying = collectActivePlayers(firstPlayerIndex);
-    playersPlaying = rotatePlayers(playersPlaying, firstPlayerIndex);
+    auto activePlayers = collectActivePlayers(firstPlayerIndex);
+    activePlayers = rotatePlayers(activePlayers, firstPlayerIndex);
 
-    int columns = determineColumnCount(playersPlaying.size());
-    QSizeF sceneSize = computeSceneSizeAndPlayerLayout(playersPlaying, columns);
+    // Hide all non-active/non-local players
+    for (auto *pgItem : players) {
+        Player *p = pgItem->getPlayer();
+        pgItem->setVisible(activePlayers.contains(p));
+    }
+
+    int columns = determineColumnCount(activePlayers.size());
+    QSizeF sceneSize = computeSceneSizeAndPlayerLayout(activePlayers, columns);
 
     phasesToolbar->setHeight(sceneSize.height());
     setSceneRect(0, 0, sceneSize.width(), sceneSize.height());
@@ -172,7 +178,7 @@ QList<Player *> GameScene::collectActivePlayers(int &firstPlayerIndex) const
 
     for (auto *pgItem : players) {
         Player *p = pgItem->getPlayer();
-        if (p && !p->getConceded()) {
+        if (p && !p->getConceded() && (p->getActive() || p->getPlayerInfo()->getLocal())) {
             activePlayers.append(p);
             if (!firstPlayerFound && p->getPlayerInfo()->getLocal()) {
                 firstPlayerIndex = activePlayers.size() - 1;
@@ -224,7 +230,7 @@ int GameScene::determineColumnCount(int playerCount)
  */
 QSizeF GameScene::computeSceneSizeAndPlayerLayout(const QList<Player *> &playersPlaying, int columns)
 {
-    playersByColumn.clear();
+    playersByColumn.clear(); // clear previous layout
 
     int rows = qCeil((qreal)playersPlaying.size() / columns);
     qreal sceneHeight = 0, sceneWidth = -playerAreaSpacing;
@@ -235,20 +241,18 @@ QSizeF GameScene::computeSceneSizeAndPlayerLayout(const QList<Player *> &players
         playersByColumn.append(QList<PlayerGraphicsItem *>());
         columnWidth.append(0);
         qreal thisColumnHeight = -playerAreaSpacing;
-        int rowsInColumn = rows - (playersPlaying.size() % columns) * col; // Adjust rows for uneven columns
 
-        for (int j = 0; j < rowsInColumn; ++j) {
+        int rowsInColumn = rows - (playersPlaying.size() % columns) * col; // uneven column adjustment
+        for (int j = 0; j < rowsInColumn && playersIter.hasNext(); ++j) {
             Player *player = playersIter.next();
-            if (col == 0)
-                playersByColumn[col].prepend(player->getGraphicsItem());
-            else
-                playersByColumn[col].append(player->getGraphicsItem());
+            PlayerGraphicsItem *pgItem = player->getGraphicsItem();
 
-            auto *pgItem = player->getGraphicsItem();
+            // add only filtered players
+            playersByColumn[col].append(pgItem);
+
             thisColumnHeight += pgItem->boundingRect().height() + playerAreaSpacing;
             columnWidth[col] = std::max(columnWidth[col], (int)pgItem->boundingRect().width());
         }
-
         sceneHeight = std::max(sceneHeight, thisColumnHeight);
         sceneWidth += columnWidth[col] + playerAreaSpacing;
     }
@@ -263,7 +267,7 @@ QSizeF GameScene::computeSceneSizeAndPlayerLayout(const QList<Player *> &players
         for (int row = 0; row < playersByColumn[col].size(); ++row) {
             PlayerGraphicsItem *player = playersByColumn[col][row];
             player->setPos(x, y);
-            player->setMirrored(row != rows - 1); // Mirror all except bottom-most
+            player->setMirrored(row != rows - 1); // mirror all but bottom
             y += player->boundingRect().height() + playerAreaSpacing;
         }
         x += columnWidth[col] + playerAreaSpacing;

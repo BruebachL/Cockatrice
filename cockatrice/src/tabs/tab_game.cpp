@@ -1197,6 +1197,7 @@ void TabGame::createPlayAreaWidget(bool bReplay)
     scene = new GameScene(phasesToolbar, this);
     connect(game->getPlayerManager(), &PlayerManager::playerConceded, scene, &GameScene::rearrange);
     connect(game->getPlayerManager(), &PlayerManager::playerCountChanged, scene, &GameScene::rearrange);
+    connect(game->getGameState(), &GameState::activePlayerChanged, scene, &GameScene::rearrange);
     gameView = new GameView(scene);
 
     auto gamePlayAreaVBox = new QVBoxLayout;
