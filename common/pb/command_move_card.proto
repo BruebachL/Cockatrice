@@ -14,6 +14,9 @@ message CardToMove {
 
     // When moving sets the card to be tapped
     optional bool tapped = 4;
+
+    // When moving sets the card to not untap normally
+    optional bool does_not_untap = 5;
 }
 
 // Container of multiple cards to move

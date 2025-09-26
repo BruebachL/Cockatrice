@@ -77,6 +77,7 @@ void PlayerActions::playCard(CardItem *card, bool faceDown)
             cardToMove->set_pt(info.getPowTough().toStdString());
         }
         cardToMove->set_tapped(!faceDown && info.getCipt());
+        cardToMove->set_does_not_untap(!faceDown && info.getCipt() && info.getLandscapeOrientation());
         if (tableRow != 3)
             cmd.set_target_zone("table");
         cmd.set_x(gridPoint.x());
@@ -121,6 +122,7 @@ void PlayerActions::playCardToTable(const CardItem *card, bool faceDown)
         cardToMove->set_pt(info.getPowTough().toStdString());
     }
     cardToMove->set_tapped(!faceDown && info.getCipt());
+    cardToMove->set_does_not_untap(!faceDown && info.getCipt() && info.getLandscapeOrientation());
     cmd.set_target_zone("table");
     cmd.set_x(gridPoint.x());
     cmd.set_y(gridPoint.y());

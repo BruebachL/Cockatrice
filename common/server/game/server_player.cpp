@@ -62,6 +62,7 @@
 #include "pb/event_dump_zone.pb.h"
 #include "pb/event_flip_card.pb.h"
 #include "pb/event_game_say.pb.h"
+#include "pb/event_game_state_changed.pb.h"
 #include "pb/event_move_card.pb.h"
 #include "pb/event_player_properties_changed.pb.h"
 #include "pb/event_reveal_cards.pb.h"
@@ -849,7 +850,7 @@ Response::ResponseCode Server_Player::cmdSetSideboardLock(const Command_SetSideb
 }
 
 Response::ResponseCode
-Server_Player::cmdConcede(const Command_Concede & /*cmd*/, ResponseContainer & /*rc*/, GameEventStorage &ges)
+Server_Player::cmdConcede(const Command_Concede & /*cmd*/, ResponseContainer &rc, GameEventStorage &ges)
 {
     if (!game->getGameStarted()) {
         return Response::RespGameNotStarted;
@@ -913,10 +914,21 @@ Server_Player::cmdConcede(const Command_Concede & /*cmd*/, ResponseContainer & /
     ges.enqueueGameEvent(event, playerId);
     ges.setGameEventContext(Context_Concede());
 
-    game->stopGameIfFinished();
-    if (game->getGameStarted() && (game->getActivePlayer() == playerId)) {
+    GameEventContainer *cont = new GameEventContainer;
+    GameEvent *event2 = cont->add_event_list();
+    cont->set_game_id(game->getGameId());
+    Event_GameStateChanged event3;
+    event3.set_game_started(false);
+    event2->GetReflection()
+        ->MutableMessage(event2, event3.GetDescriptor()->FindExtensionByName("ext"))
+        ->CopyFrom(event3);
+
+    rc.enqueuePostResponseItem(ServerMessage::GAME_EVENT_CONTAINER, cont);
+
+    // game->stopGameIfFinished();
+    /*if (game->getGameStarted() && (game->getActivePlayer() == playerId)) {
         game->nextTurn();
-    }
+    }*/
 
     return Response::RespOk;
 }
