@@ -159,6 +159,7 @@ set(cockatrice_SOURCES
     src/interface/widgets/cards/card_info_picture_with_text_overlay_widget.cpp
     src/interface/widgets/cards/card_info_property_display_widget.cpp
     src/interface/widgets/cards/card_info_property_edit_widget.cpp
+    src/interface/widgets/cards/card_info_property_pow_tough_edit_widget.cpp
     src/interface/widgets/cards/card_info_text_widget.cpp
     src/interface/widgets/cards/card_size_widget.cpp
     src/interface/widgets/cards/deck_card_zone_display_widget.cpp

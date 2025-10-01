@@ -5,6 +5,7 @@
 #include "../../../game/board/card_item.h"
 #include "additional_info/card_info_name_and_cost_widget.h"
 #include "card_info_property_display_widget.h"
+#include "card_info_property_pow_tough_edit_widget.h"
 
 #include <QGridLayout>
 #include <QLabel>
@@ -89,6 +90,10 @@ void CardInfoPropertyEditWidget::generateWidgetsForProperties()
 
         if (key == "layout" && info->getProperty(key).toHtmlEscaped() == "normal") {
 
+        } else if (key == Mtg::PowTough) {
+            auto powToughEditWidget =
+                new CardInfoPropertyPowToughEditWidget(this, info->getProperty(key).toHtmlEscaped());
+            layout->addWidget(powToughEditWidget, layout->rowCount(), 0);
         } else {
             auto propertyDisplayWidget =
                 new CardInfoPropertyDisplayWidget(this, keyText, info->getProperty(key).toHtmlEscaped());

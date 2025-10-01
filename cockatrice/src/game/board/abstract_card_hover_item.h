@@ -1,7 +1,7 @@
 #ifndef ABSTRACT_CARD_HOVER_ITEM_H
 #define ABSTRACT_CARD_HOVER_ITEM_H
-#include "../../interface/widgets/cards/card_info_edit_widget.h"
 #include "../../interface/widgets/cards/card_info_picture_widget.h"
+#include "../../interface/widgets/cards/card_info_property_edit_widget.h"
 #include "abstract_card_item.h"
 
 #include <QHBoxLayout>
@@ -19,7 +19,7 @@ public:
 private:
     QHBoxLayout *layout;
     CardInfoPictureWidget *pictureWidget;
-    CardInfoEditWidget *editWidget;
+    CardInfoPropertyEditWidget *editWidget;
 
 protected:
     void enterEvent(QEnterEvent *event) override;

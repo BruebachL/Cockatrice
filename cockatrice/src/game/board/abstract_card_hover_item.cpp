@@ -18,7 +18,7 @@ AbstractCardHoverItem::AbstractCardHoverItem(AbstractCardItem *parent) : QWidget
     pictureWidget = new CardInfoPictureWidget(this);
     pictureWidget->setCard(CardDatabaseManager::query()->getCard(parent->getCardRef()));
     pictureWidget->setMinimumWidth(200);
-    editWidget = new CardInfoEditWidget(this, parent->getCard().getCardPtr());
+    editWidget = new CardInfoPropertyEditWidget(this, parent->getCard().getCardPtr());
     layout->addWidget(pictureWidget);
     layout->addWidget(editWidget);
 }
