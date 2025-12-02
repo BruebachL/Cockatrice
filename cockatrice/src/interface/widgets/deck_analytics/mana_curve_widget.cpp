@@ -5,6 +5,7 @@
 #include "../general/display/banner_widget.h"
 #include "../general/display/bar_widget.h"
 
+#include <QPushButton>
 #include <libcockatrice/card/database/card_database.h>
 #include <libcockatrice/card/database/card_database_manager.h>
 #include <libcockatrice/deck_list/deck_list.h>
@@ -24,6 +25,10 @@ ManaCurveWidget::ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *_d
     barLayout = new QHBoxLayout(barContainer);
     layout->addWidget(barContainer);
 
+    auto toggleButton = new QPushButton(this);
+    connect(toggleButton, &QPushButton::clicked, [this]() {});
+    layout->addWidget(toggleButton);
+
     connect(deckStatAnalyzer, &DeckListStatisticsAnalyzer::statsUpdated, this, &ManaCurveWidget::updateDisplay);
 
     retranslateUi();
@@ -32,6 +37,10 @@ ManaCurveWidget::ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *_d
 void ManaCurveWidget::retranslateUi()
 {
     bannerWidget->setText(tr("Mana Curve"));
+}
+
+void ManaCurveWidget::updateDisplayType()
+{
 }
 
 void ManaCurveWidget::updateDisplay()
@@ -45,7 +54,10 @@ void ManaCurveWidget::updateDisplay()
         }
     }
 
-    auto manaCurveMap = deckStatAnalyzer->getManaCurve();
+    auto manaCurveMap = deckStatAnalyzer->getManaCurveByType();
+    if (groupBy == "color") {
+        manaCurveMap = deckStatAnalyzer->getManaCurveByColor();
+    }
 
     int highestEntry = 0;
     for (const auto &entry : manaCurveMap) {

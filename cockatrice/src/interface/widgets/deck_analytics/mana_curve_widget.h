@@ -32,6 +32,7 @@ private:
     BannerWidget *bannerWidget;
     QWidget *barContainer;
     QHBoxLayout *barLayout;
+    QString groupBy = "type";
 };
 
 #endif // MANA_CURVE_WIDGET_H

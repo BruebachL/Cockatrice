@@ -17,9 +17,28 @@ DeckListStatisticsAnalyzer::DeckListStatisticsAnalyzer(QObject *parent,
 
 void DeckListStatisticsAnalyzer::update()
 {
+    // Clear old data
     manaBaseMap.clear();
     manaCurveMap.clear();
     manaDevotionMap.clear();
+
+    devotionPipCount.clear();
+    devotionCardCount.clear();
+
+    productionPipCount.clear();
+    productionCardCount.clear();
+
+    manaCurveByType.clear();
+    manaCurveBySubtype.clear();
+    manaCurveByColor.clear();
+    manaCurveByPower.clear();
+    manaCurveByToughness.clear();
+
+    typeCount.clear();
+    subtypeCount.clear();
+    colorCount.clear();
+    rarityCount.clear();
+    manaValueCount.clear();
 
     auto nodes = model->getDeckList()->getCardNodes();
 
@@ -28,30 +47,77 @@ void DeckListStatisticsAnalyzer::update()
         if (!info)
             continue;
 
-        for (int i = 0; i < node->getNumber(); ++i) {
-            // ---- Mana curve ----
-            if (config.computeManaCurve) {
-                manaCurveMap[info->getCmc().toInt()]++;
-            }
+        const int count = node->getNumber();
+        const int cmc = info->getCmc().toInt();
 
-            // ---- Mana base ----
+        // Convert once
+        QStringList types = info->getMainCardType().split(' ');
+        QStringList subtypes = info->getCardType().split('-').last().split(" ");
+        QString colors = info->getColors();
+        int power = info->getPowTough().split("/").first().toInt();
+        int toughness = info->getPowTough().split("/").last().toInt();
+
+        // For each copy of card
+        for (int i = 0; i < count; ++i) {
+
+            // ---------------- Mana Curve ----------------
+            if (config.computeManaCurve)
+                manaCurveMap[cmc]++;
+
+            // Per-type curve
+            for (auto &t : types)
+                manaCurveByType[t][cmc]++;
+
+            // Per-subtype curve
+            for (auto &st : subtypes)
+                manaCurveBySubtype[st][cmc]++;
+
+            // Per-color curve
+            for (auto &c : colors)
+                manaCurveByColor[c][cmc]++;
+
+            // Power/toughness
+            manaCurveByPower[QString::number(power)][cmc]++;
+            manaCurveByToughness[QString::number(toughness)][cmc]++;
+
+            // ========== Category Counts ===========
+            for (auto &t : types)
+                typeCount[t]++;
+            for (auto &st : subtypes)
+                subtypeCount[st]++;
+            for (auto &c : colors)
+                colorCount[c]++;
+            manaValueCount[cmc]++;
+
+            // ---------------- Mana Base ----------------
             if (config.computeManaBase) {
-                auto mana = determineManaProduction(info->getText());
-                for (auto it = mana.begin(); it != mana.end(); ++it)
+                auto prod = determineManaProduction(info->getText());
+                for (auto it = prod.begin(); it != prod.end(); ++it) {
+                    if (it.value() > 0) {
+                        productionPipCount[it.key()] += it.value();
+                        productionCardCount[it.key()]++;
+                    }
                     manaBaseMap[it.key()] += it.value();
+                }
             }
 
-            // ---- Devotion ----
+            // ---------------- Devotion ----------------
             if (config.computeDevotion) {
                 auto devo = countManaSymbols(info->getManaCost());
-                for (auto &d : devo)
+                for (auto &d : devo) {
+                    if (d.second > 0) {
+                        devotionPipCount[QString(d.first)] += d.second;
+                        devotionCardCount[QString(d.first)]++;
+                    }
                     manaDevotionMap[d.first] += d.second;
+                }
             }
         }
     }
 
     emit statsUpdated();
 }
+
 
 QHash<QString, int> DeckListStatisticsAnalyzer::determineManaProduction(const QString &rulesText)
 {
@@ -118,3 +184,26 @@ std::unordered_map<char, int> DeckListStatisticsAnalyzer::countManaSymbols(const
 
     return manaCounts;
 }
+
+// Hypergeometric probability: P(X=k)
+double DeckListStatisticsAnalyzer::hypergeometric(int N, int K, int n, int k)
+{
+    if (k < 0 || k > n || K > N)
+        return 0.0;
+
+    auto choose = [](int n, int r) -> double {
+        if (r > n)
+            return 0.0;
+        if (r == 0 || r == n)
+            return 1.0;
+        double res = 1.0;
+        for (int i = 1; i <= r; ++i) {
+            res *= (n - r + i);
+            res /= i;
+        }
+        return res;
+    };
+
+    return choose(K, k) * choose(N - K, n - k) / choose(N, n);
+}
+
