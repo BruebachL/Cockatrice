@@ -7,38 +7,51 @@
 #ifndef MANA_CURVE_WIDGET_H
 #define MANA_CURVE_WIDGET_H
 
-#include "../general/display/banner_widget.h"
-#include "deck_list_statistics_analyzer.h"
+#include "analyzer_modules/mana_curve/mana_curve_config.h"
+#include "deck_analytics_widget_base.h"
 
-#include <QHBoxLayout>
-#include <QWidget>
-#include <libcockatrice/models/deck_list/deck_list_model.h>
-#include <unordered_map>
+#include <QVBoxLayout>
 
-class ManaCurveWidget : public QWidget
+class SegmentedBarWidget;
+class DeckListStatisticsAnalyzer;
+
+class ManaCurveWidget : public AnalyticsWidgetBase
 {
     Q_OBJECT
 
-public:
-    explicit ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *deckStatAnalyzer);
-    void updateDisplay();
-
 public slots:
-    void retranslateUi();
-    void updateDisplayType();
-    // QHash<int, int> mergeCounts(QHash<QString, QHash<int, int>> original);
-    void createMainCurve();
-    void createCategoryCurves();
+    QSize sizeHint() const override;
+    void updateDisplay() override;
+    QDialog *createConfigDialog(QWidget *parent) override;
+
+public:
+    ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *analyzer, ManaCurveConfig cfg = {});
+    QString widgetType() const override
+    {
+        return "manaCurve";
+    }
+    QString widgetTitle() const override
+    {
+        return tr("Mana Curve (%1)").arg(config.groupBy);
+    }
+    QJsonObject saveConfig() const override
+    {
+        return config.toJson();
+    }
+    void loadConfig(const QJsonObject &o) override
+    {
+        config = ManaCurveConfig::fromJson(o);
+        updateDisplay();
+    };
+
+    QJsonObject extractConfigFromDialog(QDialog *dlg) const override;
 
 private:
-    DeckListStatisticsAnalyzer *deckStatAnalyzer;
-    QVBoxLayout *layout;
-    BannerWidget *bannerWidget;
-    QWidget *barContainer;
-    QHBoxLayout *barLayout;
-    QWidget *byCriteriaContainer;
-    QVBoxLayout *byCriteriaLayout;
-    QString groupBy = "type";
+    ManaCurveConfig config;
+    QWidget *barContainer = nullptr;
+    QHBoxLayout *barLayout = nullptr;
+    QWidget *byCriteriaContainer = nullptr;
+    QVBoxLayout *byCriteriaLayout = nullptr;
 };
 
 #endif // MANA_CURVE_WIDGET_H

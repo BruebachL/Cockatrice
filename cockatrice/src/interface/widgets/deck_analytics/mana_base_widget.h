@@ -8,6 +8,8 @@
 #define MANA_BASE_WIDGET_H
 
 #include "../general/display/banner_widget.h"
+#include "analyzer_modules/mana_base/mana_base_config.h"
+#include "deck_analytics_widget_base.h"
 #include "deck_list_statistics_analyzer.h"
 
 #include <QHBoxLayout>
@@ -16,21 +18,40 @@
 #include <libcockatrice/models/deck_list/deck_list_model.h>
 #include <utility>
 
-class ManaBaseWidget : public QWidget
+class ManaBaseWidget : public AnalyticsWidgetBase
 {
     Q_OBJECT
 
-public:
-    explicit ManaBaseWidget(QWidget *parent, DeckListStatisticsAnalyzer *deckStatAnalyzer);
-    void updateDisplay();
-
 public slots:
-    void retranslateUi();
+    QSize sizeHint() const override;
+    void updateDisplay() override;
+    QDialog *createConfigDialog(QWidget *parent) override;
+
+public:
+    ManaBaseWidget(QWidget *parent, DeckListStatisticsAnalyzer *analyzer, ManaBaseConfig cfg = {});
+    QString widgetType() const override
+    {
+        return "manaBase";
+    }
+    QString widgetTitle() const override
+    {
+        return tr("Mana Base");
+    }
+
+    QJsonObject saveConfig() const override
+    {
+        return config.toJson();
+    }
+    void loadConfig(const QJsonObject &o) override
+    {
+        config = ManaBaseConfig::fromJson(o);
+        updateDisplay();
+    }
+
+    QJsonObject extractConfigFromDialog(QDialog *dlg) const override;
 
 private:
-    DeckListStatisticsAnalyzer *deckStatAnalyzer;
-    BannerWidget *bannerWidget;
-    QVBoxLayout *layout;
+    ManaBaseConfig config;
     QWidget *barContainer;
     QHBoxLayout *barLayout;
 };

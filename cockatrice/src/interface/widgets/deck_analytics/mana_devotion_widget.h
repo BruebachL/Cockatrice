@@ -6,31 +6,47 @@
 
 #ifndef MANA_DEVOTION_WIDGET_H
 #define MANA_DEVOTION_WIDGET_H
-
 #include "../general/display/banner_widget.h"
-#include "deck_list_statistics_analyzer.h"
+#include "analyzer_modules/mana_devotion/mana_devotion_config.h"
+#include "deck_analytics_widget_base.h"
 
 #include <QHBoxLayout>
-#include <QWidget>
-#include <libcockatrice/deck_list/deck_list.h>
-#include <libcockatrice/models/deck_list/deck_list_model.h>
-#include <utility>
 
-class ManaDevotionWidget : public QWidget
+class ManaDevotionWidget : public AnalyticsWidgetBase
 {
     Q_OBJECT
 
-public:
-    explicit ManaDevotionWidget(QWidget *parent, DeckListStatisticsAnalyzer *deckStatAnalyzer);
-    void updateDisplay();
-
 public slots:
-    void retranslateUi();
+    QSize sizeHint() const override;
+    void updateDisplay() override;
+    QDialog *createConfigDialog(QWidget *parent) override;
+
+public:
+    ManaDevotionWidget(QWidget *parent, DeckListStatisticsAnalyzer *analyzer, ManaDevotionConfig cfg = {});
+
+    QString widgetType() const override
+    {
+        return "manaDevotion";
+    }
+    QString widgetTitle() const override
+    {
+        return tr("Mana Devotion");
+    }
+
+    QJsonObject saveConfig() const override
+    {
+        return config.toJson();
+    }
+    void loadConfig(const QJsonObject &o) override
+    {
+        config = ManaDevotionConfig::fromJson(o);
+        updateDisplay();
+    }
+
+    QJsonObject extractConfigFromDialog(QDialog *dlg) const override;
 
 private:
-    DeckListStatisticsAnalyzer *deckStatAnalyzer;
-    BannerWidget *bannerWidget;
-    QVBoxLayout *layout;
+    ManaDevotionConfig config;
     QHBoxLayout *barLayout;
 };
 

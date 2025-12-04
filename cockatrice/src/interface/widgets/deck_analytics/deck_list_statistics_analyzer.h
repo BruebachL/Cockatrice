@@ -28,7 +28,7 @@ public:
                                         DeckListModel *model,
                                         DeckListStatisticsAnalyzerConfig cfg = DeckListStatisticsAnalyzerConfig());
 
-    void update();
+    void analyze();
 
     // ======= Existing API =======
     [[nodiscard]] const QHash<QString, int> &getManaBase() const
@@ -114,9 +114,25 @@ public:
     {
         return manaCurveCardsByType;
     }
+
+    const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsBySubtype() const
+    {
+        return manaCurveCardsBySubtype;
+    }
+
     const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsByColor() const
     {
         return manaCurveCardsByColor;
+    }
+
+    const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsByPower() const
+    {
+        return manaCurveCardsByPower;
+    }
+
+    const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsByToughness() const
+    {
+        return manaCurveCardsByToughness;
     }
 
 signals:

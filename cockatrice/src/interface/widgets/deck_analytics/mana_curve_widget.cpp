@@ -1,84 +1,14 @@
-// mana_curve_widget.cpp
 #include "mana_curve_widget.h"
 
-#include "../../../main.h"
-#include "../../deck_loader/deck_loader.h"
-#include "../general/display/banner_widget.h"
-#include "../general/display/bar_widget.h"
+#include "analyzer_modules/mana_curve/mana_curve_add_dialog.h"
+#include "deck_list_statistics_analyzer.h"
 #include "segmented_bar_widget.h"
 
+#include <QInputDialog>
+#include <QJsonArray>
+#include <QLabel>
 #include <QPushButton>
-#include <algorithm>
-#include <libcockatrice/card/database/card_database.h>
-#include <libcockatrice/card/database/card_database_manager.h>
-#include <libcockatrice/deck_list/deck_list.h>
-#include <unordered_map>
-
-// small helper to clear a layout and all widgets/child layouts inside it
-static void clearLayout(QLayout *layout)
-{
-    if (!layout)
-        return;
-    QLayoutItem *item;
-    while ((item = layout->takeAt(0)) != nullptr) {
-        if (auto w = item->widget()) {
-            w->deleteLater();
-        } else if (auto sub = item->layout()) {
-            clearLayout(sub);
-            delete sub;
-        }
-        delete item;
-    }
-}
-
-ManaCurveWidget::ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *_deckStatAnalyzer)
-    : QWidget(parent), deckStatAnalyzer(_deckStatAnalyzer)
-{
-    layout = new QVBoxLayout(this);
-    setLayout(layout);
-
-    bannerWidget = new BannerWidget(this, tr("Mana Curve"), Qt::Vertical, 100);
-    bannerWidget->setMaximumHeight(100);
-    layout->addWidget(bannerWidget);
-
-    barContainer = new QWidget(this);
-    barLayout = new QHBoxLayout(barContainer);
-    barLayout->setSpacing(6);
-    barLayout->setContentsMargins(4, 4, 4, 4);
-    layout->addWidget(barContainer);
-
-    byCriteriaContainer = new QWidget(this);
-    byCriteriaLayout = new QVBoxLayout(byCriteriaContainer);
-    byCriteriaLayout->setSpacing(6);
-    byCriteriaLayout->setContentsMargins(4, 4, 4, 4);
-    layout->addWidget(byCriteriaContainer);
-
-    auto toggleButton = new QPushButton(tr("Toggle Group (type/color)"), this);
-    connect(toggleButton, &QPushButton::clicked, this, &ManaCurveWidget::updateDisplayType);
-    layout->addWidget(toggleButton);
-
-    if (groupBy.isEmpty())
-        groupBy = "type";
-
-    connect(deckStatAnalyzer, &DeckListStatisticsAnalyzer::statsUpdated, this, &ManaCurveWidget::updateDisplay);
-
-    retranslateUi();
-}
-
-void ManaCurveWidget::retranslateUi()
-{
-    bannerWidget->setText(tr("Mana Curve"));
-}
-
-void ManaCurveWidget::updateDisplayType()
-{
-    if (groupBy == "type") {
-        groupBy = "color";
-    } else {
-        groupBy = "type";
-    }
-    updateDisplay();
-}
+#include <QSettings>
 
 QColor colorHelper(const QString &name)
 {
@@ -115,6 +45,81 @@ QColor colorHelper(const QString &name)
     int b = 100 + ((h >> 16) % 120);
 
     return QColor(r, g, b);
+}
+
+ManaCurveWidget::ManaCurveWidget(QWidget *parent, DeckListStatisticsAnalyzer *analyzer, ManaCurveConfig cfg)
+    : AnalyticsWidgetBase(parent, analyzer), config(std::move(cfg))
+{
+    bannerWidget->setText(widgetTitle());
+
+    // bar container
+    barContainer = new QWidget(this);
+    barLayout = new QHBoxLayout(barContainer);
+    barLayout->setSpacing(6);
+    barLayout->setContentsMargins(4, 4, 4, 4);
+    layout->addWidget(barContainer);
+
+    // per-category
+    byCriteriaContainer = new QWidget(this);
+    byCriteriaLayout = new QVBoxLayout(byCriteriaContainer);
+    byCriteriaLayout->setSpacing(6);
+    byCriteriaLayout->setContentsMargins(4, 4, 4, 4);
+    layout->addWidget(byCriteriaContainer);
+
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    setMinimumHeight(220);
+    connect(analyzer, &DeckListStatisticsAnalyzer::statsUpdated, this, &ManaCurveWidget::updateDisplay);
+    updateDisplay();
+}
+
+QSize ManaCurveWidget::sizeHint() const
+{
+    // Estimate height:
+    //  - main bar row: ~160px
+    //  - each category row: ~60px
+    //  - plus title + config button + margins
+
+    int h = 60; // title + button baseline
+
+    if (config.showMain)
+        h += 160;
+
+    if (config.showCategoryRows) {
+        int rows = config.filters.isEmpty() ? analyzer->getManaCurveByType().size() : config.filters.size();
+        h += rows * 60;
+    }
+
+    return QSize(800, h);
+}
+
+QDialog *ManaCurveWidget::createConfigDialog(QWidget *parent)
+{
+    // reuse existing "add" dialog, but pass current config
+    ManaCurveAddDialog *dlg = new ManaCurveAddDialog(analyzer, parent);
+    dlg->setFromConfig(config);
+    return dlg;
+}
+
+QJsonObject ManaCurveWidget::extractConfigFromDialog(QDialog *dlg) const
+{
+    auto *mc = qobject_cast<ManaCurveAddDialog *>(dlg);
+    if (!mc)
+        return {};
+    return mc->result().toJson();
+}
+
+static void clearLayoutRec(QLayout *l)
+{
+    if (!l)
+        return;
+    QLayoutItem *it;
+    while ((it = l->takeAt(0)) != nullptr) {
+        if (QWidget *w = it->widget())
+            w->deleteLater();
+        if (QLayout *sub = it->layout())
+            clearLayoutRec(sub);
+        delete it;
+    }
 }
 
 static void buildMapsByCategory(const QHash<QString, QHash<int, int>> &qCategoryCounts,
@@ -154,14 +159,43 @@ static void findGlobalCmcRange(const QHash<QString, QHash<int, int>> &qCategoryC
     }
 }
 
-void ManaCurveWidget::createMainCurve()
+void ManaCurveWidget::updateDisplay()
 {
-    QHash<QString, QHash<int, int>> qCategoryCounts =
-        (groupBy == "color") ? deckStatAnalyzer->getManaCurveByColor() : deckStatAnalyzer->getManaCurveByType();
+    clearLayoutRec(barLayout);
+    clearLayoutRec(byCriteriaLayout);
 
-    QHash<QString, QHash<int, QStringList>> qCategoryCards = (groupBy == "color")
-                                                                 ? deckStatAnalyzer->getManaCurveCardsByColor()
-                                                                 : deckStatAnalyzer->getManaCurveCardsByType();
+    // Fetch maps according to config.groupBy
+    QHash<QString, QHash<int, int>> qCategoryCounts;
+    QHash<QString, QHash<int, QStringList>> qCategoryCards;
+
+    if (config.groupBy == "color") {
+        qCategoryCounts = analyzer->getManaCurveByColor();
+        qCategoryCards = analyzer->getManaCurveCardsByColor();
+    } else if (config.groupBy == "subtype") {
+        qCategoryCounts = analyzer->getManaCurveBySubtype();
+        qCategoryCards = analyzer->getManaCurveCardsBySubtype();
+    } else if (config.groupBy == "power") {
+        qCategoryCounts = analyzer->getManaCurveByPower();
+        qCategoryCards = analyzer->getManaCurveCardsByPower();
+    } else {
+        qCategoryCounts = analyzer->getManaCurveByType();
+        qCategoryCards = analyzer->getManaCurveCardsByType();
+    }
+
+    // Optionally apply filters (if config.filters non-empty)
+    if (!config.filters.isEmpty()) {
+        // build filtered qCategoryCounts/cards
+        QHash<QString, QHash<int, int>> filteredCounts;
+        QHash<QString, QHash<int, QStringList>> filteredCards;
+        for (const auto &k : config.filters) {
+            if (qCategoryCounts.contains(k))
+                filteredCounts.insert(k, qCategoryCounts.value(k));
+            if (qCategoryCards.contains(k))
+                filteredCards.insert(k, qCategoryCards.value(k));
+        }
+        qCategoryCounts = filteredCounts;
+        qCategoryCards = filteredCards;
+    }
 
     std::map<int, std::map<QString, int>> cmcMap;
     std::map<QString, std::map<int, QStringList>> cardsMap;
@@ -170,104 +204,69 @@ void ManaCurveWidget::createMainCurve()
     int minCmc, maxCmc;
     findGlobalCmcRange(qCategoryCounts, minCmc, maxCmc);
 
-    int highest = 0;
+    int highest = 1;
     for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
         int sum = 0;
         auto it = cmcMap.find(cmc);
-        if (it != cmcMap.end()) {
-            for (const auto &kv : it->second)
+        if (it != cmcMap.end())
+            for (auto &kv : it->second)
                 sum += kv.second;
-        }
         highest = std::max(highest, sum);
     }
-    if (highest == 0)
-        highest = 1;
 
-    for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
-        QVector<SegmentedBarWidget::Segment> segments;
-        auto it = cmcMap.find(cmc);
-
-        if (it != cmcMap.end()) {
-            for (const auto &kv : it->second) {
-                const QString &category = kv.first;
-                int value = kv.second;
-
-                QStringList cards;
-                auto cit = cardsMap.find(category);
-                if (cit != cardsMap.end()) {
-                    auto it2 = cit->second.find(cmc);
-                    if (it2 != cit->second.end())
-                        cards = it2->second;
-                }
-
-                segments.push_back({category, value, cards, colorHelper(category)});
-            }
-        }
-
-        std::sort(segments.begin(), segments.end(),
-                  [](const auto &a, const auto &b) { return a.category < b.category; });
-
-        auto *widget = new SegmentedBarWidget(QString::number(cmc), segments, highest, this);
-        barLayout->addWidget(widget);
-    }
-}
-
-void ManaCurveWidget::createCategoryCurves()
-{
-    QHash<QString, QHash<int, int>> qCategoryCounts =
-        (groupBy == "color") ? deckStatAnalyzer->getManaCurveByColor() : deckStatAnalyzer->getManaCurveByType();
-
-    QHash<QString, QHash<int, QStringList>> qCategoryCards = (groupBy == "color")
-                                                                 ? deckStatAnalyzer->getManaCurveCardsByColor()
-                                                                 : deckStatAnalyzer->getManaCurveCardsByType();
-
-    QStringList categories = qCategoryCounts.keys();
-    std::sort(categories.begin(), categories.end());
-
-    int minCmc, maxCmc;
-    findGlobalCmcRange(qCategoryCounts, minCmc, maxCmc);
-
-    for (const QString &category : categories) {
-        QWidget *rowWidget = new QWidget(this);
-        QHBoxLayout *hbox = new QHBoxLayout(rowWidget);
-        hbox->setContentsMargins(0, 0, 0, 0);
-        hbox->setSpacing(4);
-
-        QLabel *lbl = new QLabel(category, this);
-        lbl->setFixedWidth(80);
-        hbox->addWidget(lbl);
-
-        const QHash<int, int> cmcCounts = qCategoryCounts.value(category);
-        const QHash<int, QStringList> cmcCards = qCategoryCards.value(category);
-
-        int maxValue = 1;
-        for (auto it = cmcCounts.constBegin(); it != cmcCounts.constEnd(); ++it)
-            maxValue = std::max(maxValue, it.value());
-        if (maxValue == 0)
-            maxValue = 1;
-
+    // main bar row (if requested)
+    if (config.showMain) {
         for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
-            int value = cmcCounts.value(cmc, 0);
-            QStringList cards = cmcCards.value(cmc);
-
-            QVector<SegmentedBarWidget::Segment> seg;
-            seg.push_back({category, value, cards, colorHelper(category)});
-
-            auto *w = new SegmentedBarWidget(QString::number(cmc), seg, maxValue, this);
-            hbox->addWidget(w);
+            QVector<SegmentedBarWidget::Segment> segments;
+            auto it = cmcMap.find(cmc);
+            if (it != cmcMap.end()) {
+                for (auto &kv : it->second) {
+                    QString cat = kv.first;
+                    int val = kv.second;
+                    QStringList cards;
+                    auto cit = cardsMap.find(cat);
+                    if (cit != cardsMap.end()) {
+                        auto it2 = cit->second.find(cmc);
+                        if (it2 != cit->second.end())
+                            cards = it2->second;
+                    }
+                    segments.push_back({cat, val, cards, colorHelper(cat)});
+                }
+            }
+            std::sort(segments.begin(), segments.end(), [](auto &a, auto &b) { return a.category < b.category; });
+            barLayout->addWidget(new SegmentedBarWidget(QString::number(cmc), segments, highest, this));
         }
-
-        byCriteriaLayout->addWidget(rowWidget);
     }
-}
 
-void ManaCurveWidget::updateDisplay()
-{
-    clearLayout(barLayout);
-    clearLayout(byCriteriaLayout);
+    // per-category rows
+    if (config.showCategoryRows) {
+        QStringList categories = qCategoryCounts.keys();
+        std::sort(categories.begin(), categories.end());
+        for (const QString &cat : categories) {
+            QWidget *row = new QWidget(this);
+            QHBoxLayout *h = new QHBoxLayout(row);
+            h->setContentsMargins(0, 0, 0, 0);
+            h->setSpacing(4);
+            QLabel *lbl = new QLabel(cat, this);
+            lbl->setFixedWidth(80);
+            h->addWidget(lbl);
 
-    createMainCurve();
-    createCategoryCurves();
+            const QHash<int, int> cmcCounts = qCategoryCounts.value(cat);
+            const QHash<int, QStringList> cmcCards = qCategoryCards.value(cat);
 
-    update();
+            int maxVal = 1;
+            for (auto it = cmcCounts.constBegin(); it != cmcCounts.constEnd(); ++it)
+                maxVal = std::max(maxVal, it.value());
+
+            for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
+                int v = cmcCounts.value(cmc, 0);
+                QStringList cards = cmcCards.value(cmc);
+                QVector<SegmentedBarWidget::Segment> seg;
+                if (v > 0)
+                    seg.push_back({cat, v, cards, colorHelper(cat)});
+                h->addWidget(new SegmentedBarWidget(QString::number(cmc), seg, maxVal, this));
+            }
+            byCriteriaLayout->addWidget(row);
+        }
+    }
 }

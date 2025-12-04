@@ -282,8 +282,24 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/visual_deck_storage/tab_deck_storage_visual.cpp
     src/interface/key_signals.cpp
     src/interface/logger.cpp
-        src/interface/widgets/deck_analytics/segmented_bar_widget.cpp
-        src/interface/widgets/deck_analytics/segmented_bar_widget.h
+    src/interface/widgets/deck_analytics/segmented_bar_widget.cpp
+    src/interface/widgets/deck_analytics/segmented_bar_widget.h
+    src/interface/widgets/deck_analytics/deck_analytics_widget_base.cpp
+    src/interface/widgets/deck_analytics/deck_analytics_widget_base.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_curve/mana_curve_config.cpp
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_curve/mana_curve_config.h
+    src/interface/widgets/deck_analytics/deck_analytics_widget_factory.cpp
+    src/interface/widgets/deck_analytics/deck_analytics_widget_factory.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_curve/mana_curve_add_dialog.cpp
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_curve/mana_curve_add_dialog.h
+    src/interface/widgets/deck_analytics/add_analytics_panel_dialog.cpp
+    src/interface/widgets/deck_analytics/add_analytics_panel_dialog.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_base/mana_base_config.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_devotion/mana_devotion_config.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_base/mana_base_add_dialog.cpp
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_base/mana_base_add_dialog.h
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_devotion/mana_devotion_add_dialog.cpp
+    src/interface/widgets/deck_analytics/analyzer_modules/mana_devotion/mana_devotion_add_dialog.h
 )
 
 add_subdirectory(sounds)

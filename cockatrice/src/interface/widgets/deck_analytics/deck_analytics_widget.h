@@ -7,38 +7,37 @@
 #ifndef DECK_ANALYTICS_WIDGET_H
 #define DECK_ANALYTICS_WIDGET_H
 
-#include "mana_base_widget.h"
-#include "mana_curve_widget.h"
-#include "mana_devotion_widget.h"
+#include "deck_analytics_widget_base.h"
 
-#include <QHBoxLayout>
-#include <QScrollArea>
+#include <QListWidget>
 #include <QWidget>
-#include <libcockatrice/models/deck_list/deck_list_model.h>
+
+class DeckListModel;
+class DeckListStatisticsAnalyzer;
 
 class DeckAnalyticsWidget : public QWidget
 {
     Q_OBJECT
 
+public slots:
+    void updateDisplays();
+
 public:
-    explicit DeckAnalyticsWidget(QWidget *parent, DeckListModel *deckListModel);
-    void setDeckList(const DeckList &_deckListModel);
-    std::map<int, int> analyzeManaCurve();
-    void refreshDisplays();
+    DeckAnalyticsWidget(QWidget *parent, DeckListModel *model);
+
+private slots:
+    void onAddPanel();
+    void onRemoveSelected();
+    void saveLayout();
+    void loadLayout();
+    void addDefaultPanels();
+    bool loadLayoutInternal();
 
 private:
-    DeckListModel *deckListModel;
-    DeckListStatisticsAnalyzer *deckListStatisticsAnalyzer;
-    QVBoxLayout *mainLayout;
+    QListWidget *listWidget = nullptr; // holds panels as QListWidgetItems with widgets
+    DeckListStatisticsAnalyzer *statsAnalyzer = nullptr;
 
-    QWidget *container;
-    QVBoxLayout *containerLayout;
-
-    QScrollArea *scrollArea;
-
-    ManaCurveWidget *manaCurveWidget;
-    ManaDevotionWidget *manaDevotionWidget;
-    ManaBaseWidget *manaBaseWidget;
+    void addPanelInstance(AnalyticsWidgetBase *panel, const QJsonObject &cfg = {});
 };
 
 #endif // DECK_ANALYTICS_WIDGET_H

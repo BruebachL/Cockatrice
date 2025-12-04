@@ -12,10 +12,10 @@ DeckListStatisticsAnalyzer::DeckListStatisticsAnalyzer(QObject *parent,
                                                        DeckListStatisticsAnalyzerConfig cfg)
     : QObject(parent), model(_model), config(cfg)
 {
-    connect(model, &DeckListModel::dataChanged, this, &DeckListStatisticsAnalyzer::update);
+    connect(model, &DeckListModel::dataChanged, this, &DeckListStatisticsAnalyzer::analyze);
 }
 
-void DeckListStatisticsAnalyzer::update()
+void DeckListStatisticsAnalyzer::analyze()
 {
     // Clear old data
     manaBaseMap.clear();
@@ -135,7 +135,6 @@ void DeckListStatisticsAnalyzer::update()
     emit statsUpdated();
 }
 
-
 QHash<QString, int> DeckListStatisticsAnalyzer::determineManaProduction(const QString &rulesText)
 {
     QHash<QString, int> manaCounts = {{"W", 0}, {"U", 0}, {"B", 0}, {"R", 0}, {"G", 0}, {"C", 0}};
@@ -223,4 +222,3 @@ double DeckListStatisticsAnalyzer::hypergeometric(int N, int K, int n, int k)
 
     return choose(K, k) * choose(N - K, n - k) / choose(N, n);
 }
-
