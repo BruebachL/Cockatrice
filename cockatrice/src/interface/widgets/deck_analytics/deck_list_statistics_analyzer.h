@@ -110,6 +110,15 @@ public:
         return manaCurveByToughness;
     }
 
+    const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsByType() const
+    {
+        return manaCurveCardsByType;
+    }
+    const QHash<QString, QHash<int, QStringList>> &getManaCurveCardsByColor() const
+    {
+        return manaCurveCardsByColor;
+    }
+
 signals:
     void statsUpdated();
 
@@ -142,6 +151,12 @@ private:
     QHash<QString, QHash<int, int>> manaCurveByColor;
     QHash<QString, QHash<int, int>> manaCurveByPower;
     QHash<QString, QHash<int, int>> manaCurveByToughness;
+
+    QHash<QString, QHash<int, QStringList>> manaCurveCardsByType;
+    QHash<QString, QHash<int, QStringList>> manaCurveCardsBySubtype;
+    QHash<QString, QHash<int, QStringList>> manaCurveCardsByColor;
+    QHash<QString, QHash<int, QStringList>> manaCurveCardsByPower;
+    QHash<QString, QHash<int, QStringList>> manaCurveCardsByToughness;
 
     // ======== NEW: Probability (optional on-demand) =========
     // Not storing card info — only numeric results.

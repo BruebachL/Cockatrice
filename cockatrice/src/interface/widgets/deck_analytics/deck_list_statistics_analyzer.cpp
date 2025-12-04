@@ -34,6 +34,12 @@ void DeckListStatisticsAnalyzer::update()
     manaCurveByPower.clear();
     manaCurveByToughness.clear();
 
+    manaCurveCardsByType.clear();
+    manaCurveCardsBySubtype.clear();
+    manaCurveCardsByColor.clear();
+    manaCurveCardsByPower.clear();
+    manaCurveCardsByToughness.clear();
+
     typeCount.clear();
     subtypeCount.clear();
     colorCount.clear();
@@ -64,29 +70,40 @@ void DeckListStatisticsAnalyzer::update()
             if (config.computeManaCurve)
                 manaCurveMap[cmc]++;
 
-            // Per-type curve
-            for (auto &t : types)
+            // per-type curve
+            for (auto &t : types) {
                 manaCurveByType[t][cmc]++;
+                manaCurveCardsByType[t][cmc].append(info->getName());
+            }
 
             // Per-subtype curve
-            for (auto &st : subtypes)
+            for (auto &st : subtypes) {
                 manaCurveBySubtype[st][cmc]++;
+                manaCurveCardsBySubtype[st][cmc].append(info->getName());
+            }
 
-            // Per-color curve
-            for (auto &c : colors)
+            // per-color curve
+            for (auto &c : colors) {
                 manaCurveByColor[c][cmc]++;
+                manaCurveCardsByColor[c][cmc].append(info->getName());
+            }
 
             // Power/toughness
             manaCurveByPower[QString::number(power)][cmc]++;
+            manaCurveCardsByPower[QString::number(power)][cmc].append(info->getName());
             manaCurveByToughness[QString::number(toughness)][cmc]++;
+            manaCurveCardsByToughness[QString::number(toughness)][cmc].append(info->getName());
 
             // ========== Category Counts ===========
-            for (auto &t : types)
+            for (auto &t : types) {
                 typeCount[t]++;
-            for (auto &st : subtypes)
+            }
+            for (auto &st : subtypes) {
                 subtypeCount[st]++;
-            for (auto &c : colors)
+            }
+            for (auto &c : colors) {
                 colorCount[c]++;
+            }
             manaValueCount[cmc]++;
 
             // ---------------- Mana Base ----------------

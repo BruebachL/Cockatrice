@@ -25,6 +25,10 @@ public:
 
 public slots:
     void retranslateUi();
+    void updateDisplayType();
+    // QHash<int, int> mergeCounts(QHash<QString, QHash<int, int>> original);
+    void createMainCurve();
+    void createCategoryCurves();
 
 private:
     DeckListStatisticsAnalyzer *deckStatAnalyzer;
@@ -32,6 +36,8 @@ private:
     BannerWidget *bannerWidget;
     QWidget *barContainer;
     QHBoxLayout *barLayout;
+    QWidget *byCriteriaContainer;
+    QVBoxLayout *byCriteriaLayout;
     QString groupBy = "type";
 };
 
