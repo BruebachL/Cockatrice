@@ -8,9 +8,9 @@ SegmentedBarWidget::SegmentedBarWidget(QString label, QVector<Segment> segments,
     : QWidget(parent), label(std::move(label)), segments(std::move(segments)), total(total)
 {
     setMouseTracking(true);
-    setMinimumWidth(30);
-    setMinimumHeight(120);
-    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    setMinimumWidth(36);
+    setMaximumWidth(50);
+    setMinimumHeight(140);
 }
 
 void SegmentedBarWidget::paintEvent(QPaintEvent *)
@@ -22,49 +22,65 @@ void SegmentedBarWidget::paintEvent(QPaintEvent *)
     int h = height();
 
     int padding = 4;
+    int labelHeight = 20;
 
     int barX = padding;
     int barWidth = w - padding * 2;
     int barTop = padding;
-    int barHeight = h - padding * 2 - 20; // leave 20px for label
+    int barHeight = h - padding * 2 - labelHeight;
 
-    // background of bar: use widget palette (window background)
-    p.setPen(Qt::NoPen);
-    p.setBrush(palette().color(QPalette::Window));
-    p.drawRect(barX, barTop, barWidth, barHeight);
-
-    // stacked segments (bottom to top)
+    // stacked segments bottom → top
     int yCurrent = barTop + barHeight;
 
-    for (const auto &seg : segments) {
+    for (int i = 0; i < segments.size(); i++) {
+        const auto &seg = segments[i];
         int segHeight = total > 0 ? (seg.value * barHeight / total) : 0;
         if (segHeight < 2)
             segHeight = 2;
 
         QRect r(barX, yCurrent - segHeight, barWidth, segHeight);
 
-        p.setBrush(seg.color);
-        p.drawRect(r);
+        // Topmost gets rounded corners
+        bool isTop = (i == segments.size() - 1);
+
+        // gradient fill
+        QLinearGradient g(r.topLeft(), r.bottomLeft());
+        g.setColorAt(0, seg.color.lighter(120));
+        g.setColorAt(1, seg.color.darker(110));
+        p.setBrush(g);
+        p.setPen(Qt::NoPen);
+
+        if (isTop) {
+            p.drawRoundedRect(r, 6, 6);
+        } else {
+            // square for interior segments
+            p.drawRect(r);
+        }
 
         yCurrent -= segHeight;
     }
 
     // label under bar
-    QRect labelRect(0, h - 20, w, 20);
-    p.setPen(palette().color(QPalette::WindowText));
+    QRect labelRect(0, h - labelHeight, w, labelHeight);
+    QFont f = p.font();
+    f.setBold(true);
+    p.setFont(f);
+    p.setPen(Qt::black);
     p.drawText(labelRect, Qt::AlignCenter, label);
 }
 
 int SegmentedBarWidget::segmentAt(int y) const
 {
-    int h = height() - 30;
-    int yTop = 10;
-    int yBottom = yTop + h;
+    int padding = 4;
+    int labelHeight = 20;
+    int barHeight = height() - padding * 2 - labelHeight;
+    int barTop = padding;
+    int barBottom = barTop + barHeight;
 
-    int currentTop = yBottom;
+    int currentTop = barBottom;
 
     for (int i = 0; i < segments.size(); i++) {
-        int segHeight = (total > 0) ? (segments[i].value * h / total) : 0;
+        int segHeight = total > 0 ? (segments[i].value * barHeight / total) : 0;
         if (segHeight < 1)
             segHeight = 1;
 
@@ -76,7 +92,6 @@ int SegmentedBarWidget::segmentAt(int y) const
 
         currentTop -= segHeight;
     }
-
     return -1;
 }
 
@@ -92,7 +107,7 @@ void SegmentedBarWidget::mouseMoveEvent(QMouseEvent *e)
     const Segment &s = segments[idx];
     QString text = QString("%1: %2 cards\n%3").arg(s.category).arg(s.value).arg(s.cards.join(", "));
 
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     QToolTip::showText(e->globalPosition().toPoint(), text, this);
 #else
     QToolTip::showText(e->globalPos(), text, this);

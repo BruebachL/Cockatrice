@@ -1,6 +1,7 @@
 #include "mana_curve_widget.h"
 
 #include "analyzer_modules/mana_curve/mana_curve_add_dialog.h"
+#include "bar_chart_background_widget.h"
 #include "deck_list_statistics_analyzer.h"
 #include "segmented_bar_widget.h"
 
@@ -182,26 +183,12 @@ void ManaCurveWidget::updateDisplay()
         qCategoryCards = analyzer->getManaCurveCardsByType();
     }
 
-    // Optionally apply filters (if config.filters non-empty)
-    if (!config.filters.isEmpty()) {
-        // build filtered qCategoryCounts/cards
-        QHash<QString, QHash<int, int>> filteredCounts;
-        QHash<QString, QHash<int, QStringList>> filteredCards;
-        for (const auto &k : config.filters) {
-            if (qCategoryCounts.contains(k))
-                filteredCounts.insert(k, qCategoryCounts.value(k));
-            if (qCategoryCards.contains(k))
-                filteredCards.insert(k, qCategoryCards.value(k));
-        }
-        qCategoryCounts = filteredCounts;
-        qCategoryCards = filteredCards;
-    }
-
+    // Build maps
     std::map<int, std::map<QString, int>> cmcMap;
     std::map<QString, std::map<int, QStringList>> cardsMap;
     buildMapsByCategory(qCategoryCounts, qCategoryCards, cmcMap, cardsMap);
 
-    int minCmc, maxCmc;
+    int minCmc = 0, maxCmc = 0;
     findGlobalCmcRange(qCategoryCounts, minCmc, maxCmc);
 
     int highest = 1;
@@ -214,8 +201,19 @@ void ManaCurveWidget::updateDisplay()
         highest = std::max(highest, sum);
     }
 
-    // main bar row (if requested)
+    // ================================
+    //   MAIN CHART WITH BACKGROUND
+    // ================================
     if (config.showMain) {
+
+        auto *bg = new BarChartBackgroundWidget(this);
+        bg->highest = highest;
+        bg->barCount = maxCmc - minCmc + 1;
+
+        auto *inner = new QHBoxLayout(bg);
+        inner->setContentsMargins(46, 6, 6, 26); // leaves space for axes
+        inner->setSpacing(6);
+
         for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
             QVector<SegmentedBarWidget::Segment> segments;
             auto it = cmcMap.find(cmc);
@@ -223,6 +221,7 @@ void ManaCurveWidget::updateDisplay()
                 for (auto &kv : it->second) {
                     QString cat = kv.first;
                     int val = kv.second;
+
                     QStringList cards;
                     auto cit = cardsMap.find(cat);
                     if (cit != cardsMap.end()) {
@@ -230,42 +229,54 @@ void ManaCurveWidget::updateDisplay()
                         if (it2 != cit->second.end())
                             cards = it2->second;
                     }
+
                     segments.push_back({cat, val, cards, colorHelper(cat)});
                 }
             }
+
             std::sort(segments.begin(), segments.end(), [](auto &a, auto &b) { return a.category < b.category; });
-            barLayout->addWidget(new SegmentedBarWidget(QString::number(cmc), segments, highest, this));
+
+            inner->addWidget(new SegmentedBarWidget(QString::number(cmc), segments, highest, this));
         }
+
+        barLayout->addWidget(bg);
     }
 
-    // per-category rows
+    // ================================
+    //   PER-CATEGORY ROWS (unchanged)
+    // ================================
     if (config.showCategoryRows) {
         QStringList categories = qCategoryCounts.keys();
         std::sort(categories.begin(), categories.end());
+
         for (const QString &cat : categories) {
             QWidget *row = new QWidget(this);
             QHBoxLayout *h = new QHBoxLayout(row);
             h->setContentsMargins(0, 0, 0, 0);
             h->setSpacing(4);
+
             QLabel *lbl = new QLabel(cat, this);
             lbl->setFixedWidth(80);
             h->addWidget(lbl);
 
-            const QHash<int, int> cmcCounts = qCategoryCounts.value(cat);
-            const QHash<int, QStringList> cmcCards = qCategoryCards.value(cat);
+            const auto cmcCounts = qCategoryCounts.value(cat);
+            const auto cmcCards = qCategoryCards.value(cat);
 
             int maxVal = 1;
-            for (auto it = cmcCounts.constBegin(); it != cmcCounts.constEnd(); ++it)
+            for (auto it = cmcCounts.begin(); it != cmcCounts.end(); ++it)
                 maxVal = std::max(maxVal, it.value());
 
             for (int cmc = minCmc; cmc <= maxCmc; ++cmc) {
                 int v = cmcCounts.value(cmc, 0);
                 QStringList cards = cmcCards.value(cmc);
+
                 QVector<SegmentedBarWidget::Segment> seg;
                 if (v > 0)
                     seg.push_back({cat, v, cards, colorHelper(cat)});
+
                 h->addWidget(new SegmentedBarWidget(QString::number(cmc), seg, maxVal, this));
             }
+
             byCriteriaLayout->addWidget(row);
         }
     }

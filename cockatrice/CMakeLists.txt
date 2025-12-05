@@ -282,6 +282,7 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/visual_deck_storage/tab_deck_storage_visual.cpp
     src/interface/key_signals.cpp
     src/interface/logger.cpp
+    src/interface/widgets/deck_analytics/bar_chart_background_widget.cpp
     src/interface/widgets/deck_analytics/segmented_bar_widget.cpp
     src/interface/widgets/deck_analytics/segmented_bar_widget.h
     src/interface/widgets/deck_analytics/deck_analytics_widget_base.cpp
