@@ -143,6 +143,11 @@ public:
      */
     void createCentralFrame();
 
+    TabDeckEditorVisualTabWidget *getTabContainer()
+    {
+        return tabContainer;
+    };
+
 public slots:
     /**
      * @brief Refresh UI when the deck changes.

@@ -102,7 +102,31 @@ void VisualDeckDisplayOptionsWidget::onSortCriteriaChange()
         selectedCriteria.append(item->text()); // Collect user-defined sort order
     }
 
+    qInfo() << selectedCriteria;
+
     emit sortCriteriaChanged(selectedCriteria);
+}
+
+void VisualDeckDisplayOptionsWidget::pushSortHeaderToFront(const QString &header)
+{
+    // Find the item with matching text
+    for (int i = 0; i < sortByListWidget->count(); ++i) {
+        QListWidgetItem *item = sortByListWidget->item(i);
+        if (item->text() == header) {
+
+            // Take the item out of the list
+            QListWidgetItem *taken = sortByListWidget->takeItem(i);
+
+            // Insert at the front
+            sortByListWidget->insertItem(0, taken);
+
+            qInfo() << "Updated" << header;
+
+            // Re-emit updated sort criteria
+            onSortCriteriaChange();
+            return;
+        }
+    }
 }
 
 void VisualDeckDisplayOptionsWidget::updateDisplayType()

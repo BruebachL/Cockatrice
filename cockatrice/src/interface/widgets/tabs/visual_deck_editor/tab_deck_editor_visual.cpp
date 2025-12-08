@@ -6,6 +6,7 @@
 #include "../../interface/pixel_map_generator.h"
 #include "../../interface/widgets/cards/card_info_frame_widget.h"
 #include "../../interface/widgets/deck_analytics/deck_analytics_widget.h"
+#include "../../interface/widgets/visual_deck_editor/visual_deck_display_options_widget.h"
 #include "../../interface/widgets/visual_deck_editor/visual_deck_editor_widget.h"
 #include "../tab_deck_editor.h"
 #include "../tab_supervisor.h"
@@ -74,6 +75,26 @@ void TabDeckEditorVisual::createCentralFrame()
             &TabDeckEditorVisual::processMainboardCardClick);
     connect(tabContainer, &TabDeckEditorVisualTabWidget::cardClickedDatabaseDisplay, this,
             &TabDeckEditorVisual::processCardClickDatabaseDisplay);
+
+    deckDockWidget->deckView->setSortingEnabled(false);
+    deckDockWidget->deckView->header()->setSectionsClickable(true);
+    deckDockWidget->deckView->header()->setHighlightSections(true);
+    connect(deckDockWidget->deckView->header(), &QHeaderView::sectionClicked, this, [this](int logicalIndex) {
+        QString headerText;
+
+        // Most common: pull header label via model headerData
+        if (deckDockWidget->deckView->model()) {
+            headerText =
+                deckDockWidget->deckView->model()->headerData(logicalIndex, Qt::Horizontal, Qt::DisplayRole).toString();
+        }
+
+        if (headerText == "Card") {
+            headerText = "name";
+        }
+
+        // Now pass the string to your function
+        tabContainer->visualDeckView->displayOptionsWidget->pushSortHeaderToFront(headerText);
+    });
 
     centralFrame->addWidget(tabContainer);
     setCentralWidget(centralWidget);

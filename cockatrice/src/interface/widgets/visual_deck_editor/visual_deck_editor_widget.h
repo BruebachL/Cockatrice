@@ -52,6 +52,7 @@ public:
     }
 
     QLineEdit *searchBar;
+    VisualDeckDisplayOptionsWidget *displayOptionsWidget;
     CardSizeWidget *cardSizeWidget;
 
 public slots:
@@ -93,7 +94,6 @@ private:
     QCompleter *completer;
     QWidget *displayOptionsAndSearch;
     QHBoxLayout *displayOptionsAndSearchLayout;
-    VisualDeckDisplayOptionsWidget *displayOptionsWidget;
     QPushButton *searchPushButton;
     QScrollArea *scrollArea;
     QWidget *zoneContainer;

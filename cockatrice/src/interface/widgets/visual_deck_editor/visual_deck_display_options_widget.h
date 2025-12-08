@@ -53,6 +53,7 @@ public slots:
      * Called when the application language changes.
      */
     void retranslateUi();
+    void pushSortHeaderToFront(const QString &header);
 
 public:
     /**
