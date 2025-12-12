@@ -25,6 +25,8 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+#include "widgets/utility/layout_inspector.h"
+
 #include <QList>
 #include <QMainWindow>
 #include <QMessageBox>
@@ -138,6 +140,8 @@ private:
     void exitCardDatabaseUpdate();
 
     void startLocalGame(int numberPlayers);
+
+    LayoutInspector *layoutInspector;
 
     QList<QMenu *> tabMenus;
     QMenu *cockatriceMenu, *dbMenu, *tabsMenu, *helpMenu, *trayIconMenu;

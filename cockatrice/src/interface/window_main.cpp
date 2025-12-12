@@ -908,6 +908,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // run startup check async
     QTimer::singleShot(0, this, &MainWindow::startupConfigCheck);
+
+    layoutInspector = new LayoutInspector(this, nullptr);
+    layoutInspector->show();
 }
 
 void MainWindow::startupConfigCheck()
