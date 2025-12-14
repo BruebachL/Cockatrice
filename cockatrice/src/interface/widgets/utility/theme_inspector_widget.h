@@ -3,11 +3,21 @@
 
 #include <QFileSystemWatcher>
 #include <QListWidget>
+#include <QMetaObject>
 #include <QPlainTextEdit>
+#include <QPointer>
+#include <QSet>
 #include <QSplitter>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QWidget>
+
+struct SelectorGroups
+{
+    QStringList types;
+    QStringList objects;
+    QStringList pseudos;
+};
 
 class ThemeInspectorWidget : public QWidget
 {
@@ -24,9 +34,17 @@ private slots:
     void showRuleBody();
     void showRuleBodyFromAllRules();
     void applyRuleEdit();
+    void addRuleForWidget(QWidget *w, const QString &selector, const QString &body);
+    void addRuleForAll(const QString &selector, const QString &body);
+    void deleteSelectedRule();
     void rebuildAllRulesTree();
+    void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
     bool matchesAnyWidget(QWidget *w, const QString &selector) const;
     void highlightMatchingWidget(const QString &sel);
+    void collectMatchingItems(QTreeWidgetItem *item,
+                              const QString &sel,
+                              bool simpleType,
+                              QList<QTreeWidgetItem *> &out) const;
     bool highlightWidgetRecursive(QTreeWidgetItem *item, const QString &sel);
 
 private:
@@ -40,7 +58,9 @@ private:
     // UI
     QTreeWidget *widgetTree = nullptr;
     QPlainTextEdit *widgetInfo = nullptr;
-    QListWidget *selectorList = nullptr;
+    QListWidget *typesList = nullptr;
+    QListWidget *objectsList = nullptr;
+    QListWidget *pseudosList = nullptr;
     QTreeWidget *ruleTree = nullptr;
     QTreeWidget *allRulesTree = nullptr;
     QPlainTextEdit *ruleEditor = nullptr;
@@ -50,16 +70,28 @@ private:
     QString stylesheetText;
     QVector<Rule> rules;
 
+    QStringList globalTypesList;
+
+    // Cache of all widgets for fast lookup
+    QList<QWidget *> cachedWidgets;
+    QHash<QWidget *, QTreeWidgetItem *> widgetToItemMap;
+
     // Helpers
     QWidget *createToolbar();
+    void updateGlobalTypes();
+    void collectWidgetTypesRecursive(QWidget *w, QSet<QString> &types);
     void parseStylesheet();
     void updateRuleMatches(QWidget *w);
     void addChildrenToItem(QWidget *w, QTreeWidgetItem *parent);
 
     bool selectorMatches(QWidget *w, const QString &sel) const;
+    bool selectorAppliesToWidgetIgnoringPseudo(QWidget *w, const QString &sel) const;
 
     QString widgetSummary(QWidget *w) const;
-    QStringList possibleSelectors(QWidget *w) const;
+    SelectorGroups possibleSelectorsGrouped(QWidget *w) const;
+
+    QStringList collectObjectsWithNames() const;
+    void collectObjectsWithNamesRecursive(QWidget *w, QSet<QString> &out) const;
 };
 
 #endif // COCKATRICE_THEME_INSPECTOR_WIDGET_H
