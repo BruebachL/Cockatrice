@@ -1,15 +1,16 @@
 #include "theme_inspector_widget.h"
 
 #include <QApplication>
+#include <QDebug>
 #include <QFile>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QMainWindow>
 #include <QMetaObject>
+#include <QPointer>
 #include <QRegularExpression>
-#include <QVBoxLayout>
 #include <QTabWidget>
-#include <QHeaderView>
-#include <QDebug>
+#include <QVBoxLayout>
 
 ThemeInspectorWidget::ThemeInspectorWidget(const QString &liveCssPath, QWidget *parent) : QWidget(parent)
 {
@@ -165,6 +166,9 @@ void ThemeInspectorWidget::parseStylesheet()
 
 void ThemeInspectorWidget::rebuildTree()
 {
+    if (!widgetTree)
+        return;
+    widgetTree->blockSignals(true);
     widgetTree->clear();
 
     for (QWidget *top : QApplication::topLevelWidgets()) {
@@ -176,10 +180,12 @@ void ThemeInspectorWidget::rebuildTree()
 
         auto *root = new QTreeWidgetItem(
             widgetTree, {mw->objectName().isEmpty() ? mw->metaObject()->className() : mw->objectName()});
-        root->setData(0, Qt::UserRole, QVariant::fromValue((QObject *)mw));
+        root->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(mw)));
         addChildrenToItem(mw, root);
     }
     widgetTree->expandToDepth(1);
+
+    widgetTree->blockSignals(false);
 
     // update allRulesTree "Has Widget?" after rebuilding the object tree
     rebuildAllRulesTree();
@@ -192,12 +198,11 @@ void ThemeInspectorWidget::addChildrenToItem(QWidget *w, QTreeWidgetItem *parent
         if (!cw)
             continue; // skip non-widgets
 
-        auto *it = new QTreeWidgetItem(
-            parent, {cw->objectName().isEmpty() ? cw->metaObject()->className() : cw->objectName()});
-        it->setData(0, Qt::UserRole, QVariant::fromValue((QObject *)cw));
+        auto *it = new QTreeWidgetItem(parent,
+                                       {cw->objectName().isEmpty() ? cw->metaObject()->className() : cw->objectName()});
+        it->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(cw)));
         addChildrenToItem(cw, it);
     }
-
 }
 
 // ===========================================================
@@ -215,7 +220,7 @@ void ThemeInspectorWidget::updateForSelection()
     if (items.isEmpty())
         return;
 
-    auto *w = qobject_cast<QWidget *>(items.first()->data(0, Qt::UserRole).value<QObject *>());
+    auto *w = qobject_cast<QWidget *>(items.first()->data(0, Qt::UserRole).value<QPointer<QObject>>().data());
     if (!w)
         return;
 
@@ -364,7 +369,8 @@ void ThemeInspectorWidget::rebuildAllRulesTree()
 
 bool ThemeInspectorWidget::matchesAnyWidget(QWidget *w, const QString &selector) const
 {
-    if (!w) return false;
+    if (!w)
+        return false;
 
     if (selectorMatches(w, selector))
         return true;
@@ -380,34 +386,40 @@ bool ThemeInspectorWidget::matchesAnyWidget(QWidget *w, const QString &selector)
     return false;
 }
 
-
 void ThemeInspectorWidget::highlightMatchingWidget(const QString &sel)
 {
+    if (!widgetTree)
+        return;
+
+    widgetTree->blockSignals(true);
     for (int i = 0; i < widgetTree->topLevelItemCount(); ++i)
         highlightWidgetRecursive(widgetTree->topLevelItem(i), sel);
+    widgetTree->blockSignals(false);
 }
 
 bool ThemeInspectorWidget::highlightWidgetRecursive(QTreeWidgetItem *item, const QString &sel)
 {
+    if (!item)
+        return false;
+
     QVariant var = item->data(0, Qt::UserRole);
     QWidget *w = nullptr;
 
-    if (var.isValid()) {
-        QObject *obj = var.value<QObject*>();
-        if (obj && obj->isWidgetType())
-            w = static_cast<QWidget*>(obj); // safe because isWidgetType
+    if (var.isValid() && var.canConvert<QPointer<QObject>>()) {
+        QPointer<QObject> ptr = var.value<QPointer<QObject>>();
+        w = ptr ? qobject_cast<QWidget *>(ptr.data()) : nullptr;
     }
 
-    bool matches = w && selectorMatches(w, sel);
+    bool matches = w ? selectorMatches(w, sel) : false;
 
     for (int i = 0; i < item->childCount(); ++i)
         matches |= highlightWidgetRecursive(item->child(i), sel);
 
-    item->setSelected(matches && w != nullptr);
+    if (w)
+        item->setSelected(matches);
+
     return matches;
 }
-
-
 
 // ===========================================================
 // Widget info
