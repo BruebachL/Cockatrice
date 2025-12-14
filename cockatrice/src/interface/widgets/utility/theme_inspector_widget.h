@@ -39,13 +39,11 @@ private slots:
     void deleteSelectedRule();
     void rebuildAllRulesTree();
     void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
-    bool matchesAnyWidget(QWidget *w, const QString &selector) const;
     void highlightMatchingWidget(const QString &sel);
     void collectMatchingItems(QTreeWidgetItem *item,
                               const QString &sel,
                               bool simpleType,
                               QList<QTreeWidgetItem *> &out) const;
-    bool highlightWidgetRecursive(QTreeWidgetItem *item, const QString &sel);
 
 private:
     struct Rule
@@ -78,6 +76,10 @@ private:
 
     // Helpers
     QWidget *createToolbar();
+    void expandAllItems();
+    void collapseAllItems();
+    void expandItemRecursive(QTreeWidgetItem *item);
+    void collapseItemRecursive(QTreeWidgetItem *item);
     void updateGlobalTypes();
     void collectWidgetTypesRecursive(QWidget *w, QSet<QString> &types);
     void parseStylesheet();

@@ -16,6 +16,7 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QTabWidget>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 // ===========================================================
@@ -138,6 +139,18 @@ QWidget *ThemeInspectorWidget::createToolbar()
     connect(refresh, &QToolButton::clicked, this, &ThemeInspectorWidget::rebuildTree);
     l->addWidget(refresh);
 
+    // ---- Expand all ----
+    auto *expandBtn = new QToolButton;
+    expandBtn->setText("⯆");
+    connect(expandBtn, &QToolButton::clicked, this, &ThemeInspectorWidget::expandAllItems);
+    l->addWidget(expandBtn);
+
+    // ---- Collapse all ----
+    auto *collapseBtn = new QToolButton;
+    collapseBtn->setText("⯈");
+    connect(collapseBtn, &QToolButton::clicked, this, &ThemeInspectorWidget::collapseAllItems);
+    l->addWidget(collapseBtn);
+
     // ---- Add Widget-specific Rule ----
     auto *addRuleForWidgetBtn = new QToolButton;
     addRuleForWidgetBtn->setText("+");
@@ -191,6 +204,39 @@ QWidget *ThemeInspectorWidget::createToolbar()
 
     l->addStretch();
     return bar;
+}
+
+// ===========================================================
+// Expand / Collapse helpers
+// ===========================================================
+void ThemeInspectorWidget::expandAllItems()
+{
+    for (int i = 0; i < widgetTree->topLevelItemCount(); ++i)
+        expandItemRecursive(widgetTree->topLevelItem(i));
+}
+
+void ThemeInspectorWidget::collapseAllItems()
+{
+    for (int i = 0; i < widgetTree->topLevelItemCount(); ++i)
+        collapseItemRecursive(widgetTree->topLevelItem(i));
+}
+
+void ThemeInspectorWidget::expandItemRecursive(QTreeWidgetItem *item)
+{
+    if (!item)
+        return;
+    widgetTree->expandItem(item);
+    for (int i = 0; i < item->childCount(); ++i)
+        expandItemRecursive(item->child(i));
+}
+
+void ThemeInspectorWidget::collapseItemRecursive(QTreeWidgetItem *item)
+{
+    if (!item)
+        return;
+    widgetTree->collapseItem(item);
+    for (int i = 0; i < item->childCount(); ++i)
+        collapseItemRecursive(item->child(i));
 }
 
 // ===========================================================
@@ -546,7 +592,6 @@ void ThemeInspectorWidget::rebuildAllRulesTree()
 {
     allRulesTree->clear();
 
-    // Step 1: flatten all widgets once
     QList<QWidget *> allWidgets;
     for (QWidget *top : QApplication::topLevelWidgets())
         collectAllWidgetsRecursive(top, allWidgets);
@@ -562,7 +607,6 @@ void ThemeInspectorWidget::rebuildAllRulesTree()
         bool hasWidget = false;
         QString objName;
 
-        // Step 2: check selector against the flat list
         for (QWidget *w : allWidgets) {
             if (selectorMatches(w, r.selector)) {
                 hasWidget = true;
@@ -578,7 +622,6 @@ void ThemeInspectorWidget::rebuildAllRulesTree()
     allRulesTree->expandToDepth(1);
 }
 
-// Helper: flatten all widgets once
 void ThemeInspectorWidget::collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const
 {
     if (!w)
@@ -590,30 +633,14 @@ void ThemeInspectorWidget::collectAllWidgetsRecursive(QWidget *w, QList<QWidget 
     }
 }
 
-bool ThemeInspectorWidget::matchesAnyWidget(QWidget *w, const QString &selector) const
-{
-    if (!w)
-        return false;
-
-    if (selectorMatches(w, selector))
-        return true;
-
-    for (QObject *c : w->children()) {
-        if (!c->isWidgetType())
-            continue;
-        if (auto *cw = qobject_cast<QWidget *>(c)) {
-            if (matchesAnyWidget(cw, selector))
-                return true;
-        }
-    }
-    return false;
-}
-
 // ===========================================================
-// Highlight matching widgets (optimized)
+// Highlight matching widgets (skip pure QWidget)
 // ===========================================================
 void ThemeInspectorWidget::highlightMatchingWidget(const QString &sel)
 {
+    if (sel.trimmed() == "QWidget")
+        return;
+
     if (!widgetTree)
         return;
 
@@ -651,10 +678,12 @@ void ThemeInspectorWidget::collectMatchingItems(QTreeWidgetItem *item,
     if (!w)
         return;
 
+    if (w->metaObject()->className() == QStringLiteral("QWidget") && sel.trimmed() == "QWidget")
+        return;
+
     bool matches = false;
 
     if (simpleType) {
-        // Only match type once per widget
         const QMetaObject *mo = w->metaObject();
         while (mo) {
             if (sel == mo->className()) {
@@ -664,39 +693,14 @@ void ThemeInspectorWidget::collectMatchingItems(QTreeWidgetItem *item,
             mo = mo->superClass();
         }
     } else {
-        matches = selectorMatches(w, sel); // fallback for complex selectors
+        matches = selectorMatches(w, sel);
     }
 
     if (matches)
         out.append(item);
 
-    // Recursively check children (needed for complex selectors)
     for (int i = 0; i < item->childCount(); ++i)
         collectMatchingItems(item->child(i), sel, simpleType, out);
-}
-
-bool ThemeInspectorWidget::highlightWidgetRecursive(QTreeWidgetItem *item, const QString &sel)
-{
-    if (!item)
-        return false;
-
-    QVariant var = item->data(0, Qt::UserRole);
-    QWidget *w = nullptr;
-
-    if (var.isValid() && var.canConvert<QPointer<QObject>>()) {
-        QPointer<QObject> ptr = var.value<QPointer<QObject>>();
-        w = ptr ? qobject_cast<QWidget *>(ptr.data()) : nullptr;
-    }
-
-    bool matches = w ? selectorMatches(w, sel) : false;
-
-    for (int i = 0; i < item->childCount(); ++i)
-        matches |= highlightWidgetRecursive(item->child(i), sel);
-
-    if (w)
-        item->setSelected(matches);
-
-    return matches;
 }
 
 // ===========================================================
@@ -716,7 +720,6 @@ SelectorGroups ThemeInspectorWidget::possibleSelectorsGrouped(QWidget *w) const
     SelectorGroups out;
     QSet<QString> seenTypes;
 
-    // Types
     const QMetaObject *mo = w->metaObject();
     while (mo) {
         if (!seenTypes.contains(mo->className())) {
@@ -726,13 +729,11 @@ SelectorGroups ThemeInspectorWidget::possibleSelectorsGrouped(QWidget *w) const
         mo = mo->superClass();
     }
 
-    // Object selectors
     if (!w->objectName().isEmpty())
         out.objects << "#" + w->objectName();
     for (const QByteArray &p : w->dynamicPropertyNames())
         out.objects << QString("[%1=\"%2\"]").arg(p).arg(w->property(p).toString());
 
-    // Pseudo-selectors
     out.pseudos << ":hover" << ":focus" << ":disabled";
 
     return out;
