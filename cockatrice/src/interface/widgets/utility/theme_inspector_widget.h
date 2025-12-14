@@ -22,7 +22,12 @@ private slots:
     void rebuildTree();
     void updateForSelection();
     void showRuleBody();
+    void showRuleBodyFromAllRules();
     void applyRuleEdit();
+    void rebuildAllRulesTree();
+    bool matchesAnyWidget(QWidget *w, const QString &selector) const;
+    void highlightMatchingWidget(const QString &sel);
+    bool highlightWidgetRecursive(QTreeWidgetItem *item, const QString &sel);
 
 private:
     struct Rule
@@ -37,6 +42,7 @@ private:
     QPlainTextEdit *widgetInfo = nullptr;
     QListWidget *selectorList = nullptr;
     QTreeWidget *ruleTree = nullptr;
+    QTreeWidget *allRulesTree = nullptr;
     QPlainTextEdit *ruleEditor = nullptr;
 
     QFileSystemWatcher watcher;
