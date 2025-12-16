@@ -2,22 +2,446 @@
 #define COCKATRICE_THEME_INSPECTOR_WIDGET_H
 
 #include <QFileSystemWatcher>
+#include <QHash>
 #include <QListWidget>
-#include <QMetaObject>
 #include <QPlainTextEdit>
 #include <QPointer>
-#include <QSet>
 #include <QSplitter>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QWidget>
 
+namespace QtSelectors
+{
 struct SelectorGroups
 {
     QStringList types;
     QStringList objects;
     QStringList pseudos;
+    QStringList subControls;
 };
+
+struct SelectorSuggestion
+{
+    QString selector;
+    QString explanation;
+    int confidence;
+};
+
+// Full Qt pseudo-states (simplified friendly descriptions)
+inline const QVector<QPair<QString, QString>> PSEUDO_STATES = {
+    {":active", "Widget is in the active window"},
+    {":adjoins-item", "Branch of a QTreeView is adjacent to an item"},
+    {":alternate", "Alternate row in QAbstractItemView with alternating colors"},
+    {":bottom", "Item is at the bottom (e.g. QTabBar)"},
+    {":checked", "Item is checked (e.g. QCheckBox, QRadioButton)"},
+    {":closable", "Item can be closed (e.g. QDockWidget)"},
+    {":closed", "Item is in closed state"},
+    {":default", "Default item (e.g. default QPushButton)"},
+    {":disabled", "Widget is disabled"},
+    {":editable", "QComboBox is editable"},
+    {":edit-focus", "Item has edit focus (Qt Extended only)"},
+    {":enabled", "Item is enabled"},
+    {":exclusive", "Item is part of exclusive group"},
+    {":first", "Item is first in a list"},
+    {":flat", "Item is flat (e.g. QPushButton)"},
+    {":floatable", "Item can be floated (e.g. QDockWidget)"},
+    {":focus", "Item has input focus"},
+    {":has-children", "Item has children (e.g. QTreeView)"},
+    {":has-siblings", "Item has siblings (e.g. QTreeView)"},
+    {":horizontal", "Item has horizontal orientation"},
+    {":hover", "Mouse is over this item"},
+    {":indeterminate", "Item has indeterminate state (partially checked)"},
+    {":last", "Item is last in a list"},
+    {":left", "Item is positioned at left"},
+    {":maximized", "Item is maximized (e.g. QMdiSubWindow)"},
+    {":middle", "Item is in the middle (not first or last)"},
+    {":minimized", "Item is minimized (e.g. QMdiSubWindow)"},
+    {":movable", "Item can be moved (e.g. QDockWidget)"},
+    {":no-frame", "Item has no frame (frameless QLineEdit/QSpinBox)"},
+    {":non-exclusive", "Item is part of a non-exclusive group"},
+    {":off", "Toggle item is off"},
+    {":on", "Toggle item is on"},
+    {":only-one", "Item is the only one (lone tab)"},
+    {":open", "Item is in open state (expanded)"},
+    {":next-selected", "Next item is selected"},
+    {":pressed", "Item is being pressed"},
+    {":previous-selected", "Previous item is selected"},
+    {":read-only", "Item is read-only or non-editable"},
+    {":right", "Item is positioned at right"},
+    {":selected", "Item is selected"},
+    {":top", "Item is positioned at top"},
+    {":unchecked", "Item is unchecked"},
+    {":vertical", "Item has vertical orientation"},
+    {":window", "Widget is a top-level window"}};
+
+// Subcontrols
+inline const QVector<QPair<QString, QString>> SUBCONTROLS = {
+    {"::add-line", "Button to add a line (QScrollBar)"},
+    {"::add-page", "Region between handle and add-line (QScrollBar)"},
+    {"::branch", "Branch indicator (QTreeView)"},
+    {"::chunk", "Progress chunk (QProgressBar)"},
+    {"::close-button", "Close button (QDockWidget, QTabBar)"},
+    {"::corner", "Corner between scrollbars (QAbstractScrollArea)"},
+    {"::down-arrow", "Down arrow (QComboBox, QHeaderView, QScrollBar, QSpinBox)"},
+    {"::down-button", "Down button (QScrollBar, QSpinBox)"},
+    {"::drop-down", "Drop-down button (QComboBox)"},
+    {"::float-button", "Float button (QDockWidget)"},
+    {"::groove", "Groove of QSlider"},
+    {"::indicator", "Indicator (QCheckBox, QRadioButton, QMenu item, QGroupBox)"},
+    {"::handle", "Handle (QScrollBar, QSplitter, QSlider)"},
+    {"::icon", "Icon (QAbstractItemView, QMenu)"},
+    {"::item", "Item (QAbstractItemView, QMenuBar, QMenu, QStatusBar)"},
+    {"::left-arrow", "Left arrow (QScrollBar)"},
+    {"::left-corner", "Left corner (QTabWidget)"},
+    {"::menu-arrow", "Arrow of a QToolButton with menu"},
+    {"::menu-button", "Menu button of a QToolButton"},
+    {"::menu-indicator", "Menu indicator (QPushButton)"},
+    {"::right-arrow", "Right arrow (QMenu, QScrollBar)"},
+    {"::pane", "Pane/frame (QTabWidget)"},
+    {"::right-corner", "Right corner (QTabWidget)"},
+    {"::scroller", "Scroller (QMenu, QTabBar)"},
+    {"::section", "Section (QHeaderView)"},
+    {"::separator", "Separator (QMenu, QMainWindow)"},
+    {"::sub-line", "Subtract line button (QScrollBar)"},
+    {"::sub-page", "Region between handle and sub-line (QScrollBar)"},
+    {"::tab", "Tab (QTabBar, QToolBox)"},
+    {"::tab-bar", "Tab bar (QTabWidget)"},
+    {"::tear", "Tear indicator (QTabBar)"},
+    {"::tearoff", "Tear-off indicator (QMenu)"},
+    {"::text", "Text (QAbstractItemView)"},
+    {"::title", "Title (QGroupBox, QDockWidget)"},
+    {"::up-arrow", "Up arrow (QHeaderView, QScrollBar, QSpinBox)"},
+    {"::up-button", "Up button (QSpinBox)"}};
+
+inline const QHash<QString, QStringList> WIDGET_VALID_PSEUDOS = {
+    {"QLabel", {}},
+    {"QCheckBox", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
+    {"QRadioButton", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
+    {"QPushButton", {":default", ":flat", ":checked", ":open", ":closed", ":hover", ":disabled", ":focus"}},
+    {"QScrollBar", {":horizontal", ":vertical", ":hover", ":disabled", ":focus"}},
+    {"QSlider", {":horizontal", ":vertical", ":hover", ":disabled", ":focus"}},
+    {"QTabBar",
+     {":first", ":last", ":middle", ":only-one", ":previous-selected", ":next-selected", ":selected", ":top", ":bottom",
+      ":left", ":right", ":hover", ":disabled", ":focus"}},
+    {"QDockWidget", {":closable", ":floatable", ":movable", ":vertical", ":hover", ":disabled", ":focus"}},
+    {"QTreeView", {":open", ":closed", ":has-children", ":has-siblings", ":hover", ":disabled", ":focus"}},
+    {"QAbstractScrollArea", {":hover", ":disabled", ":focus"}},
+    {"QLineEdit", {":hover", ":disabled", ":focus", ":read-only"}},
+    {"QComboBox", {":editable", ":hover", ":disabled", ":focus", ":open", ":closed"}},
+    {"QHeaderView",
+     {":middle", ":first", ":last", ":only-one", ":next-selected", ":previous-selected", ":selected", ":checked"}},
+    {"QToolBar", {":top", ":left", ":right", ":bottom", ":first", ":last", ":middle", ":only-one"}},
+    {"QGroupBox", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
+    {"QMenu", {":selected", ":default", ":exclusive", ":non-exclusive", ":hover", ":disabled", ":focus"}},
+    {"QMenuBar", {":hover", ":disabled", ":focus"}},
+    {"QTabWidget", {":top", ":bottom", ":left", ":right"}},
+    {"QSpinBox", {":hover", ":disabled", ":focus"}},
+    {"QDoubleSpinBox", {":hover", ":disabled", ":focus"}},
+    {"QToolButton", {":hover", ":disabled", ":focus"}},
+    {"QToolBox", {":only-one", ":first", ":last", ":middle", ":previous-selected", ":next-selected", ":selected"}}};
+
+inline const QHash<QString, QStringList> WIDGET_VALID_SUBCONTROLS = {
+    {"QCheckBox", {"::indicator"}},
+    {"QRadioButton", {"::indicator"}},
+    {"QPushButton", {"::menu-indicator"}},
+    {"QToolButton",
+     {"::menu-indicator", "::menu-button", "::menu-arrow", "::up-arrow", "::down-arrow", "::left-arrow",
+      "::right-arrow"}},
+    {"QScrollBar",
+     {"::handle", "::add-line", "::sub-line", "::add-page", "::sub-page", "::up-arrow", "::down-arrow", "::left-arrow",
+      "::right-arrow"}},
+    {"QSlider", {"::groove", "::handle"}},
+    {"QTabBar", {"::tab", "::close-button", "::tear", "::scroller"}},
+    {"QTabWidget", {"::pane", "::tab-bar", "::left-corner", "::right-corner"}},
+    {"QDockWidget", {"::title", "::close-button", "::float-button"}},
+    {"QGroupBox", {"::title", "::indicator"}},
+    {"QHeaderView", {"::section", "::up-arrow", "::down-arrow"}},
+    {"QMenu", {"::item", "::indicator", "::separator", "::scroller", "::tearoff"}}, // <- FIXED
+    {"QMenuBar", {"::item"}},
+    {"QSpinBox", {"::up-button", "::down-button", "::up-arrow", "::down-arrow"}},
+    {"QDoubleSpinBox", {"::up-button", "::down-button", "::up-arrow", "::down-arrow"}},
+    {"QToolBar", {"::separator", "::handle"}},
+    {"QTableView", {"::item", "::section"}},
+    {"QListView", {"::item"}},
+    {"QAbstractScrollArea", {"::corner"}}};
+
+inline const QVector<QPair<QString, QString>> QT_CSS_PROPERTIES = {
+    {"alternate-background-color", "Brush: Alternate background for QAbstractItemView"},
+    {"background", "Shorthand: background-color, image, repeat, position"},
+    {"background-color", "Brush: Background color"},
+    {"background-image", "Url: Background image"},
+    {"background-repeat", "Repeat: Image repeat"},
+    {"background-position", "Alignment: Background image alignment"},
+    {"background-attachment", "Attachment: Fixed or scroll background"},
+    {"background-clip", "Origin: Rectangle where background is drawn"},
+    {"background-origin", "Origin: Rectangle for background positioning"},
+    {"border", "Shorthand: border-width, border-style, border-color"},
+    {"border-top", "Shorthand: top border"},
+    {"border-right", "Shorthand: right border"},
+    {"border-bottom", "Shorthand: bottom border"},
+    {"border-left", "Shorthand: left border"},
+    {"border-color", "Box Colors: color of all border edges"},
+    {"border-top-color", "Brush: Top edge color"},
+    {"border-right-color", "Brush: Right edge color"},
+    {"border-bottom-color", "Brush: Bottom edge color"},
+    {"border-left-color", "Brush: Left edge color"},
+    {"border-image", "Border Image: Image to fill border"},
+    {"border-radius", "Radius: Corner radius"},
+    {"border-top-left-radius", "Radius: Top-left corner radius"},
+    {"border-top-right-radius", "Radius: Top-right corner radius"},
+    {"border-bottom-right-radius", "Radius: Bottom-right corner radius"},
+    {"border-bottom-left-radius", "Radius: Bottom-left corner radius"},
+    {"border-style", "Border Style: Style of all edges"},
+    {"border-top-style", "Border Style: Top edge style"},
+    {"border-right-style", "Border Style: Right edge style"},
+    {"border-bottom-style", "Border Style: Bottom edge style"},
+    {"border-left-style", "Border Style: Left edge style"},
+    {"border-width", "Box Lengths: Width of all edges"},
+    {"border-top-width", "Length: Width of top edge"},
+    {"border-right-width", "Length: Width of right edge"},
+    {"border-bottom-width", "Length: Width of bottom edge"},
+    {"border-left-width", "Length: Width of left edge"},
+    {"bottom", "Length: Move subcontrol from bottom"},
+    {"button-layout", "Number: Layout of buttons in QDialogButtonBox"},
+    {"color", "Brush: Text color"},
+    {"dialogbuttonbox-buttons-have-icons", "Boolean: Show icons in QDialogButtonBox"},
+    {"font", "Font: Shorthand for font-family, size, style, weight"},
+    {"font-family", "String: Font family"},
+    {"font-size", "Font Size: Font size in px or pt"},
+    {"font-style", "Font Style: italic, normal, etc."},
+    {"font-weight", "Font Weight: bold, normal, etc."},
+    {"gridline-color", "Color: QTableView grid line color"},
+    {"height", "Length: Height of a subcontrol or widget"},
+    {"icon", "Url+: Icon for QPushButton"},
+    {"icon-size", "Length: Width and height of icon"},
+    {"image", "Url+: Image for subcontrol contents"},
+    {"image-position", "Alignment: Image alignment in subcontrol"},
+    {"left", "Length: Offset from left"},
+    {"lineedit-password-character", "Number: Password character unicode"},
+    {"lineedit-password-mask-delay", "Number: Delay for password masking"},
+    {"margin", "Box Lengths: Widget margins"},
+    {"margin-top", "Length: Top margin"},
+    {"margin-right", "Length: Right margin"},
+    {"margin-bottom", "Length: Bottom margin"},
+    {"margin-left", "Length: Left margin"},
+    {"max-height", "Length: Maximum height"},
+    {"max-width", "Length: Maximum width"},
+    {"messagebox-text-interaction-flags", "Number: Text interaction in QMessageBox"},
+    {"min-height", "Length: Minimum height"},
+    {"min-width", "Length: Minimum width"},
+    {"opacity", "Number: Opacity 0-255"},
+    {"outline", "Outline around border"},
+    {"outline-color", "Outline color"},
+    {"outline-offset", "Offset of outline"},
+    {"outline-style", "Outline pattern"},
+    {"outline-radius", "Rounded corners of outline"},
+    {"outline-bottom-left-radius", "Outline bottom-left radius"},
+    {"outline-bottom-right-radius", "Outline bottom-right radius"},
+    {"outline-top-left-radius", "Outline top-left radius"},
+    {"outline-top-right-radius", "Outline top-right radius"},
+    {"padding", "Box Lengths: Padding inside widget"},
+    {"padding-top", "Top padding"},
+    {"padding-right", "Right padding"},
+    {"padding-bottom", "Bottom padding"},
+    {"padding-left", "Left padding"},
+    {"paint-alternating-row-colors-for-empty-area", "Boolean: Paint alternating rows for empty area"},
+    {"position", "relative|absolute: Subcontrol positioning"},
+    {"right", "Length: Offset from right"},
+    {"selection-background-color", "Brush: Background of selected text/items"},
+    {"selection-color", "Brush: Foreground of selected text/items"},
+    {"show-decoration-selected", "Boolean: Full row selection in QListView"},
+    {"spacing", "Length: Internal spacing"},
+    {"subcontrol-origin", "Origin rectangle of subcontrol"},
+    {"subcontrol-position", "Alignment: Position within subcontrol-origin"},
+    {"titlebar-show-tooltips-on-buttons", "Boolean: Show tooltips on titlebar buttons"},
+    {"widget-animation-duration", "Number: Animation duration in ms"},
+    {"text-align", "Alignment: Text/icon alignment (QPushButton/QProgressBar)"},
+    {"text-decoration", "none|underline|overline|line-through: Text effects"},
+    {"top", "Length: Offset from top"},
+    {"width", "Length: Width of subcontrol or widget"},
+    {"-qt-background-role", "PaletteRole: Background role"},
+    {"-qt-style-features", "list: List of Qt-specific CSS properties"}};
+
+static const QMap<QString, QStringList> qtPropertyMap{
+    // Applies to all widgets unless specified
+    {"height", {"QWidget"}},
+    {"width", {"QWidget"}},
+    {"min-height",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSizeGrip", "QSpinBox", "QSplitter", "QStatusBar",
+      "QTextEdit", "QToolButton"}},
+    {"min-width",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSizeGrip", "QSpinBox", "QSplitter", "QStatusBar",
+      "QTextEdit", "QToolButton"}},
+    {"max-height",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSizeGrip", "QSpinBox", "QSplitter", "QStatusBar",
+      "QTextEdit", "QToolTip"}},
+    {"max-width",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSizeGrip", "QSpinBox", "QSplitter", "QStatusBar",
+      "QTextEdit", "QToolTip"}},
+
+    // Background properties
+    {"background",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QDialog", "QFrame", "QGroupBox", "QLabel",
+      "QLineEdit", "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip",
+      "QWidget"}},
+    {"background-color",
+     {"QWidget", "QLabel", "QLineEdit", "QFrame", "QPushButton", "QTextEdit", "QCheckBox", "QRadioButton"}},
+    {"background-image", {"QWidget"}}, // Applies to any widget unless stated
+    {"background-repeat", {"QWidget"}},
+    {"background-position", {"QWidget"}},
+    {"background-attachment", {"QAbstractScrollArea"}},
+    {"background-clip",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QDialog", "QFrame", "QGroupBox", "QLabel",
+      "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip", "QWidget"}},
+    {"background-origin",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QDialog", "QFrame", "QGroupBox", "QLabel",
+      "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip", "QWidget"}},
+
+    // Borders
+    {"border",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip", "QWidget"}},
+    {"border-color",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip", "QWidget"}},
+    {"border-radius",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+    {"border-style",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+    {"border-width",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+    {"border-image",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+
+    // Text & Font
+    {"color", {"QWidget"}}, // All widgets respecting QWidget::palette
+    {"font", {"QWidget"}},  // All widgets respecting QWidget::font
+    {"font-family", {"QWidget"}},
+    {"font-size", {"QWidget"}},
+    {"font-style", {"QWidget"}},
+    {"font-weight", {"QWidget"}},
+
+    // Padding & Margin
+    {"padding",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+    {"margin",
+     {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
+      "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
+
+    // Selection (applies to widgets respecting palette)
+    {"selection-background-color", {"QWidget"}},
+    {"selection-color", {"QWidget"}},
+
+    // Special Qt-only
+    {"gridline-color", {"QTableView"}},
+    {"lineedit-password-character", {"QLineEdit"}},
+    {"lineedit-password-mask-delay", {"QLineEdit"}},
+    {"icon", {"QPushButton"}},
+    {"icon-size",
+     {"QCheckBox", "QListView", "QPushButton", "QRadioButton", "QTabBar", "QToolBar", "QToolBox", "QTreeView"}},
+    {"image", {"QWidget"}},          // subcontrols only
+    {"image-position", {"QWidget"}}, // subcontrols only
+    {"spacing", {"QCheckBox", "QGroupBox", "QMenuBar", "QRadioButton"}},
+    {"subcontrol-origin", {"QWidget"}},
+    {"subcontrol-position", {"QWidget"}},
+    {"text-align", {"QPushButton", "QProgressBar"}},
+    {"text-decoration", {"QWidget"}},
+    {"widget-animation-duration", {"QWidget"}},
+    {"opacity", {"QToolTip"}},
+    {"outline", {"QWidget"}},
+    {"outline-color", {"QWidget"}},
+    {"outline-offset", {"QWidget"}},
+    {"outline-style", {"QWidget"}},
+    {"outline-radius", {"QWidget"}},
+    {"outline-top-left-radius", {"QWidget"}},
+    {"outline-top-right-radius", {"QWidget"}},
+    {"outline-bottom-left-radius", {"QWidget"}},
+    {"outline-bottom-right-radius", {"QWidget"}}};
+
+// Returns basic grouped selectors for a widget
+inline SelectorGroups possibleSelectorsGrouped(QWidget *w)
+{
+    SelectorGroups g;
+    if (!w)
+        return g;
+
+    const QString type = w->metaObject()->className();
+    g.types << type;
+
+    if (!w->objectName().isEmpty()) {
+        g.objects << "#" + w->objectName();
+        g.objects << type + "#" + w->objectName();
+    }
+
+    // Only valid pseudos for this widget
+    g.pseudos = QtSelectors::WIDGET_VALID_PSEUDOS.value(type);
+
+    // Only valid subcontrols
+    g.subControls = QtSelectors::WIDGET_VALID_SUBCONTROLS.value(type);
+
+    return g;
+}
+
+inline QVector<QtSelectors::SelectorSuggestion> propertySuggestionsForWidget(QWidget *w)
+{
+    QVector<QtSelectors::SelectorSuggestion> out;
+    if (!w)
+        return out;
+
+    QString type = w->metaObject()->className();
+
+    for (auto &p : QtSelectors::QT_CSS_PROPERTIES) {
+        // Confidence: 70 for generic property suggestion
+        // Optionally: increase confidence if property is supported by this widget type
+        out.push_back({p.first, p.second, 70});
+    }
+
+    return out;
+}
+
+// Returns a friendly suggestion list
+inline QVector<QtSelectors::SelectorSuggestion> friendlySuggestions(QWidget *w)
+{
+    QVector<QtSelectors::SelectorSuggestion> out;
+    if (!w)
+        return out;
+
+    QString type = w->metaObject()->className();
+
+    if (!w->objectName().isEmpty())
+        out.push_back({"#" + w->objectName(), "Only this exact widget", 100});
+
+    out.push_back({type, QString("All widgets of type %1").arg(type), 60});
+
+    if (!w->objectName().isEmpty())
+        out.push_back({type + "#" + w->objectName(), QString("Widget %1 of type %2").arg(w->objectName(), type), 90});
+
+    for (auto &p : QtSelectors::PSEUDO_STATES)
+        out.push_back({type + p.first, p.second, 50});
+
+    for (auto &s : QtSelectors::SUBCONTROLS)
+        out.push_back({type + s.first, s.second, 30});
+
+    // Add Qt CSS property suggestions
+    for (auto &prop : QtSelectors::QT_CSS_PROPERTIES)
+        out.push_back({prop.first, prop.second, 20}); // Lower confidence than pseudos/subcontrols
+
+    // Sort by confidence (descending)
+    std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.confidence > b.confidence; });
+
+    return out;
+}
+} // namespace QtSelectors
 
 class ThemeInspectorWidget : public QWidget
 {
@@ -31,69 +455,78 @@ private slots:
 
     void rebuildTree();
     void updateForSelection();
+
     void showRuleBody();
     void showRuleBodyFromAllRules();
     void applyRuleEdit();
+
     void addRuleForWidget(QWidget *w, const QString &selector, const QString &body);
     void addRuleForAll(const QString &selector, const QString &body);
     void deleteSelectedRule();
+
     void rebuildAllRulesTree();
-    void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
-    void highlightMatchingWidget(const QString &sel);
-    void collectMatchingItems(QTreeWidgetItem *item,
-                              const QString &sel,
-                              bool simpleType,
-                              QList<QTreeWidgetItem *> &out) const;
+
+    void expandAllItems();
+    void collapseAllItems();
+
+    void highlightMatchingWidget(const QString &selector);
 
 private:
     struct Rule
     {
         QString selector;
         QString body;
-        int line;
+        int line = 0;
     };
 
-    // UI
+    // ---------------- UI ----------------
     QTreeWidget *widgetTree = nullptr;
+
     QPlainTextEdit *widgetInfo = nullptr;
-    QListWidget *typesList = nullptr;
-    QListWidget *objectsList = nullptr;
-    QListWidget *pseudosList = nullptr;
+    QListWidget *selectorSuggestionList = nullptr;
+
     QTreeWidget *ruleTree = nullptr;
     QTreeWidget *allRulesTree = nullptr;
     QPlainTextEdit *ruleEditor = nullptr;
 
+    QListWidget *propertySuggestionList;
+
     QFileSystemWatcher watcher;
+
+    // ---------------- Data ----------------
     QString stylesheetPath;
     QString stylesheetText;
     QVector<Rule> rules;
 
-    QStringList globalTypesList;
+    QStringList globalTypes;
+    QStringList globalObjects;
+    QStringList globalPseudos;
 
-    // Cache of all widgets for fast lookup
-    QList<QWidget *> cachedWidgets;
-    QHash<QWidget *, QTreeWidgetItem *> widgetToItemMap;
-
-    // Helpers
+    // ---------------- Helpers ----------------
     QWidget *createToolbar();
-    void expandAllItems();
-    void collapseAllItems();
+    void updateGlobalTypes();
+
     void expandItemRecursive(QTreeWidgetItem *item);
     void collapseItemRecursive(QTreeWidgetItem *item);
-    void updateGlobalTypes();
-    void collectWidgetTypesRecursive(QWidget *w, QSet<QString> &types);
+
     void parseStylesheet();
+
     void updateRuleMatches(QWidget *w);
+    bool widgetHasPseudo(QWidget *w, const QString &pseudo) const;
+    bool widgetHasSubcontrol(QWidget *w, const QString &sub) const;
+
     void addChildrenToItem(QWidget *w, QTreeWidgetItem *parent);
 
-    bool selectorMatches(QWidget *w, const QString &sel) const;
-    bool selectorAppliesToWidgetIgnoringPseudo(QWidget *w, const QString &sel) const;
+    bool selectorMatches(QWidget *w, const QString &selector) const;
+    bool selectorAppliesIgnoringPseudo(QWidget *w, const QString &selector) const;
 
     QString widgetSummary(QWidget *w) const;
-    SelectorGroups possibleSelectorsGrouped(QWidget *w) const;
+    QString widgetPath(QWidget *w) const;
 
-    QStringList collectObjectsWithNames() const;
-    void collectObjectsWithNamesRecursive(QWidget *w, QSet<QString> &out) const;
+    QVector<QtSelectors::SelectorSuggestion> selectorSuggestions(QWidget *w) const;
+    QString bestSelectorForWidget(QWidget *w) const;
+
+    void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
 };
 
 #endif // COCKATRICE_THEME_INSPECTOR_WIDGET_H

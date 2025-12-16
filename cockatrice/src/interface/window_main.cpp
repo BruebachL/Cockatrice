@@ -39,8 +39,10 @@
 #include "../interface/widgets/tabs/tab_supervisor.h"
 #include "../main.h"
 #include "logger.h"
+#include "theme_manager.h"
 #include "version_string.h"
 #include "widgets/utility/get_text_with_max.h"
+#include "widgets/utility/theme_inspector_widget.h"
 
 #include <QAction>
 #include <QApplication>
@@ -911,6 +913,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     // run startup check async
     QTimer::singleShot(0, this, &MainWindow::startupConfigCheck);
+
+#ifdef QT_DEBUG
+    auto *inspector = new ThemeInspectorWidget(themeManager->currentStylesheetPath());
+    inspector->show();
+#endif
 }
 
 void MainWindow::startupConfigCheck()

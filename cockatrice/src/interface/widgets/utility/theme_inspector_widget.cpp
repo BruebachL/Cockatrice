@@ -3,20 +3,20 @@
 #include "selector_dialog.h"
 
 #include <QApplication>
-#include <QComboBox>
+#include <QCheckBox>
 #include <QDebug>
 #include <QFile>
 #include <QGroupBox>
 #include <QHBoxLayout>
-#include <QHeaderView>
-#include <QInputDialog>
+#include <QLabel>
 #include <QMainWindow>
 #include <QMetaObject>
 #include <QPointer>
+#include <QPushButton>
+#include <QRadioButton>
 #include <QRegularExpression>
 #include <QSet>
 #include <QTabWidget>
-#include <QToolButton>
 #include <QVBoxLayout>
 
 // ===========================================================
@@ -25,98 +25,85 @@
 ThemeInspectorWidget::ThemeInspectorWidget(const QString &liveCssPath, QWidget *parent) : QWidget(parent)
 {
     setWindowTitle("Theme Inspector");
-    setMinimumSize(1200, 650);
+    setMinimumSize(1200, 700);
 
     auto *mainSplitter = new QSplitter(Qt::Vertical, this);
 
+    // ---------------- Widget Tree ----------------
     widgetTree = new QTreeWidget;
-    widgetTree->setHeaderLabels({"Widget", "objectName"});
+    widgetTree->setHeaderLabels({"Widget"});
     widgetTree->setUniformRowHeights(true);
     mainSplitter->addWidget(widgetTree);
 
-    auto *bottomSplitter = new QSplitter(Qt::Horizontal);
+    auto *bottom = new QSplitter(Qt::Horizontal);
 
-    // ===== Left panel: widget info + selectors =====
+    // ---------------- Left panel ----------------
     auto *left = new QWidget;
     auto *leftLayout = new QVBoxLayout(left);
 
     widgetInfo = new QPlainTextEdit;
     widgetInfo->setReadOnly(true);
+    widgetInfo->setMinimumHeight(140);
     leftLayout->addWidget(widgetInfo);
 
-    auto *typesGroup = new QGroupBox("Types");
-    typesList = new QListWidget;
-    auto *typesLayout = new QVBoxLayout(typesGroup);
-    typesLayout->addWidget(typesList);
+    auto *suggestGroup = new QGroupBox("Ways to target this widget");
+    auto *suggestLayout = new QVBoxLayout(suggestGroup);
 
-    auto *objectsGroup = new QGroupBox("Object Selectors");
-    objectsList = new QListWidget;
-    auto *objLayout = new QVBoxLayout(objectsGroup);
-    objLayout->addWidget(objectsList);
+    selectorSuggestionList = new QListWidget;
+    suggestLayout->addWidget(selectorSuggestionList);
+    leftLayout->addWidget(suggestGroup);
 
-    auto *pseudosGroup = new QGroupBox("Pseudo-Selectors");
-    pseudosList = new QListWidget;
-    auto *pseudoLayout = new QVBoxLayout(pseudosGroup);
-    pseudoLayout->addWidget(pseudosList);
+    bottom->addWidget(left);
 
-    leftLayout->addWidget(typesGroup);
-    leftLayout->addWidget(objectsGroup);
-    leftLayout->addWidget(pseudosGroup);
-
-    bottomSplitter->addWidget(left);
-
-    // ===== Right panel: rules + editor + all rules =====
+    // ---------------- Right panel ----------------
     auto *right = new QWidget;
     auto *rightLayout = new QVBoxLayout(right);
 
     auto *tabs = new QTabWidget;
 
-    // --- Widget-specific rules ---
     ruleTree = new QTreeWidget;
-    ruleTree->setHeaderLabels({"Selector", "Line"});
-    ruleTree->setUniformRowHeights(true);
+    ruleTree->setHeaderLabels({"Target", "Line"});
+    tabs->addTab(ruleTree, "Styles affecting this widget");
 
-    QWidget *ruleTab = new QWidget;
-    QVBoxLayout *ruleTabLayout = new QVBoxLayout(ruleTab);
-    ruleTabLayout->addWidget(ruleTree);
-    tabs->addTab(ruleTab, "Widget Rules");
-
-    // --- All rules view ---
     allRulesTree = new QTreeWidget;
-    allRulesTree->setHeaderLabels({"Selector", "Line", "Has Widget?", "ObjectName"});
-    allRulesTree->setUniformRowHeights(true);
-
-    QWidget *allRulesTab = new QWidget;
-    QVBoxLayout *allRulesLayout = new QVBoxLayout(allRulesTab);
-    allRulesLayout->addWidget(allRulesTree);
-    tabs->addTab(allRulesTab, "All Rules");
+    allRulesTree->setHeaderLabels({"Target", "Line", "Matches"});
+    tabs->addTab(allRulesTree, "All theme rules");
 
     rightLayout->addWidget(tabs);
 
-    // --- Rule editor ---
     ruleEditor = new QPlainTextEdit;
-    ruleEditor->setPlaceholderText("Edit rule body here");
+    ruleEditor->setPlaceholderText("Edit CSS here");
     rightLayout->addWidget(ruleEditor);
 
+    // ---------------- Property suggestions ----------------
+    propertySuggestionList = new QListWidget;
+    propertySuggestionList->setMaximumHeight(120);
+    propertySuggestionList->setToolTip("Click to insert a CSS property");
+    rightLayout->addWidget(propertySuggestionList);
+
+    connect(propertySuggestionList, &QListWidget::itemClicked, [this](QListWidgetItem *item) {
+        if (!item)
+            return;
+
+        QString prop = item->text().split(" ").first(); // take property name only
+        ruleEditor->insertPlainText(prop + ": ;\n");
+    });
+
     auto *apply = new QToolButton;
-    apply->setText("Apply");
+    apply->setText("Save & Apply");
     connect(apply, &QToolButton::clicked, this, &ThemeInspectorWidget::applyRuleEdit);
     rightLayout->addWidget(apply);
 
-    bottomSplitter->addWidget(right);
+    bottom->addWidget(right);
+    mainSplitter->addWidget(bottom);
 
-    bottomSplitter->setStretchFactor(0, 2);
-    bottomSplitter->setStretchFactor(1, 3);
-
-    mainSplitter->addWidget(bottomSplitter);
-    mainSplitter->setStretchFactor(0, 3);
-    mainSplitter->setStretchFactor(1, 2);
-
+    // ---------------- Main layout ----------------
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(createToolbar());
     layout->addWidget(mainSplitter);
     setLayout(layout);
 
+    // ---------------- Connections ----------------
     connect(widgetTree, &QTreeWidget::itemSelectionChanged, this, &ThemeInspectorWidget::updateForSelection);
     connect(ruleTree, &QTreeWidget::itemSelectionChanged, this, &ThemeInspectorWidget::showRuleBody);
     connect(allRulesTree, &QTreeWidget::itemSelectionChanged, this, &ThemeInspectorWidget::showRuleBodyFromAllRules);
@@ -139,22 +126,20 @@ QWidget *ThemeInspectorWidget::createToolbar()
     connect(refresh, &QToolButton::clicked, this, &ThemeInspectorWidget::rebuildTree);
     l->addWidget(refresh);
 
-    // ---- Expand all ----
-    auto *expandBtn = new QToolButton;
-    expandBtn->setText("⯆");
-    connect(expandBtn, &QToolButton::clicked, this, &ThemeInspectorWidget::expandAllItems);
-    l->addWidget(expandBtn);
+    auto *expand = new QToolButton;
+    expand->setText("⯆");
+    connect(expand, &QToolButton::clicked, this, &ThemeInspectorWidget::expandAllItems);
+    l->addWidget(expand);
 
-    // ---- Collapse all ----
-    auto *collapseBtn = new QToolButton;
-    collapseBtn->setText("⯈");
-    connect(collapseBtn, &QToolButton::clicked, this, &ThemeInspectorWidget::collapseAllItems);
-    l->addWidget(collapseBtn);
+    auto *collapse = new QToolButton;
+    collapse->setText("⯈");
+    connect(collapse, &QToolButton::clicked, this, &ThemeInspectorWidget::collapseAllItems);
+    l->addWidget(collapse);
 
-    // ---- Add Widget-specific Rule ----
-    auto *addRuleForWidgetBtn = new QToolButton;
-    addRuleForWidgetBtn->setText("+");
-    connect(addRuleForWidgetBtn, &QToolButton::clicked, [this]() {
+    // Add rule for selected widget
+    auto *addWidgetRule = new QToolButton;
+    addWidgetRule->setText("+Widget");
+    connect(addWidgetRule, &QToolButton::clicked, [this]() {
         auto items = widgetTree->selectedItems();
         if (items.isEmpty())
             return;
@@ -163,51 +148,71 @@ QWidget *ThemeInspectorWidget::createToolbar()
         if (!w)
             return;
 
-        SelectorGroups groups = possibleSelectorsGrouped(w);
-        SelectorDialog dlg(groups.types, groups.objects, groups.pseudos, this);
+        QtSelectors::SelectorGroups g = QtSelectors::possibleSelectorsGrouped(w);
+        SelectorDialog dlg(g.types, g.objects, g.pseudos, this);
 
         if (dlg.exec() == QDialog::Accepted) {
-            QString sel = dlg.selectedSelector();
+            const QString sel = dlg.selectedSelector();
             if (!sel.isEmpty())
                 addRuleForWidget(w, sel, "");
         }
     });
-    l->addWidget(addRuleForWidgetBtn);
+    l->addWidget(addWidgetRule);
 
-    // ---- Add Global Rule ----
-    auto *addRuleForAllBtn = new QToolButton;
-    addRuleForAllBtn->setText("+");
-    connect(addRuleForAllBtn, &QToolButton::clicked, [this]() {
-        updateGlobalTypes(); // refresh types
-        QStringList globalTypes = globalTypesList;
-
-        QStringList objList = collectObjectsWithNames();
-        QSet<QString> objectsSet = QSet<QString>(objList.begin(), objList.end());
-        QStringList globalObjects = QStringList(objectsSet.begin(), objectsSet.end());
-
-        QStringList pseudos = {":hover", ":focus", ":disabled"};
-
-        SelectorDialog dlg(globalTypes, globalObjects, pseudos, this);
+    // Add global rule
+    auto *addGlobalRule = new QToolButton;
+    addGlobalRule->setText("+Global");
+    connect(addGlobalRule, &QToolButton::clicked, [this]() {
+        updateGlobalTypes();
+        SelectorDialog dlg(globalTypes, globalObjects, globalPseudos, this);
         if (dlg.exec() == QDialog::Accepted) {
-            QString sel = dlg.selectedSelector();
+            const QString sel = dlg.selectedSelector();
             if (!sel.isEmpty())
                 addRuleForAll(sel, "");
         }
     });
-    l->addWidget(addRuleForAllBtn);
+    l->addWidget(addGlobalRule);
 
-    // ---- Delete rule ----
-    auto *delRuleBtn = new QToolButton;
-    delRuleBtn->setText("-");
-    connect(delRuleBtn, &QToolButton::clicked, this, &ThemeInspectorWidget::deleteSelectedRule);
-    l->addWidget(delRuleBtn);
+    auto *delRule = new QToolButton;
+    delRule->setText("−");
+    connect(delRule, &QToolButton::clicked, this, &ThemeInspectorWidget::deleteSelectedRule);
+    l->addWidget(delRule);
 
     l->addStretch();
     return bar;
 }
 
 // ===========================================================
-// Expand / Collapse helpers
+// Global selector collection
+// ===========================================================
+void ThemeInspectorWidget::updateGlobalTypes()
+{
+    globalTypes.clear();
+    globalObjects.clear();
+    globalPseudos = {":hover", ":disabled", ":focus"};
+
+    QList<QWidget *> widgets;
+    for (QWidget *w : QApplication::topLevelWidgets())
+        collectAllWidgetsRecursive(w, widgets);
+
+    QSet<QString> types;
+    QSet<QString> objects;
+
+    for (QWidget *w : widgets) {
+        types.insert(w->metaObject()->className());
+        if (!w->objectName().isEmpty())
+            objects.insert("#" + w->objectName());
+    }
+
+    globalTypes = QStringList(types.begin(), types.end());
+    globalObjects = QStringList(objects.begin(), objects.end());
+
+    std::sort(globalTypes.begin(), globalTypes.end());
+    std::sort(globalObjects.begin(), globalObjects.end());
+}
+
+// ===========================================================
+// Tree expand / collapse
 // ===========================================================
 void ThemeInspectorWidget::expandAllItems()
 {
@@ -240,57 +245,144 @@ void ThemeInspectorWidget::collapseItemRecursive(QTreeWidgetItem *item)
 }
 
 // ===========================================================
-// Collect Types / Object Names
+// Widget tree
 // ===========================================================
-void ThemeInspectorWidget::updateGlobalTypes()
+void ThemeInspectorWidget::rebuildTree()
 {
-    QSet<QString> types;
-    for (QWidget *w : QApplication::topLevelWidgets())
-        collectWidgetTypesRecursive(w, types);
-    globalTypesList = QStringList(types.begin(), types.end());
-    globalTypesList.sort();
+    widgetTree->clear();
+
+    for (QWidget *top : QApplication::topLevelWidgets()) {
+        if (top == this)
+            continue;
+        if (!qobject_cast<QMainWindow *>(top))
+            continue;
+
+        auto *root = new QTreeWidgetItem(widgetTree, {top->metaObject()->className()});
+        root->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(top)));
+        addChildrenToItem(top, root);
+    }
+
+    widgetTree->expandToDepth(1);
+    rebuildAllRulesTree();
 }
 
-void ThemeInspectorWidget::collectWidgetTypesRecursive(QWidget *w, QSet<QString> &types)
+void ThemeInspectorWidget::addChildrenToItem(QWidget *w, QTreeWidgetItem *parent)
 {
+    for (QObject *c : w->children()) {
+        if (auto *cw = qobject_cast<QWidget *>(c)) {
+            auto *it = new QTreeWidgetItem(
+                parent, {cw->objectName().isEmpty() ? cw->metaObject()->className() : cw->objectName()});
+            it->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(cw)));
+            addChildrenToItem(cw, it);
+        }
+    }
+}
+
+// ===========================================================
+// Selection & Summary
+// ===========================================================
+void ThemeInspectorWidget::updateForSelection()
+{
+    widgetInfo->clear();
+    selectorSuggestionList->clear();
+    ruleTree->clear();
+    ruleEditor->clear();
+
+    auto items = widgetTree->selectedItems();
+    if (items.isEmpty())
+        return;
+
+    QWidget *w = qobject_cast<QWidget *>(items.first()->data(0, Qt::UserRole).value<QPointer<QObject>>().data());
     if (!w)
         return;
+
+    widgetInfo->setPlainText(widgetSummary(w));
+
+    auto suggestions = selectorSuggestions(w);
+    for (const auto &s : suggestions)
+        selectorSuggestionList->addItem(QString("%1\n→ %2").arg(s.selector, s.explanation));
+
+    propertySuggestionList->clear();
+
     const QMetaObject *mo = w->metaObject();
+    QSet<QString> suggestedProps;
+
     while (mo) {
-        types.insert(mo->className());
+        QString typeName = mo->className();
+        for (auto it = QtSelectors::qtPropertyMap.constBegin(); it != QtSelectors::qtPropertyMap.constEnd(); ++it) {
+            if (it.value().contains(typeName))
+                suggestedProps.insert(it.key());
+        }
         mo = mo->superClass();
     }
 
-    for (QObject *c : w->children())
-        if (auto *cw = qobject_cast<QWidget *>(c))
-            collectWidgetTypesRecursive(cw, types);
+    // Convert to sorted list and add to the list widget
+    QStringList sortedProps = QStringList(suggestedProps.begin(), suggestedProps.end());
+    std::sort(sortedProps.begin(), sortedProps.end());
+
+    for (const QString &prop : sortedProps)
+        propertySuggestionList->addItem(prop);
+
+    updateRuleMatches(w);
 }
 
-QStringList ThemeInspectorWidget::collectObjectsWithNames() const
+QString ThemeInspectorWidget::widgetSummary(QWidget *w) const
 {
-    QSet<QString> objectsSet;
-    for (QWidget *w : QApplication::topLevelWidgets())
-        collectObjectsWithNamesRecursive(w, objectsSet);
+    return QString("Widget: %1\nObject name: %2\nPath: %3\nVisible: %4\nEnabled: %5")
+        .arg(w->metaObject()->className())
+        .arg(w->objectName())
+        .arg(widgetPath(w))
+        .arg(w->isVisible() ? "yes" : "no")
+        .arg(w->isEnabled() ? "yes" : "no");
+}
 
-    QStringList out(objectsSet.begin(), objectsSet.end());
-    out.sort();
+QString ThemeInspectorWidget::widgetPath(QWidget *w) const
+{
+    QStringList parts;
+    while (w) {
+        parts.prepend(w->objectName().isEmpty() ? w->metaObject()->className() : w->objectName());
+        w = w->parentWidget();
+    }
+    return parts.join(" > ");
+}
+
+QVector<QtSelectors::SelectorSuggestion> ThemeInspectorWidget::selectorSuggestions(QWidget *w) const
+{
+    QVector<QtSelectors::SelectorSuggestion> out;
+    if (!w)
+        return out;
+
+    QString type = w->metaObject()->className();
+
+    if (!w->objectName().isEmpty())
+        out.push_back({"#" + w->objectName(), "Only this exact widget", 100});
+
+    out.push_back({type, QString("All widgets of type %1").arg(type), 60});
+
+    if (!w->objectName().isEmpty())
+        out.push_back({type + "#" + w->objectName(), QString("Widget %1 of type %2").arg(w->objectName(), type), 90});
+
+    // --- Only include valid pseudos ---
+    const auto validPseudos = QtSelectors::WIDGET_VALID_PSEUDOS.value(type);
+    for (const auto &p : QtSelectors::PSEUDO_STATES) {
+        if (validPseudos.contains(p.first))
+            out.push_back({type + p.first, p.second, 50});
+    }
+
+    // --- Only include valid subcontrols ---
+    const auto validSubs = QtSelectors::WIDGET_VALID_SUBCONTROLS.value(type);
+    for (const auto &s : QtSelectors::SUBCONTROLS) {
+        if (validSubs.contains(s.first))
+            out.push_back({type + s.first, s.second, 30});
+    }
+
+    std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.confidence > b.confidence; });
+
     return out;
 }
 
-void ThemeInspectorWidget::collectObjectsWithNamesRecursive(QWidget *w, QSet<QString> &out) const
-{
-    if (!w)
-        return;
-    if (!w->objectName().isEmpty())
-        out.insert("#" + w->objectName());
-
-    for (QObject *c : w->children())
-        if (auto *cw = qobject_cast<QWidget *>(c))
-            collectObjectsWithNamesRecursive(cw, out);
-}
-
 // ===========================================================
-// Stylesheet loading
+// Stylesheet
 // ===========================================================
 void ThemeInspectorWidget::setStylesheetPath(const QString &path)
 {
@@ -312,7 +404,6 @@ void ThemeInspectorWidget::reloadStylesheet()
 
     stylesheetText = QString::fromUtf8(f.readAll());
     parseStylesheet();
-
     rebuildAllRulesTree();
 
     qApp->setStyleSheet({});
@@ -332,100 +423,20 @@ void ThemeInspectorWidget::parseStylesheet()
     auto it = re.globalMatch(text);
     while (it.hasNext()) {
         auto m = it.next();
-
-        for (QString sel : m.captured(1).split(',', Qt::SkipEmptyParts)) {
-            sel = sel.trimmed();
-            if (sel.contains("::") || sel.startsWith("qproperty-"))
-                continue;
-
-            rules.push_back({sel, m.captured(2).trimmed(), line});
-        }
+        for (QString sel : m.captured(1).split(',', Qt::SkipEmptyParts))
+            rules.push_back({sel.trimmed(), m.captured(2).trimmed(), line});
         line += m.captured(0).count('\n');
     }
 }
 
 // ===========================================================
-// Widget tree
-// ===========================================================
-void ThemeInspectorWidget::rebuildTree()
-{
-    if (!widgetTree)
-        return;
-    widgetTree->blockSignals(true);
-    widgetTree->clear();
-
-    for (QWidget *top : QApplication::topLevelWidgets()) {
-        if (top == this)
-            continue;
-        auto *mw = qobject_cast<QMainWindow *>(top);
-        if (!mw)
-            continue;
-
-        auto *root = new QTreeWidgetItem(
-            widgetTree, {mw->objectName().isEmpty() ? mw->metaObject()->className() : mw->objectName()});
-        root->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(mw)));
-        addChildrenToItem(mw, root);
-    }
-    widgetTree->expandToDepth(1);
-
-    widgetTree->blockSignals(false);
-
-    rebuildAllRulesTree();
-    updateGlobalTypes();
-}
-
-void ThemeInspectorWidget::addChildrenToItem(QWidget *w, QTreeWidgetItem *parent)
-{
-    for (QObject *c : w->children()) {
-        auto *cw = qobject_cast<QWidget *>(c);
-        if (!cw)
-            continue;
-
-        auto *it = new QTreeWidgetItem(parent,
-                                       {cw->objectName().isEmpty() ? cw->metaObject()->className() : cw->objectName()});
-        it->setData(0, Qt::UserRole, QVariant::fromValue(QPointer<QObject>(cw)));
-        addChildrenToItem(cw, it);
-    }
-}
-
-// ===========================================================
-// Widget selection
-// ===========================================================
-void ThemeInspectorWidget::updateForSelection()
-{
-    widgetInfo->clear();
-    typesList->clear();
-    objectsList->clear();
-    pseudosList->clear();
-    ruleTree->clear();
-    ruleEditor->clear();
-
-    auto items = widgetTree->selectedItems();
-    if (items.isEmpty())
-        return;
-
-    auto *w = qobject_cast<QWidget *>(items.first()->data(0, Qt::UserRole).value<QPointer<QObject>>().data());
-    if (!w)
-        return;
-
-    widgetInfo->setPlainText(widgetSummary(w));
-
-    SelectorGroups sg = possibleSelectorsGrouped(w);
-    typesList->addItems(sg.types);
-    objectsList->addItems(sg.objects);
-    pseudosList->addItems(sg.pseudos);
-
-    updateRuleMatches(w);
-}
-
-// ===========================================================
-// Selector matching & rule updates
+// Rule logic
 // ===========================================================
 void ThemeInspectorWidget::updateRuleMatches(QWidget *w)
 {
     ruleTree->clear();
     for (int i = 0; i < rules.size(); ++i) {
-        if (selectorAppliesToWidgetIgnoringPseudo(w, rules[i].selector)) {
+        if (selectorMatches(w, rules[i].selector)) {
             auto *it = new QTreeWidgetItem(ruleTree);
             it->setText(0, rules[i].selector);
             it->setText(1, QString::number(rules[i].line));
@@ -434,71 +445,96 @@ void ThemeInspectorWidget::updateRuleMatches(QWidget *w)
     }
 }
 
-bool ThemeInspectorWidget::selectorAppliesToWidgetIgnoringPseudo(QWidget *w, const QString &sel) const
+// ===========================================================
+// Enhanced selector matching
+// ===========================================================
+bool ThemeInspectorWidget::widgetHasPseudo(QWidget *w, const QString &pseudo) const
 {
-    if (!w)
-        return false;
+    if (pseudo.isEmpty())
+        return true;
 
-    QString s = sel.trimmed();
-    if (s.isEmpty())
-        return false; // <--- prevent empty selector from recursing
-
-    // Remove pseudo selectors
-    s.remove(QRegularExpression(":(hover|focus|disabled)$"));
-
-    if (s.contains('>')) {
-        auto parts = s.split('>');
-        if (parts.size() != 2)
-            return false;
-
-        if (!w->parentWidget())
-            return false;
-
-        return selectorAppliesToWidgetIgnoringPseudo(w->parentWidget(), parts[0].trimmed()) &&
-               selectorAppliesToWidgetIgnoringPseudo(w, parts[1].trimmed());
+    if (pseudo == "hover")
+        return w->underMouse();
+    if (pseudo == "disabled")
+        return !w->isEnabled();
+    if (pseudo == "enabled")
+        return w->isEnabled();
+    if (pseudo == "focus")
+        return w->hasFocus();
+    if (pseudo == "checked") {
+        if (auto cb = qobject_cast<QCheckBox *>(w))
+            return cb->isChecked();
+        if (auto rb = qobject_cast<QRadioButton *>(w))
+            return rb->isChecked();
+        if (auto btn = qobject_cast<QPushButton *>(w))
+            return btn->isCheckable() && btn->isChecked();
+    }
+    if (pseudo == "unchecked") {
+        if (auto cb = qobject_cast<QCheckBox *>(w))
+            return !cb->isChecked();
+        if (auto rb = qobject_cast<QRadioButton *>(w))
+            return !rb->isChecked();
+        if (auto btn = qobject_cast<QPushButton *>(w))
+            return btn->isCheckable() && !btn->isChecked();
     }
 
-    if (s.startsWith('#'))
-        return w->objectName() == s.mid(1);
-
-    const QMetaObject *mo = w->metaObject();
-    while (mo) {
-        if (s == mo->className())
-            return true;
-        mo = mo->superClass();
-    }
-    return false;
+    return true;
 }
 
-bool ThemeInspectorWidget::selectorMatches(QWidget *w, const QString &sel) const
+bool ThemeInspectorWidget::widgetHasSubcontrol(QWidget *w, const QString &sub) const
 {
-    QString s = sel.trimmed();
+    if (sub.isEmpty())
+        return true;
 
-    if (s.contains('>')) {
-        auto parts = s.split('>');
-        if (parts.size() != 2)
+    const QString type = w->metaObject()->className();
+    if (!QtSelectors::WIDGET_VALID_SUBCONTROLS.contains(type))
+        return false;
+    return QtSelectors::WIDGET_VALID_SUBCONTROLS[type].contains("::" + sub);
+}
+
+bool ThemeInspectorWidget::selectorMatches(QWidget *w, const QString &s) const
+{
+    if (!w || s.isEmpty())
+        return false;
+
+    QRegularExpression re(R"(^(?<type>\w+)?(#(?<obj>[\w-]+))?(?::(?<pseudo>[\w-]+))?(?:::(?<sub>[\w-]+))?$)");
+    QRegularExpressionMatch m = re.match(s);
+    if (!m.hasMatch())
+        return false;
+
+    QString selType = m.captured("type");
+    QString selObj = m.captured("obj");
+    QString selPseudo = m.captured("pseudo");
+    QString selSub = m.captured("sub");
+
+    // Match type
+    if (!selType.isEmpty()) {
+        const QMetaObject *mo = w->metaObject();
+        bool found = false;
+        while (mo) {
+            if (selType == mo->className()) {
+                found = true;
+                break;
+            }
+            mo = mo->superClass();
+        }
+        if (!found)
             return false;
-        return w->parentWidget() && selectorMatches(w->parentWidget(), parts[0].trimmed()) &&
-               selectorMatches(w, parts[1].trimmed());
     }
 
-    if (s.startsWith('#'))
-        return w->objectName() == s.mid(1);
+    // Match object name
+    if (!selObj.isEmpty() && w->objectName() != selObj)
+        return false;
 
-    if (s == ":disabled")
-        return !w->isEnabled();
-    if (s == ":focus")
-        return w->hasFocus();
-    if (s == ":hover")
-        return w->underMouse();
+    // Match pseudo-state
+    if (!widgetHasPseudo(w, selPseudo))
+        return false;
 
-    const QMetaObject *mo = w->metaObject();
-    while (mo) {
-        if (s == mo->className())
-            return true;
-        mo = mo->superClass();
-    }
-    return false;
+    // Match subcontrol
+    if (!widgetHasSubcontrol(w, selSub))
+        return false;
+
+    return true;
 }
 
 // ===========================================================
@@ -507,11 +543,8 @@ bool ThemeInspectorWidget::selectorMatches(QWidget *w, const QString &sel) const
 void ThemeInspectorWidget::showRuleBody()
 {
     auto items = ruleTree->selectedItems();
-    if (items.isEmpty())
-        return;
-
-    int idx = items.first()->data(0, Qt::UserRole).toInt();
-    ruleEditor->setPlainText(rules[idx].body);
+    if (!items.isEmpty())
+        ruleEditor->setPlainText(rules[items.first()->data(0, Qt::UserRole).toInt()].body);
 }
 
 void ThemeInspectorWidget::showRuleBodyFromAllRules()
@@ -522,23 +555,17 @@ void ThemeInspectorWidget::showRuleBodyFromAllRules()
 
     int idx = items.first()->data(0, Qt::UserRole).toInt();
     ruleEditor->setPlainText(rules[idx].body);
-
     highlightMatchingWidget(rules[idx].selector);
 }
 
 void ThemeInspectorWidget::applyRuleEdit()
 {
-    auto items = ruleTree->selectedItems();
-    if (!items.isEmpty()) {
-        int idx = items.first()->data(0, Qt::UserRole).toInt();
-        rules[idx].body = ruleEditor->toPlainText();
-    }
+    auto items = allRulesTree->selectedItems();
+    if (items.isEmpty())
+        return;
 
-    items = allRulesTree->selectedItems();
-    if (!items.isEmpty()) {
-        int idx = items.first()->data(0, Qt::UserRole).toInt();
-        rules[idx].body = ruleEditor->toPlainText();
-    }
+    int idx = items.first()->data(0, Qt::UserRole).toInt();
+    rules[idx].body = ruleEditor->toPlainText();
 
     QString out;
     for (const auto &r : rules)
@@ -552,12 +579,64 @@ void ThemeInspectorWidget::applyRuleEdit()
 }
 
 // ===========================================================
-// Add / Delete Rules
+// All rules
 // ===========================================================
-void ThemeInspectorWidget::addRuleForWidget(QWidget *w, const QString &selector, const QString &body)
+void ThemeInspectorWidget::rebuildAllRulesTree()
 {
-    if (!w)
+    allRulesTree->clear();
+
+    QList<QWidget *> widgets;
+    for (QWidget *w : QApplication::topLevelWidgets())
+        collectAllWidgetsRecursive(w, widgets);
+
+    for (int i = 0; i < rules.size(); ++i) {
+        int count = 0;
+        for (QWidget *w : widgets)
+            if (selectorMatches(w, rules[i].selector))
+                ++count;
+
+        auto *it = new QTreeWidgetItem(allRulesTree);
+        it->setText(0, rules[i].selector);
+        it->setText(1, QString::number(rules[i].line));
+        it->setText(2, QString::number(count));
+        it->setData(0, Qt::UserRole, i);
+    }
+}
+
+void ThemeInspectorWidget::collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const
+{
+    out.append(w);
+    for (QObject *c : w->children())
+        if (auto *cw = qobject_cast<QWidget *>(c))
+            collectAllWidgetsRecursive(cw, out);
+}
+
+// ===========================================================
+// Highlight
+// ===========================================================
+void ThemeInspectorWidget::highlightMatchingWidget(const QString &selector)
+{
+    if (selector.trimmed() == "QWidget")
         return;
+
+    widgetTree->clearSelection();
+
+    for (int i = 0; i < widgetTree->topLevelItemCount(); ++i) {
+        auto *item = widgetTree->topLevelItem(i);
+        QWidget *w = qobject_cast<QWidget *>(item->data(0, Qt::UserRole).value<QPointer<QObject>>().data());
+        if (w && selectorMatches(w, selector)) {
+            item->setSelected(true);
+            widgetTree->scrollToItem(item);
+            break;
+        }
+    }
+}
+
+// ===========================================================
+// Rule creation / deletion
+// ===========================================================
+void ThemeInspectorWidget::addRuleForWidget(QWidget *, const QString &selector, const QString &body)
+{
     rules.push_back({selector, body, rules.isEmpty() ? 1 : rules.back().line + 1});
     rebuildTree();
 }
@@ -579,162 +658,6 @@ void ThemeInspectorWidget::deleteSelectedRule()
         return;
 
     rules.removeAt(idx);
-
     rebuildAllRulesTree();
     ruleEditor->clear();
-    allRulesTree->clearSelection();
-}
-
-// ===========================================================
-// All Rules / Widget Diff
-// ===========================================================
-void ThemeInspectorWidget::rebuildAllRulesTree()
-{
-    allRulesTree->clear();
-
-    QList<QWidget *> allWidgets;
-    for (QWidget *top : QApplication::topLevelWidgets())
-        collectAllWidgetsRecursive(top, allWidgets);
-
-    for (int i = 0; i < rules.size(); ++i) {
-        const auto &r = rules[i];
-
-        auto *it = new QTreeWidgetItem(allRulesTree);
-        it->setText(0, r.selector);
-        it->setText(1, QString::number(r.line));
-        it->setData(0, Qt::UserRole, i);
-
-        bool hasWidget = false;
-        QString objName;
-
-        for (QWidget *w : allWidgets) {
-            if (selectorMatches(w, r.selector)) {
-                hasWidget = true;
-                objName = w->objectName();
-                break;
-            }
-        }
-
-        it->setText(2, hasWidget ? "✓" : "✗");
-        it->setText(3, objName);
-    }
-
-    allRulesTree->expandToDepth(1);
-}
-
-void ThemeInspectorWidget::collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const
-{
-    if (!w)
-        return;
-    out.append(w);
-    for (QObject *c : w->children()) {
-        if (auto *cw = qobject_cast<QWidget *>(c))
-            collectAllWidgetsRecursive(cw, out);
-    }
-}
-
-// ===========================================================
-// Highlight matching widgets (skip pure QWidget)
-// ===========================================================
-void ThemeInspectorWidget::highlightMatchingWidget(const QString &sel)
-{
-    if (sel.trimmed() == "QWidget")
-        return;
-
-    if (!widgetTree)
-        return;
-
-    widgetTree->blockSignals(true);
-    widgetTree->clearSelection();
-
-    bool simpleType = !sel.startsWith('#') && !sel.contains('>') && !sel.contains(':') && !sel.contains('[');
-    QList<QTreeWidgetItem *> itemsToSelect;
-
-    for (int i = 0; i < widgetTree->topLevelItemCount(); ++i)
-        collectMatchingItems(widgetTree->topLevelItem(i), sel, simpleType, itemsToSelect);
-
-    for (QTreeWidgetItem *it : itemsToSelect)
-        it->setSelected(true);
-
-    widgetTree->blockSignals(false);
-}
-
-void ThemeInspectorWidget::collectMatchingItems(QTreeWidgetItem *item,
-                                                const QString &sel,
-                                                bool simpleType,
-                                                QList<QTreeWidgetItem *> &out) const
-{
-    if (!item)
-        return;
-
-    QVariant var = item->data(0, Qt::UserRole);
-    QWidget *w = nullptr;
-
-    if (var.isValid() && var.canConvert<QPointer<QObject>>()) {
-        QPointer<QObject> ptr = var.value<QPointer<QObject>>();
-        w = ptr ? qobject_cast<QWidget *>(ptr.data()) : nullptr;
-    }
-
-    if (!w)
-        return;
-
-    if (w->metaObject()->className() == QStringLiteral("QWidget") && sel.trimmed() == "QWidget")
-        return;
-
-    bool matches = false;
-
-    if (simpleType) {
-        const QMetaObject *mo = w->metaObject();
-        while (mo) {
-            if (sel == mo->className()) {
-                matches = true;
-                break;
-            }
-            mo = mo->superClass();
-        }
-    } else {
-        matches = selectorMatches(w, sel);
-    }
-
-    if (matches)
-        out.append(item);
-
-    for (int i = 0; i < item->childCount(); ++i)
-        collectMatchingItems(item->child(i), sel, simpleType, out);
-}
-
-// ===========================================================
-// Widget info
-// ===========================================================
-QString ThemeInspectorWidget::widgetSummary(QWidget *w) const
-{
-    return QString("Class: %1\nobjectName: %2\nVisible: %3\nEnabled: %4")
-        .arg(w->metaObject()->className())
-        .arg(w->objectName())
-        .arg(w->isVisible())
-        .arg(w->isEnabled());
-}
-
-SelectorGroups ThemeInspectorWidget::possibleSelectorsGrouped(QWidget *w) const
-{
-    SelectorGroups out;
-    QSet<QString> seenTypes;
-
-    const QMetaObject *mo = w->metaObject();
-    while (mo) {
-        if (!seenTypes.contains(mo->className())) {
-            out.types << mo->className();
-            seenTypes.insert(mo->className());
-        }
-        mo = mo->superClass();
-    }
-
-    if (!w->objectName().isEmpty())
-        out.objects << "#" + w->objectName();
-    for (const QByteArray &p : w->dynamicPropertyNames())
-        out.objects << QString("[%1=\"%2\"]").arg(p).arg(w->property(p).toString());
-
-    out.pseudos << ":hover" << ":focus" << ":disabled";
-
-    return out;
 }

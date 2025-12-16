@@ -326,8 +326,10 @@ void ThemeManager::themeChangedSlot()
 
     // css
     if (!dirPath.isEmpty() && dir.exists(STYLE_CSS_NAME)) {
-        qApp->setStyleSheet("file:///" + dir.absoluteFilePath(STYLE_CSS_NAME));
+        currentCssPath = dir.absoluteFilePath(STYLE_CSS_NAME);
+        qApp->setStyleSheet("file:///" + currentCssPath);
     } else {
+        currentCssPath.clear();
         qApp->setStyleSheet("");
     }
 

@@ -39,6 +39,11 @@ public:
         MaxRole = Player,
     };
 
+    QString currentStylesheetPath() const
+    {
+        return currentCssPath;
+    }
+
 private:
     QString defaultStyleName;
     std::array<QBrush, Role::MaxRole + 1> brushes;
@@ -47,6 +52,7 @@ private:
       Internal cache for multiple backgrounds
     */
     std::array<QBrushMap, Role::MaxRole + 1> brushesCache;
+    QString currentCssPath;
 
 protected:
     void ensureThemeDirectoryExists();
