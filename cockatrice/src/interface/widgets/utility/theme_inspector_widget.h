@@ -2,11 +2,15 @@
 #define COCKATRICE_THEME_INSPECTOR_WIDGET_H
 
 #include <QFileSystemWatcher>
+#include <QFrame>
 #include <QHash>
+#include <QLabel>
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPointer>
+#include <QPushButton>
 #include <QSplitter>
+#include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QWidget>
@@ -115,30 +119,31 @@ inline const QVector<QPair<QString, QString>> SUBCONTROLS = {
     {"::up-button", "Up button (QSpinBox)"}};
 
 inline const QHash<QString, QStringList> WIDGET_VALID_PSEUDOS = {
-    {"QLabel", {}},
-    {"QCheckBox", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
-    {"QRadioButton", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
-    {"QPushButton", {":default", ":flat", ":checked", ":open", ":closed", ":hover", ":disabled", ":focus"}},
-    {"QScrollBar", {":horizontal", ":vertical", ":hover", ":disabled", ":focus"}},
-    {"QSlider", {":horizontal", ":vertical", ":hover", ":disabled", ":focus"}},
+    {"QLabel", {":hover", ":disabled", ":enabled"}},
+    {"QCheckBox", {":checked", ":unchecked", ":disabled", ":enabled", ":hover", ":focus"}},
+    {"QRadioButton", {":checked", ":unchecked", ":disabled", ":enabled", ":hover", ":focus"}},
+    {"QPushButton",
+     {":default", ":flat", ":checked", ":open", ":closed", ":hover", ":disabled", ":enabled", ":focus", ":pressed"}},
+    {"QScrollBar", {":horizontal", ":vertical", ":hover", ":disabled", ":enabled", ":focus"}},
+    {"QSlider", {":horizontal", ":vertical", ":hover", ":disabled", ":enabled", ":focus"}},
     {"QTabBar",
      {":first", ":last", ":middle", ":only-one", ":previous-selected", ":next-selected", ":selected", ":top", ":bottom",
-      ":left", ":right", ":hover", ":disabled", ":focus"}},
-    {"QDockWidget", {":closable", ":floatable", ":movable", ":vertical", ":hover", ":disabled", ":focus"}},
-    {"QTreeView", {":open", ":closed", ":has-children", ":has-siblings", ":hover", ":disabled", ":focus"}},
-    {"QAbstractScrollArea", {":hover", ":disabled", ":focus"}},
-    {"QLineEdit", {":hover", ":disabled", ":focus", ":read-only"}},
-    {"QComboBox", {":editable", ":hover", ":disabled", ":focus", ":open", ":closed"}},
+      ":left", ":right", ":hover", ":disabled", ":enabled", ":focus"}},
+    {"QDockWidget", {":closable", ":floatable", ":movable", ":vertical", ":hover", ":disabled", ":enabled", ":focus"}},
+    {"QTreeView", {":open", ":closed", ":has-children", ":has-siblings", ":hover", ":disabled", ":enabled", ":focus"}},
+    {"QAbstractScrollArea", {":hover", ":disabled", ":enabled", ":focus"}},
+    {"QLineEdit", {":hover", ":disabled", ":enabled", ":focus", ":read-only"}},
+    {"QComboBox", {":editable", ":hover", ":disabled", ":enabled", ":focus", ":open", ":closed"}},
     {"QHeaderView",
      {":middle", ":first", ":last", ":only-one", ":next-selected", ":previous-selected", ":selected", ":checked"}},
     {"QToolBar", {":top", ":left", ":right", ":bottom", ":first", ":last", ":middle", ":only-one"}},
-    {"QGroupBox", {":checked", ":unchecked", ":disabled", ":hover", ":focus"}},
-    {"QMenu", {":selected", ":default", ":exclusive", ":non-exclusive", ":hover", ":disabled", ":focus"}},
-    {"QMenuBar", {":hover", ":disabled", ":focus"}},
+    {"QGroupBox", {":checked", ":unchecked", ":disabled", ":enabled", ":hover", ":focus"}},
+    {"QMenu", {":selected", ":default", ":exclusive", ":non-exclusive", ":hover", ":disabled", ":enabled", ":focus"}},
+    {"QMenuBar", {":hover", ":disabled", ":enabled", ":focus"}},
     {"QTabWidget", {":top", ":bottom", ":left", ":right"}},
-    {"QSpinBox", {":hover", ":disabled", ":focus"}},
-    {"QDoubleSpinBox", {":hover", ":disabled", ":focus"}},
-    {"QToolButton", {":hover", ":disabled", ":focus"}},
+    {"QSpinBox", {":hover", ":disabled", ":enabled", ":focus"}},
+    {"QDoubleSpinBox", {":hover", ":disabled", ":enabled", ":focus"}},
+    {"QToolButton", {":hover", ":disabled", ":enabled", ":focus", ":pressed"}},
     {"QToolBox", {":only-one", ":first", ":last", ":middle", ":previous-selected", ":next-selected", ":selected"}}};
 
 inline const QHash<QString, QStringList> WIDGET_VALID_SUBCONTROLS = {
@@ -157,14 +162,17 @@ inline const QHash<QString, QStringList> WIDGET_VALID_SUBCONTROLS = {
     {"QDockWidget", {"::title", "::close-button", "::float-button"}},
     {"QGroupBox", {"::title", "::indicator"}},
     {"QHeaderView", {"::section", "::up-arrow", "::down-arrow"}},
-    {"QMenu", {"::item", "::indicator", "::separator", "::scroller", "::tearoff"}}, // <- FIXED
+    {"QMenu", {"::item", "::indicator", "::separator", "::scroller", "::tearoff"}},
     {"QMenuBar", {"::item"}},
     {"QSpinBox", {"::up-button", "::down-button", "::up-arrow", "::down-arrow"}},
     {"QDoubleSpinBox", {"::up-button", "::down-button", "::up-arrow", "::down-arrow"}},
     {"QToolBar", {"::separator", "::handle"}},
     {"QTableView", {"::item", "::section"}},
     {"QListView", {"::item"}},
-    {"QAbstractScrollArea", {"::corner"}}};
+    {"QTreeView", {"::branch", "::item"}},
+    {"QAbstractScrollArea", {"::corner"}},
+    {"QProgressBar", {"::chunk"}},
+    {"QComboBox", {"::drop-down", "::down-arrow"}}};
 
 inline const QVector<QPair<QString, QString>> QT_CSS_PROPERTIES = {
     {"alternate-background-color", "Brush: Alternate background for QAbstractItemView"},
@@ -259,9 +267,7 @@ inline const QVector<QPair<QString, QString>> QT_CSS_PROPERTIES = {
     {"text-align", "Alignment: Text/icon alignment (QPushButton/QProgressBar)"},
     {"text-decoration", "none|underline|overline|line-through: Text effects"},
     {"top", "Length: Offset from top"},
-    {"width", "Length: Width of subcontrol or widget"},
-    {"-qt-background-role", "PaletteRole: Background role"},
-    {"-qt-style-features", "list: List of Qt-specific CSS properties"}};
+    {"width", "Length: Width of subcontrol or widget"}};
 
 static const QMap<QString, QStringList> qtPropertyMap{
     // Applies to all widgets unless specified
@@ -291,7 +297,7 @@ static const QMap<QString, QStringList> qtPropertyMap{
       "QWidget"}},
     {"background-color",
      {"QWidget", "QLabel", "QLineEdit", "QFrame", "QPushButton", "QTextEdit", "QCheckBox", "QRadioButton"}},
-    {"background-image", {"QWidget"}}, // Applies to any widget unless stated
+    {"background-image", {"QWidget"}},
     {"background-repeat", {"QWidget"}},
     {"background-position", {"QWidget"}},
     {"background-attachment", {"QAbstractScrollArea"}},
@@ -323,8 +329,8 @@ static const QMap<QString, QStringList> qtPropertyMap{
       "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
 
     // Text & Font
-    {"color", {"QWidget"}}, // All widgets respecting QWidget::palette
-    {"font", {"QWidget"}},  // All widgets respecting QWidget::font
+    {"color", {"QWidget"}},
+    {"font", {"QWidget"}},
     {"font-family", {"QWidget"}},
     {"font-size", {"QWidget"}},
     {"font-style", {"QWidget"}},
@@ -338,7 +344,7 @@ static const QMap<QString, QStringList> qtPropertyMap{
      {"QAbstractItemView", "QAbstractSpinBox", "QCheckBox", "QComboBox", "QFrame", "QGroupBox", "QLabel", "QLineEdit",
       "QMenu", "QMenuBar", "QPushButton", "QRadioButton", "QSplitter", "QTextEdit", "QToolTip"}},
 
-    // Selection (applies to widgets respecting palette)
+    // Selection
     {"selection-background-color", {"QWidget"}},
     {"selection-color", {"QWidget"}},
 
@@ -349,8 +355,8 @@ static const QMap<QString, QStringList> qtPropertyMap{
     {"icon", {"QPushButton"}},
     {"icon-size",
      {"QCheckBox", "QListView", "QPushButton", "QRadioButton", "QTabBar", "QToolBar", "QToolBox", "QTreeView"}},
-    {"image", {"QWidget"}},          // subcontrols only
-    {"image-position", {"QWidget"}}, // subcontrols only
+    {"image", {"QWidget"}},
+    {"image-position", {"QWidget"}},
     {"spacing", {"QCheckBox", "QGroupBox", "QMenuBar", "QRadioButton"}},
     {"subcontrol-origin", {"QWidget"}},
     {"subcontrol-position", {"QWidget"}},
@@ -392,57 +398,18 @@ inline SelectorGroups possibleSelectorsGrouped(QWidget *w)
     return g;
 }
 
-inline QVector<QtSelectors::SelectorSuggestion> propertySuggestionsForWidget(QWidget *w)
-{
-    QVector<QtSelectors::SelectorSuggestion> out;
-    if (!w)
-        return out;
-
-    QString type = w->metaObject()->className();
-
-    for (auto &p : QtSelectors::QT_CSS_PROPERTIES) {
-        // Confidence: 70 for generic property suggestion
-        // Optionally: increase confidence if property is supported by this widget type
-        out.push_back({p.first, p.second, 70});
-    }
-
-    return out;
-}
-
-// Returns a friendly suggestion list
-inline QVector<QtSelectors::SelectorSuggestion> friendlySuggestions(QWidget *w)
-{
-    QVector<QtSelectors::SelectorSuggestion> out;
-    if (!w)
-        return out;
-
-    QString type = w->metaObject()->className();
-
-    if (!w->objectName().isEmpty())
-        out.push_back({"#" + w->objectName(), "Only this exact widget", 100});
-
-    out.push_back({type, QString("All widgets of type %1").arg(type), 60});
-
-    if (!w->objectName().isEmpty())
-        out.push_back({type + "#" + w->objectName(), QString("Widget %1 of type %2").arg(w->objectName(), type), 90});
-
-    for (auto &p : QtSelectors::PSEUDO_STATES)
-        out.push_back({type + p.first, p.second, 50});
-
-    for (auto &s : QtSelectors::SUBCONTROLS)
-        out.push_back({type + s.first, s.second, 30});
-
-    // Add Qt CSS property suggestions
-    for (auto &prop : QtSelectors::QT_CSS_PROPERTIES)
-        out.push_back({prop.first, prop.second, 20}); // Lower confidence than pseudos/subcontrols
-
-    // Sort by confidence (descending)
-    std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.confidence > b.confidence; });
-
-    return out;
-}
 } // namespace QtSelectors
 
+/**
+ * @brief Interactive Qt stylesheet inspector and editor
+ *
+ * Features:
+ * - Live widget tree visualization
+ * - Rule matching and highlighting
+ * - Interactive CSS editor with auto-save
+ * - Selector suggestions
+ * - Property suggestions
+ */
 class ThemeInspectorWidget : public QWidget
 {
     Q_OBJECT
@@ -471,6 +438,8 @@ private slots:
 
     void highlightMatchingWidget(const QString &selector);
 
+    void updateStatus(const QString &message, bool isError = false);
+
 private:
     struct Rule
     {
@@ -479,7 +448,7 @@ private:
         int line = 0;
     };
 
-    // ---------------- UI ----------------
+    // ---------------- UI Components ----------------
     QTreeWidget *widgetTree = nullptr;
 
     QPlainTextEdit *widgetInfo = nullptr;
@@ -489,7 +458,8 @@ private:
     QTreeWidget *allRulesTree = nullptr;
     QPlainTextEdit *ruleEditor = nullptr;
 
-    QListWidget *propertySuggestionList;
+    QListWidget *propertySuggestionList = nullptr;
+    QLabel *statusLabel = nullptr;
 
     QFileSystemWatcher watcher;
 
@@ -502,8 +472,9 @@ private:
     QStringList globalObjects;
     QStringList globalPseudos;
 
-    // ---------------- Helpers ----------------
+    // ---------------- Helper Methods ----------------
     QWidget *createToolbar();
+    QFrame *createSeparator();
     void updateGlobalTypes();
 
     void expandItemRecursive(QTreeWidgetItem *item);
@@ -515,16 +486,14 @@ private:
     bool widgetHasPseudo(QWidget *w, const QString &pseudo) const;
     bool widgetHasSubcontrol(QWidget *w, const QString &sub) const;
 
-    void addChildrenToItem(QWidget *w, QTreeWidgetItem *parent);
+    int addChildrenToItem(QWidget *w, QTreeWidgetItem *parent);
 
     bool selectorMatches(QWidget *w, const QString &selector) const;
-    bool selectorAppliesIgnoringPseudo(QWidget *w, const QString &selector) const;
 
     QString widgetSummary(QWidget *w) const;
     QString widgetPath(QWidget *w) const;
 
     QVector<QtSelectors::SelectorSuggestion> selectorSuggestions(QWidget *w) const;
-    QString bestSelectorForWidget(QWidget *w) const;
 
     void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
 };
