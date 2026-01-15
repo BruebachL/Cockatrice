@@ -421,6 +421,7 @@ private slots:
     void reloadStylesheet();
 
     void rebuildTree();
+    bool isChildOf(QWidget *widget, QWidget *potentialParent) const;
     void updateForSelection();
 
     void showRuleBody();
@@ -432,11 +433,14 @@ private slots:
     void deleteSelectedRule();
 
     void rebuildAllRulesTree();
+    void rebuildObjectNamesTree();
 
     void expandAllItems();
     void collapseAllItems();
 
     void highlightMatchingWidget(const QString &selector);
+    void moveSelectedRule(int direction);
+    void editSelectedRuleSelector();
 
     void updateStatus(const QString &message, bool isError = false);
 
@@ -460,6 +464,10 @@ private:
 
     QListWidget *propertySuggestionList = nullptr;
     QLabel *statusLabel = nullptr;
+    QToolButton *hideInspectorCheckbox = nullptr;
+
+    QTreeWidget *objectNamesTree = nullptr;
+    QTreeWidget *iconsTree = nullptr;
 
     QFileSystemWatcher watcher;
 
@@ -495,6 +503,7 @@ private:
 
     QVector<QtSelectors::SelectorSuggestion> selectorSuggestions(QWidget *w) const;
 
+    void rebuildIconsTree();
     void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
 };
 
