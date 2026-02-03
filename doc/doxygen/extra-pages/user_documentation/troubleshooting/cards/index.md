@@ -1,0 +1,4 @@
+@subpage troubleshooting_cards Cards
+
+@subpage troubleshooting_card_database
+@subpage troubleshooting_card_pictures

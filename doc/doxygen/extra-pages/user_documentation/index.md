@@ -11,6 +11,10 @@
 
 - @subpage beta_release
 
+## Troubleshooting
+
+- @subpage troubleshooting
+
 ## Syntax Help
 
 - @subpage search_syntax_help
