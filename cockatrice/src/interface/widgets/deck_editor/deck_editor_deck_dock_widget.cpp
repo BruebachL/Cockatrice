@@ -3,6 +3,7 @@
 #include "../../../client/settings/cache_settings.h"
 #include "deck_list_style_proxy.h"
 #include "deck_state_manager.h"
+#include "libcockatrice/utility/qt_utils.h"
 
 #include <QComboBox>
 #include <QDockWidget>
@@ -53,10 +54,7 @@ void DeckEditorDeckDockWidget::createDeckDock()
 {
     connect(getModel(), &DeckListModel::deckHashChanged, this, &DeckEditorDeckDockWidget::updateHash);
 
-    proxy = new DeckListStyleProxy(this);
-    proxy->setSourceModel(getModel());
-
-    historyManagerWidget = new DeckListHistoryManagerWidget(deckStateManager, proxy, this);
+    historyManagerWidget = new DeckListHistoryManagerWidget(deckStateManager, deckStateManager->viewModel(), this);
     connect(historyManagerWidget, &DeckListHistoryManagerWidget::requestDisplayWidgetSync, this,
             &DeckEditorDeckDockWidget::syncDisplayWidgetsToModel);
 
@@ -68,7 +66,7 @@ void DeckEditorDeckDockWidget::createDeckDock()
 
     deckView = new QTreeView();
     deckView->setObjectName("deckView");
-    deckView->setModel(proxy);
+    deckView->setModel(deckStateManager->viewModel());
     deckView->setUniformRowHeights(true);
     deckView->setSortingEnabled(true);
     deckView->sortByColumn(1, Qt::AscendingOrder);
@@ -460,13 +458,16 @@ void DeckEditorDeckDockWidget::syncBannerCardComboBoxSelectionWithDeck()
 
 void DeckEditorDeckDockWidget::setSelectedIndex(const QModelIndex &newCardIndex, bool preserveWidgetFocus)
 {
+    Q_UNUSED(newCardIndex);
+    Q_UNUSED(preserveWidgetFocus);
+    /*auto cardIndex = deckStateManager->viewModel()->mapFromSource(newCardIndex);
     deckView->clearSelection();
-    deckView->setCurrentIndex(newCardIndex);
-    recursiveExpand(newCardIndex);
+    deckView->setCurrentIndex(cardIndex);
+    recursiveExpand(cardIndex);
 
     if (!preserveWidgetFocus) {
         deckView->setFocus(Qt::FocusReason::MouseFocusReason);
-    }
+    }*/
 }
 
 void DeckEditorDeckDockWidget::syncDisplayWidgetsToModel()
@@ -526,15 +527,6 @@ void DeckEditorDeckDockWidget::changeSelectedCard(int changeBy)
     // Get the current index of the selected item
     auto deckViewCurrentIndex = deckView->currentIndex();
 
-    // For some reason, if the deckModel is modified but the view is not manually reselected,
-    // currentIndex will return an index for the underlying deckModel instead of the proxy.
-    // That index will return an invalid index when indexBelow/indexAbove crosses a header node,
-    // causing the selection to fail to move down.
-    /// \todo Figure out why it's happening so we can do a proper fix instead of a hacky workaround
-    if (deckViewCurrentIndex.model() == proxy->sourceModel()) {
-        deckViewCurrentIndex = proxy->mapFromSource(deckViewCurrentIndex);
-    }
-
     auto nextIndex = deckViewCurrentIndex.siblingAtRow(deckViewCurrentIndex.row() + changeBy);
     if (!nextIndex.isValid()) {
         nextIndex = deckViewCurrentIndex;
@@ -563,12 +555,14 @@ void DeckEditorDeckDockWidget::changeSelectedCard(int changeBy)
  */
 void DeckEditorDeckDockWidget::recursiveExpand(const QModelIndex &sourceIndex)
 {
-    auto index = proxy->mapFromSource(sourceIndex);
+    Q_UNUSED(sourceIndex);
+    /*auto index = deckStateManager->viewModel()->mapFromSource(sourceIndex);
 
     while (index.parent().isValid()) {
         index = index.parent();
         deckView->expand(index);
     }
+    */
 }
 
 /**
@@ -589,10 +583,9 @@ QModelIndexList DeckEditorDeckDockWidget::getSelectedCardNodeSourceIndices() con
 {
     auto selectedRows = deckView->selectionModel()->selectedRows();
 
-    const auto mapToSource = [this](const QModelIndex &index) { return proxy->mapToSource(index); };
-    std::transform(selectedRows.begin(), selectedRows.end(), selectedRows.begin(), mapToSource);
-
-    const auto notLeafNode = [this](const QModelIndex &sourceIndex) { return getModel()->hasChildren(sourceIndex); };
+    const auto notLeafNode = [this](const QModelIndex &sourceIndex) {
+        return deckStateManager->viewModel()->hasChildren(sourceIndex);
+    };
     selectedRows.erase(std::remove_if(selectedRows.begin(), selectedRows.end(), notLeafNode), selectedRows.end());
 
     std::reverse(selectedRows.begin(), selectedRows.end());

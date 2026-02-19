@@ -3,6 +3,8 @@
 
 #include "../../deck_loader/loaded_deck.h"
 #include "deck_list_model.h"
+#include "deck_list_sort_filter_proxy_model.h"
+#include "deck_list_style_proxy.h"
 
 #include <QSharedPointer>
 #include <libcockatrice/deck_list/deck_list.h>
@@ -26,6 +28,8 @@ class DeckStateManager : public QObject
     QSharedPointer<DeckList> deckList;
     DeckListModel *deckListModel;
     DeckListHistoryManager *historyManager;
+    DeckListSortFilterProxyModel *sortProxy;
+    DeckListStyleProxy *styleProxy;
 
     bool modified = false;
 
@@ -50,6 +54,11 @@ public:
     DeckListModel *getModel() const
     {
         return deckListModel;
+    }
+
+    DeckListStyleProxy *viewModel() const
+    {
+        return styleProxy;
     }
 
     /**

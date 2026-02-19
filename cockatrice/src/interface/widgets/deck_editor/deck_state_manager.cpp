@@ -5,8 +5,14 @@
 
 DeckStateManager::DeckStateManager(QObject *parent)
     : QObject(parent), deckList(QSharedPointer<DeckList>(new DeckList)),
-      deckListModel(new DeckListModel(this, deckList)), historyManager(new DeckListHistoryManager(this))
+      deckListModel(new DeckListModel(this, deckList)), historyManager(new DeckListHistoryManager(this)),
+      sortProxy(new DeckListSortFilterProxyModel(this)), styleProxy(new DeckListStyleProxy(this))
 {
+    sortProxy->setSourceModel(deckListModel);
+    sortProxy->setDynamicSortFilter(true);
+
+    styleProxy->setSourceModel(sortProxy);
+
     connect(historyManager, &DeckListHistoryManager::undoRedoStateChanged, this, [this] {
         setModified(true);
         emit historyChanged();
