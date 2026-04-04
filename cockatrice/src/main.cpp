@@ -26,6 +26,7 @@
 #include "database/interface/settings_card_preference_provider.h"
 #include "interface/intents/intent_open_local_deck.h"
 #include "interface/intents/url_parser.h"
+#include "integrations/discord_social_manager.h"
 #include "interface/logger.h"
 #include "interface/pixel_map_generator.h"
 #include "interface/theme_manager.h"
@@ -259,6 +260,8 @@ int main(int argc, char *argv[])
     CardDatabaseManager::setCardPreferenceProvider(new SettingsCardPreferenceProvider());
     CardDatabaseManager::setCardDatabasePathProvider(&SettingsCache::instance());
     CardDatabaseManager::setCardSetPriorityController(SettingsCache::instance().cardDatabase());
+
+    DiscordSocialManager::getInstance();
 
     qCInfo(MainLog) << "Starting main program";
 
