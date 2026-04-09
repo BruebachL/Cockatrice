@@ -42,7 +42,7 @@
 #include "theme_manager.h"
 #include "version_string.h"
 #include "widgets/utility/get_text_with_max.h"
-#include "widgets/utility/theme_inspector_widget.h"
+#include "widgets/utility/theme_inspector/theme_inspector_widget.h"
 
 #include <QAction>
 #include <QApplication>

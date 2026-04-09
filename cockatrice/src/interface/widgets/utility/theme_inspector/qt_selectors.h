@@ -1,18 +1,9 @@
-#ifndef COCKATRICE_THEME_INSPECTOR_WIDGET_H
-#define COCKATRICE_THEME_INSPECTOR_WIDGET_H
+#ifndef COCKATRICE_QT_SELECTORS_H
+#define COCKATRICE_QT_SELECTORS_H
 
-#include <QFileSystemWatcher>
-#include <QFrame>
 #include <QHash>
-#include <QLabel>
-#include <QListWidget>
-#include <QPlainTextEdit>
-#include <QPointer>
-#include <QPushButton>
-#include <QSplitter>
-#include <QTimer>
-#include <QToolButton>
-#include <QTreeWidget>
+#include <QMap>
+#include <QStringList>
 #include <QWidget>
 
 namespace QtSelectors
@@ -270,7 +261,6 @@ inline const QVector<QPair<QString, QString>> QT_CSS_PROPERTIES = {
     {"width", "Length: Width of subcontrol or widget"}};
 
 static const QMap<QString, QStringList> qtPropertyMap{
-    // Applies to all widgets unless specified
     {"height", {"QWidget"}},
     {"width", {"QWidget"}},
     {"min-height",
@@ -400,111 +390,4 @@ inline SelectorGroups possibleSelectorsGrouped(QWidget *w)
 
 } // namespace QtSelectors
 
-/**
- * @brief Interactive Qt stylesheet inspector and editor
- *
- * Features:
- * - Live widget tree visualization
- * - Rule matching and highlighting
- * - Interactive CSS editor with auto-save
- * - Selector suggestions
- * - Property suggestions
- */
-class ThemeInspectorWidget : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit ThemeInspectorWidget(const QString &liveCssPath, QWidget *parent = nullptr);
-
-private slots:
-    void setStylesheetPath(const QString &path);
-    void reloadStylesheet();
-
-    void rebuildTree();
-    bool isChildOf(QWidget *widget, QWidget *potentialParent) const;
-    void updateForSelection();
-
-    void showRuleBody();
-    void showRuleBodyFromAllRules();
-    void applyRuleEdit();
-
-    void addRuleForWidget(QWidget *w, const QString &selector, const QString &body);
-    void addRuleForAll(const QString &selector, const QString &body);
-    void deleteSelectedRule();
-
-    void rebuildAllRulesTree();
-    void rebuildObjectNamesTree();
-
-    void expandAllItems();
-    void collapseAllItems();
-
-    void highlightMatchingWidget(const QString &selector);
-    void moveSelectedRule(int direction);
-    void editSelectedRuleSelector();
-
-    void updateStatus(const QString &message, bool isError = false);
-
-private:
-    struct Rule
-    {
-        QString selector;
-        QString body;
-        int line = 0;
-    };
-
-    // ---------------- UI Components ----------------
-    QTreeWidget *widgetTree = nullptr;
-
-    QPlainTextEdit *widgetInfo = nullptr;
-    QListWidget *selectorSuggestionList = nullptr;
-
-    QTreeWidget *ruleTree = nullptr;
-    QTreeWidget *allRulesTree = nullptr;
-    QPlainTextEdit *ruleEditor = nullptr;
-
-    QListWidget *propertySuggestionList = nullptr;
-    QLabel *statusLabel = nullptr;
-    QToolButton *hideInspectorCheckbox = nullptr;
-
-    QTreeWidget *objectNamesTree = nullptr;
-    QTreeWidget *iconsTree = nullptr;
-
-    QFileSystemWatcher watcher;
-
-    // ---------------- Data ----------------
-    QString stylesheetPath;
-    QString stylesheetText;
-    QVector<Rule> rules;
-
-    QStringList globalTypes;
-    QStringList globalObjects;
-    QStringList globalPseudos;
-
-    // ---------------- Helper Methods ----------------
-    QWidget *createToolbar();
-    QFrame *createSeparator();
-    void updateGlobalTypes();
-
-    void expandItemRecursive(QTreeWidgetItem *item);
-    void collapseItemRecursive(QTreeWidgetItem *item);
-
-    void parseStylesheet();
-
-    void updateRuleMatches(QWidget *w);
-    bool widgetHasPseudo(QWidget *w, const QString &pseudo) const;
-    bool widgetHasSubcontrol(QWidget *w, const QString &sub) const;
-
-    int addChildrenToItem(QWidget *w, QTreeWidgetItem *parent);
-
-    bool selectorMatches(QWidget *w, const QString &selector) const;
-
-    QString widgetSummary(QWidget *w) const;
-    QString widgetPath(QWidget *w) const;
-
-    QVector<QtSelectors::SelectorSuggestion> selectorSuggestions(QWidget *w) const;
-
-    void rebuildIconsTree();
-    void collectAllWidgetsRecursive(QWidget *w, QList<QWidget *> &out) const;
-};
-
-#endif // COCKATRICE_THEME_INSPECTOR_WIDGET_H
+#endif // COCKATRICE_QT_SELECTORS_H
