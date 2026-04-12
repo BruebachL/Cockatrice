@@ -218,6 +218,29 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
         });
     }
 
+    menu.addSeparator();
+
+    auto *overrideMenu = new QMenu(tr("Image Overrides"));
+
+    auto allSets = rootCard.getInfo().getSets();
+
+    for (auto set : allSets) {
+        for (auto printing : set) {
+            if (printing == rootCard.getPrinting()) {
+                continue;
+            }
+
+            overrideMenu->addAction(tr("%1 (%2) %3")
+                                        .arg(rootCard.getName())
+                                        .arg(printing.getSet()->getCorrectedShortName())
+                                        .arg(printing.getProperty("num")));
+        }
+    }
+
+    menu.addMenu(overrideMenu);
+
+    menu.addSeparator();
+
     // filling out the related cards submenu
     auto *relatedMenu = new QMenu(tr("Show Related cards"));
     menu.addMenu(relatedMenu);
