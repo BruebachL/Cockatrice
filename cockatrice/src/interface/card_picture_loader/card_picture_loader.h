@@ -118,6 +118,8 @@ public slots:
      */
     void imageLoaded(const ExactCard &card, const QImage &image);
     void saveCardImageToLocalStorage(const ExactCard &card, const QPixmap &pixmap);
+    void overridePrintingConnectLocalSaveAndEnqueue(const ExactCard &originalCard, const ExactCard &overrideCard);
+    void overridePrintingEnsurePixmapExistsAndSaveLocally(const ExactCard &originalCard, const ExactCard &overrideCard);
 
 private slots:
     /**

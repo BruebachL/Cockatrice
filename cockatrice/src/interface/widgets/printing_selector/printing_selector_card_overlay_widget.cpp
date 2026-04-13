@@ -1,12 +1,14 @@
 #include "printing_selector_card_overlay_widget.h"
 
 #include "../../../client/settings/cache_settings.h"
+#include "../../card_picture_loader/card_picture_loader.h"
 #include "printing_selector_card_display_widget.h"
 
 #include <QImageReader>
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QPixmapCache>
 #include <QVBoxLayout>
 #include <QtMath>
 #include <libcockatrice/card/database/card_database_manager.h>
@@ -230,10 +232,18 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
                 continue;
             }
 
-            overrideMenu->addAction(tr("%1 (%2) %3")
-                                        .arg(rootCard.getName())
-                                        .arg(printing.getSet()->getCorrectedShortName())
-                                        .arg(printing.getProperty("num")));
+            auto *action = overrideMenu->addAction(tr("%1 (%2) %3")
+                                                       .arg(rootCard.getName())
+                                                       .arg(printing.getSet()->getCorrectedShortName())
+                                                       .arg(printing.getProperty("num")));
+
+            ExactCard overrideCard(rootCard.getCardPtr(), printing);
+
+            connect(action, &QAction::triggered, this, [this, overrideCard]() {
+                CardPictureLoader::getInstance().overridePrintingEnsurePixmapExistsAndSaveLocally(rootCard,
+                                                                                                  overrideCard);
+                QPixmapCache::clear();
+            });
         }
     }
 

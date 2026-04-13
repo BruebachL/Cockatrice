@@ -243,11 +243,6 @@ void CardPictureLoader::saveCardImageToLocalStorage(const ExactCard &card, const
 
     QFileInfo outInfo(baseDir.filePath(relativePath));
 
-    // Do not overwrite existing files
-    if (outInfo.exists()) {
-        return;
-    }
-
     QDir outDir = outInfo.dir();
 
     // Ensure directory exists
@@ -263,6 +258,52 @@ void CardPictureLoader::saveCardImageToLocalStorage(const ExactCard &card, const
     if (!image.save(outInfo.absoluteFilePath(), "PNG")) {
         qCWarning(CardPictureLoaderLog) << "Failed to save card image to" << outInfo.absoluteFilePath();
     }
+}
+
+void CardPictureLoader::overridePrintingConnectLocalSaveAndEnqueue(const ExactCard &originalCard,
+                                                                   const ExactCard &overrideCard)
+{
+    CardInfoPtr cardPtr = overrideCard.getCardPtr();
+    if (!cardPtr)
+        return;
+
+    // Heap-allocate so the lambda can capture it before the connection is made
+    auto *connectionHandle = new QMetaObject::Connection;
+
+    *connectionHandle =
+        connect(cardPtr.data(), &CardInfo::pixmapUpdated, cardPtr.data(),
+                [originalCard, overrideCard, connectionHandle, this]() {
+                    QPixmap pixmap;
+                    if (QPixmapCache::find(overrideCard.getPixmapCacheKey(), &pixmap) && !pixmap.isNull()) {
+                        saveCardImageToLocalStorage(originalCard, pixmap);
+                    }
+
+                    // Disconnect and clean up after first fire
+                    QObject::disconnect(*connectionHandle);
+                    delete connectionHandle;
+                });
+
+    // Now enqueue; if the image is already loading (deduplicated in the worker),
+    // the signal will still fire when it completes
+    CardPictureLoader::getInstance().worker->enqueueImageLoad(overrideCard);
+}
+
+void CardPictureLoader::overridePrintingEnsurePixmapExistsAndSaveLocally(const ExactCard &originalCard,
+                                                                         const ExactCard &overrideCard)
+{
+    QPixmap pixmap;
+    QString key = overrideCard.getPixmapCacheKey();
+
+    if (QPixmapCache::find(key, &pixmap)) {
+        // Already cached — save immediately
+        if (!pixmap.isNull()) {
+            saveCardImageToLocalStorage(originalCard, pixmap);
+        }
+        return;
+    }
+
+    // Cache miss — enqueue load and wait for the signal
+    overridePrintingConnectLocalSaveAndEnqueue(originalCard, overrideCard);
 }
 
 void CardPictureLoader::clearPixmapCache()
