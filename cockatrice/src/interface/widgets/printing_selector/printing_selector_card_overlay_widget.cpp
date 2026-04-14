@@ -50,6 +50,12 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
 
     initializePinBadge();
 
+    cardOverridePreviewLabel = new QLabel(nullptr, Qt::ToolTip);
+    cardOverridePreviewLabel->setWindowFlag(Qt::FramelessWindowHint);
+    cardOverridePreviewLabel->setAttribute(Qt::WA_ShowWithoutActivating);
+    cardOverridePreviewLabel->setScaledContents(true);
+    cardOverridePreviewLabel->hide();
+
     // Update when this overlay emits cardPreferenceChanged or when size/scale changes
     connect(this, &PrintingSelectorCardOverlayWidget::cardPreferenceChanged, this,
             &PrintingSelectorCardOverlayWidget::updatePinBadgeVisibility);
@@ -238,6 +244,10 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
                                                        .arg(printing.getProperty("num")));
 
             ExactCard overrideCard(rootCard.getCardPtr(), printing);
+            QPixmap cardArt;
+            CardPictureLoader::getPixmap(cardArt, overrideCard, QSize(200, 200));
+
+            action->setData(QVariant::fromValue(overrideCard));
 
             connect(action, &QAction::triggered, this, [this, overrideCard]() {
                 CardPictureLoader::getInstance().overridePrintingEnsurePixmapExistsAndSaveLocally(rootCard,
@@ -246,6 +256,48 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
             });
         }
     }
+
+    connect(overrideMenu, &QMenu::hovered, this, [this](QAction *action) {
+        QVariant data = action->data();
+
+        if (!data.canConvert<ExactCard>()) {
+            cardOverridePreviewLabel->hide();
+            return;
+        }
+
+        ExactCard card = qvariant_cast<ExactCard>(data);
+
+        QPixmap pixmap;
+        CardPictureLoader::getPixmap(pixmap, card, QSize(240, 336));
+
+        if (pixmap.isNull()) {
+            cardOverridePreviewLabel->hide();
+            return;
+        }
+
+        cardOverridePreviewLabel->setPixmap(pixmap);
+
+        QPoint cursorPos = QCursor::pos();
+        QRect screen = QGuiApplication::screenAt(cursorPos)->geometry();
+        QSize size = cardOverridePreviewLabel->size();
+
+        int x = cursorPos.x() + 20;
+        int y = cursorPos.y() + 20;
+
+        if (x + size.width() > screen.right()) {
+            x = cursorPos.x() - size.width() - 20;
+        }
+        if (y + size.height() > screen.bottom()) {
+            y = cursorPos.y() - size.height() - 20;
+        }
+
+        cardOverridePreviewLabel->move(x, y);
+        cardOverridePreviewLabel->resize(pixmap.size());
+        cardOverridePreviewLabel->show();
+    });
+
+    connect(overrideMenu, &QMenu::aboutToHide, this, [this]() { cardOverridePreviewLabel->hide(); });
+    connect(overrideMenu, &QMenu::triggered, this, [this]() { cardOverridePreviewLabel->hide(); });
 
     menu.addMenu(overrideMenu);
 
