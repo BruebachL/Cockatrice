@@ -48,6 +48,7 @@ private:
     QLabel *pinBadge = nullptr;
     AbstractTabDeckEditor *deckEditor;
     ExactCard rootCard;
+    QLabel *cardOverridePreviewLabel = nullptr;
 };
 
 #endif // PRINTING_SELECTOR_CARD_OVERLAY_WIDGET_H
