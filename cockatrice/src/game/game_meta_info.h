@@ -36,6 +36,10 @@ public:
     }
 
     // High-level getters that avoid exposing protobuf directly
+    int roomId() const
+    {
+        return gameInfo_.room_id();
+    }
     int gameId() const
     {
         return gameInfo_.game_id();

@@ -7,6 +7,7 @@
 #include "../main.h"
 #include "api/archidekt/tab_archidekt.h"
 #include "api/edhrec/tab_edhrec_main.h"
+#include "integrations/discord_social_manager.h"
 #include "tab_account.h"
 #include "tab_admin.h"
 #include "tab_deck_editor.h"
@@ -130,6 +131,10 @@ TabSupervisor::TabSupervisor(AbstractClient *_client, QMenu *tabsMenu, QWidget *
     connect(client, &AbstractClient::userMessageEventReceived, this, &TabSupervisor::processUserMessageEvent);
     connect(client, &AbstractClient::maxPingTime, this, &TabSupervisor::updatePingTime);
     connect(client, &AbstractClient::notifyUserEventReceived, this, &TabSupervisor::processNotifyUserEvent);
+    connect(this, &TabSupervisor::tabGameOpened, DiscordSocialManager::getInstance(),
+            &DiscordSocialClient::onGameTabOpened);
+    connect(this, &TabSupervisor::tabGameClosed, DiscordSocialManager::getInstance(),
+            &DiscordSocialClient::onGameTabClosed);
 
     // create tabs menu actions
     aTabDeckEditor = new QAction(this);
@@ -720,6 +725,7 @@ void TabSupervisor::gameJoined(const Event_GameJoined &event)
     myAddTab(tab);
     gameTabs.insert(event.game_info().game_id(), tab);
     setCurrentWidget(tab);
+    emit tabGameOpened(tab);
 }
 
 void TabSupervisor::localGameJoined(const Event_GameJoined &event)
@@ -748,6 +754,8 @@ void TabSupervisor::gameLeft(TabGame *tab)
 
     if (!localClients.isEmpty())
         stop();
+
+    emit tabGameClosed(tab);
 }
 
 void TabSupervisor::addRoomTab(const ServerInfo_Room &info, bool setCurrent)

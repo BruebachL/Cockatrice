@@ -167,6 +167,8 @@ public:
     static void actShowPopup(const QString &message);
 signals:
     void setMenu(const QList<QMenu *> &newMenuList = QList<QMenu *>());
+    void tabGameOpened(TabGame *tabGame);
+    void tabGameClosed(TabGame *tabGame);
     void localGameEnded();
     void adminLockChanged(bool lock);
     void showWindowIfHidden();
