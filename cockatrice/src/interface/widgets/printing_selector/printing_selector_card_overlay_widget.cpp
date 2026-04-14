@@ -4,6 +4,7 @@
 #include "../../card_picture_loader/card_picture_loader.h"
 #include "printing_selector_card_display_widget.h"
 
+#include <QFileDialog>
 #include <QImageReader>
 #include <QLabel>
 #include <QMenu>
@@ -230,6 +231,11 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
 
     auto *overrideMenu = new QMenu(tr("Image Overrides"));
 
+    auto *loadCustomAction = overrideMenu->addAction(tr("Load Custom Image..."));
+    auto *clearOverrideAction = overrideMenu->addAction(tr("Clear Override"));
+
+    overrideMenu->addSeparator();
+
     auto allSets = rootCard.getInfo().getSets();
 
     for (auto set : allSets) {
@@ -256,6 +262,29 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
             });
         }
     }
+
+    connect(clearOverrideAction, &QAction::triggered, this, [this]() {
+        CardPictureLoader::getInstance().deleteAllLocalOverrides(rootCard);
+        QPixmapCache::clear();
+        rootCard.emitPixmapUpdated(); // force UI refresh
+    });
+
+    connect(loadCustomAction, &QAction::triggered, this, [this]() {
+        QString filePath = QFileDialog::getOpenFileName(this, tr("Select Card Image"), QString(),
+                                                        tr("Images (*.png *.jpg *.jpeg *.webp)"));
+
+        if (filePath.isEmpty())
+            return;
+
+        QPixmap pixmap(filePath);
+        if (pixmap.isNull())
+            return;
+
+        CardPictureLoader::getInstance().saveCardImageToLocalStorage(rootCard, pixmap);
+
+        QPixmapCache::clear();
+        rootCard.emitPixmapUpdated();
+    });
 
     connect(overrideMenu, &QMenu::hovered, this, [this](QAction *action) {
         QVariant data = action->data();

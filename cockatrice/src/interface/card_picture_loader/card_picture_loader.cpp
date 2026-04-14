@@ -183,6 +183,43 @@ void CardPictureLoader::imageLoaded(const ExactCard &card, const QImage &image)
     card.emitPixmapUpdated();
 }
 
+void CardPictureLoader::deleteAllLocalOverrides(const ExactCard &card)
+{
+    const QString picsRoot = SettingsCache::instance().getPicsPath();
+    if (picsRoot.isEmpty() || !card)
+        return;
+
+    QDir baseDir(picsRoot);
+    if (!baseDir.cd("downloadedPics"))
+        return;
+
+    const QString name = card.getInfo().getCorrectedName();
+
+    QString set, collector, uuid;
+    auto printing = card.getPrinting();
+    if (printing.getSet()) {
+        set = printing.getSet()->getCorrectedShortName();
+        collector = printing.getProperty("num");
+        uuid = printing.getUuid();
+    }
+
+    for (const auto &scheme : CardPictureLoaderLocalSchemes::exportSchemes()) {
+        QString rel = CardPictureLoaderLocalSchemes::expandPattern(scheme.pattern, name, set, collector, uuid);
+
+        if (rel.isEmpty())
+            continue;
+
+        rel += ".png";
+        rel = QDir::cleanPath(rel);
+
+        QString fullPath = baseDir.filePath(rel);
+
+        if (QFile::exists(fullPath)) {
+            QFile::remove(fullPath);
+        }
+    }
+}
+
 void CardPictureLoader::saveCardImageToLocalStorage(const ExactCard &card, const QPixmap &pixmap)
 {
     if (pixmap.isNull() || !card) {

@@ -117,6 +117,7 @@ public slots:
      * @param image Loaded QImage.
      */
     void imageLoaded(const ExactCard &card, const QImage &image);
+    void deleteAllLocalOverrides(const ExactCard &card);
     void saveCardImageToLocalStorage(const ExactCard &card, const QPixmap &pixmap);
     void overridePrintingConnectLocalSaveAndEnqueue(const ExactCard &originalCard, const ExactCard &overrideCard);
     void overridePrintingEnsurePixmapExistsAndSaveLocally(const ExactCard &originalCard, const ExactCard &overrideCard);
