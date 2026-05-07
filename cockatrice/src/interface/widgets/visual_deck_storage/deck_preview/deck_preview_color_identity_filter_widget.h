@@ -7,8 +7,6 @@
 #ifndef DECK_PREVIEW_COLOR_IDENTITY_FILTER_WIDGET_H
 #define DECK_PREVIEW_COLOR_IDENTITY_FILTER_WIDGET_H
 
-#include "../visual_deck_storage_widget.h"
-
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QWidget>
@@ -24,10 +22,16 @@ public:
     explicit DeckPreviewColorIdentityFilterWidget(VisualDeckStorageWidget *parent);
     void retranslateUi();
     void filterWidgets(QList<DeckPreviewWidget *> widgets);
+    [[nodiscard]] QString selectedColors() const;
+    [[nodiscard]] bool isExactMatch() const
+    {
+        return exactMatchMode;
+    }
 
 signals:
     void filterModeChanged(bool exactMatchMode);
     void activeColorsChanged();
+    void colorFilterChanged(QMap<QChar, bool> activeColors);
 
 private slots:
     void handleColorToggled(QChar color, bool active);

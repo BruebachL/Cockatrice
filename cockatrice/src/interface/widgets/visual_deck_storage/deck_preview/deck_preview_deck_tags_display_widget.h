@@ -8,6 +8,7 @@
 #define DECK_PREVIEW_DECK_TAGS_DISPLAY_WIDGET_H
 
 #include "../../../deck_loader/deck_loader.h"
+#include "../../general/layout_containers/flow_widget.h"
 #include "deck_preview_widget.h"
 
 #include <QWidget>

@@ -1,6 +1,7 @@
 #include "deck_preview_color_identity_filter_widget.h"
 
 #include "../../cards/additional_info/mana_symbol_widget.h"
+#include "../visual_deck_storage_widget.h"
 #include "deck_preview_widget.h"
 
 #include <QMouseEvent>
@@ -60,6 +61,15 @@ void DeckPreviewColorIdentityFilterWidget::updateFilterMode(bool checked)
     exactMatchMode = checked; // Toggle between modes
     retranslateUi();          // Update the button text
     emit filterModeChanged(exactMatchMode);
+}
+
+QString DeckPreviewColorIdentityFilterWidget::selectedColors() const
+{
+    QString result;
+    for (const QChar &c : QStringLiteral("WUBRG"))
+        if (activeColors.value(c, false))
+            result += c;
+    return result;
 }
 
 void DeckPreviewColorIdentityFilterWidget::filterWidgets(QList<DeckPreviewWidget *> widgets)

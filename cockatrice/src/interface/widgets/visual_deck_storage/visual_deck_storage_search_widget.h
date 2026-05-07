@@ -23,6 +23,9 @@ public:
     QString getSearchText();
     void filterWidgets(QList<DeckPreviewWidget *> widgets, const QString &searchText);
 
+signals:
+    void searchTextChanged(QString searchText);
+
 private:
     QHBoxLayout *layout;
     VisualDeckStorageWidget *parent;

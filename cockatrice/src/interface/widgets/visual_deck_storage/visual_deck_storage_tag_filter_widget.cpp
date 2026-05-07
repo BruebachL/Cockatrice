@@ -29,6 +29,12 @@ void VisualDeckStorageTagFilterWidget::showEvent(QShowEvent *event)
     refreshTags();
 }
 
+void VisualDeckStorageTagFilterWidget::setAvailableTags(const QStringList &tags)
+{
+    addTagsIfNotPresent(QSet<QString>(tags.begin(), tags.end()));
+    sortTags();
+}
+
 void VisualDeckStorageTagFilterWidget::filterDecksBySelectedTags(const QList<DeckPreviewWidget *> &deckPreviews) const
 {
     QStringList selectedTags;
@@ -173,4 +179,22 @@ QStringList VisualDeckStorageTagFilterWidget::getAllKnownTags() const
     allTags.removeDuplicates();
 
     return allTags;
+}
+
+QStringList VisualDeckStorageTagFilterWidget::selectedTags() const
+{
+    QStringList result;
+    for (DeckPreviewTagDisplayWidget *w : findChildren<DeckPreviewTagDisplayWidget *>())
+        if (w->getState() == TagState::Selected)
+            result.append(w->getTagName());
+    return result;
+}
+
+QStringList VisualDeckStorageTagFilterWidget::excludedTags() const
+{
+    QStringList result;
+    for (DeckPreviewTagDisplayWidget *w : findChildren<DeckPreviewTagDisplayWidget *>())
+        if (w->getState() == TagState::Excluded)
+            result.append(w->getTagName());
+    return result;
 }

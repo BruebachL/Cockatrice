@@ -4,6 +4,7 @@
 #include "../../../../interface/widgets/dialogs/dlg_convert_deck_to_cod_format.h"
 #include "../../../../interface/widgets/tabs/tab_deck_editor.h"
 #include "../../general/layout_containers/flow_widget.h"
+#include "../visual_deck_storage_widget.h"
 #include "deck_preview_tag_addition_widget.h"
 #include "deck_preview_tag_dialog.h"
 #include "deck_preview_tag_display_widget.h"

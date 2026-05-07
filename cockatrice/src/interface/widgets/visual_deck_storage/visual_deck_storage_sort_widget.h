@@ -7,12 +7,11 @@
 #ifndef VISUAL_DECK_STORAGE_SORT_WIDGET_H
 #define VISUAL_DECK_STORAGE_SORT_WIDGET_H
 
-#include "visual_deck_storage_widget.h"
-
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QWidget>
 
+class DeckPreviewWidget;
 class VisualDeckStorageWidget;
 class VisualDeckStorageFolderDisplayWidget;
 class VisualDeckStorageSortWidget : public QWidget
@@ -26,6 +25,10 @@ public:
     void sortFolder(VisualDeckStorageFolderDisplayWidget *folderWidget);
     QString getSearchText();
     QList<DeckPreviewWidget *> filterFiles(QList<DeckPreviewWidget *> widgets);
+    int currentSortIndex() const
+    {
+        return sortComboBox->currentIndex();
+    }
 
 signals:
     void sortOrderChanged();

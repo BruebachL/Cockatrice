@@ -325,6 +325,14 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_bracket_navigation_widget.h
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_budget_navigation_widget.cpp
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_budget_navigation_widget.h
+    src/interface/widgets/visual_deck_storage/deck_storage_model.cpp
+    src/interface/widgets/visual_deck_storage/deck_storage_model.h
+    src/interface/widgets/visual_deck_storage/tiled_tree_view.cpp
+    src/interface/widgets/visual_deck_storage/tiled_tree_view.h
+    src/interface/widgets/visual_deck_storage/deck_preview_delegate.cpp
+    src/interface/widgets/visual_deck_storage/deck_preview_delegate.h
+    src/interface/widgets/visual_deck_storage/visual_deck_storage_sort_filter_proxy.cpp
+    src/interface/widgets/visual_deck_storage/visual_deck_storage_sort_filter_proxy.h
 )
 
 add_subdirectory(sounds)

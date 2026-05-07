@@ -1,6 +1,8 @@
 #include "visual_deck_storage_sort_widget.h"
 
 #include "../../../client/settings/cache_settings.h"
+#include "visual_deck_storage_folder_display_widget.h"
+#include "visual_deck_storage_widget.h"
 
 #include <QFileInfo>
 

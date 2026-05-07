@@ -15,6 +15,7 @@
 #include "deck_list_history_manager_widget.h"
 #include "deck_list_style_proxy.h"
 
+#include <QCheckBox>
 #include <QDockWidget>
 #include <QLabel>
 #include <QTextEdit>

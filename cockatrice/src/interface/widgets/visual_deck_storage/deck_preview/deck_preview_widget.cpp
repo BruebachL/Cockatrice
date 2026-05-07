@@ -3,6 +3,7 @@
 #include "../../../../client/settings/cache_settings.h"
 #include "../../cards/additional_info/color_identity_widget.h"
 #include "../../cards/deck_preview_card_picture_widget.h"
+#include "../visual_deck_storage_widget.h"
 #include "deck_preview_deck_tags_display_widget.h"
 
 #include <QClipboard>
@@ -34,8 +35,7 @@ DeckPreviewWidget::DeckPreviewWidget(QWidget *_parent,
             &VisualDeckStorageTagFilterWidget::refreshTags);
     deckLoader->loadFromFileAsync(filePath, DeckFileFormat::getFormatFromName(filePath), false);
 
-    bannerCardDisplayWidget =
-        new DeckPreviewCardPictureWidget(this, false, visualDeckStorageWidget->deckPreviewSelectionAnimationEnabled);
+    bannerCardDisplayWidget = new DeckPreviewCardPictureWidget(this, false, true);
 
     connect(bannerCardDisplayWidget, &DeckPreviewCardPictureWidget::imageClicked, this,
             &DeckPreviewWidget::imageClickedEvent);

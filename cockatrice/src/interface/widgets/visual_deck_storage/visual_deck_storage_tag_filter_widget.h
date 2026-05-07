@@ -28,8 +28,14 @@ public:
     explicit VisualDeckStorageTagFilterWidget(VisualDeckStorageWidget *_parent);
     [[nodiscard]] QStringList getAllKnownTags() const;
     void filterDecksBySelectedTags(const QList<DeckPreviewWidget *> &deckPreviews) const;
+    [[nodiscard]] QStringList selectedTags() const;
+    [[nodiscard]] QStringList excludedTags() const;
+
+signals:
+    void tagFilterChanged(const QStringList &tags);
 
 public slots:
+    void setAvailableTags(const QStringList &tags);
     void refreshTags();
     void showEvent(QShowEvent *event) override;
 };

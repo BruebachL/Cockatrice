@@ -4,6 +4,7 @@
 #include "../../../filters/deck_filter_string.h"
 #include "../../../filters/syntax_help.h"
 #include "../../pixel_map_generator.h"
+#include "visual_deck_storage_widget.h"
 
 #include <QAction>
 #include <QFileInfo>
