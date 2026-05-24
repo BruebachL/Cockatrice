@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QQmlContext>
 #include <QVBoxLayout>
 #include <libcockatrice/card/database/card_database_manager.h>
 #include <libcockatrice/network/client/remote/remote_client.h>
@@ -24,7 +25,8 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
 
     gradientColors = extractDominantColors(background);
 
-    layout->addWidget(createButtons(), 1, 1, Qt::AlignVCenter | Qt::AlignHCenter);
+    auto buttonsGroupBox = createButtons();
+    layout->addWidget(buttonsGroupBox, 1, 1, Qt::AlignVCenter | Qt::AlignHCenter);
 
     layout->setRowStretch(0, 1);
     layout->setRowStretch(2, 1);
@@ -32,6 +34,73 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
     layout->setColumnStretch(2, 1);
 
     setLayout(layout);
+
+    m_animController = new CardAnimationController(this);
+
+    // ── Surface format ────────────────────────────────────────────────────────
+    // No alpha needed: the QML scene renders the background itself now.
+    QSurfaceFormat fmt;
+    fmt.setSamples(4);
+    m_animWidget = new QQuickWidget(this);
+    m_animWidget->setFormat(fmt);
+
+    connect(m_animWidget->engine(), &QQmlEngine::warnings, this, [](const QList<QQmlError> &w) {
+        for (const auto &e : w) {
+            qWarning() << "QML:" << e.toString();
+        }
+    });
+
+    // ── Image providers ───────────────────────────────────────────────────────
+    auto *bgProvider = new HomeBackgroundProvider(); // engine takes ownership
+    m_animWidget->engine()->addImageProvider(QStringLiteral("homebg"), bgProvider);
+    m_animWidget->engine()->addImageProvider(QStringLiteral("cardanim"), new CardAnimImageProvider(m_animController));
+
+    // Give the controller a handle so it can push new backgrounds to the provider
+    m_animController->setBackgroundProvider(bgProvider);
+    // Push the initial background immediately
+    m_animController->setBackground(background);
+
+    // ── Context properties ────────────────────────────────────────────────────
+    m_animWidget->rootContext()->setContextProperty(QStringLiteral("cardAnimController"), m_animController);
+
+    // ── QML source ────────────────────────────────────────────────────────────
+    m_animWidget->setClearColor(Qt::black); // opaque — QML draws the bg itself
+    m_animWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    m_animWidget->setSource(QUrl(QStringLiteral("qrc:/resources/qml/Bullshit.qml")));
+
+    if (m_animWidget->status() == QQuickWidget::Error) {
+        for (const auto &e : m_animWidget->errors()) {
+            qCritical() << "QML error:" << e.toString();
+        }
+    }
+
+    // ── Z-order & geometry ────────────────────────────────────────────────────
+    m_animWidget->stackUnder(buttonsGroupBox);
+    m_animWidget->move(0, 0);
+    if (!size().isEmpty()) {
+        m_animWidget->resize(size());
+    }
+
+    static const AnimatedCardBackgroundConfig presets[] = {AnimatedCardPresets::river(), AnimatedCardPresets::whisper(),
+                                                           AnimatedCardPresets::storm(),
+                                                           AnimatedCardPresets::constellation()};
+
+    m_animController->applyConfig(presets[2]);
+
+    // ── Preset wiring (uncomment + add signal to SettingsCache) ──────────────
+    /*
+    connect(&SettingsCache::instance(), &SettingsCache::homeTabAnimPresetChanged, this,
+            [this](int id) {
+                using P = AnimatedCardPresets;
+                static const AnimatedCardBackgroundConfig presets[] = {
+                    P::river(), P::whisper(), P::storm(), P::constellation()
+                };
+                if (id >= 0 && id < 4) {
+                    m_animController->applyConfig(presets[id]);
+                    qInfo() << "HomeWidget: animation preset" << id << "applied";
+                }
+            });
+    */
 
     cardChangeTimer = new QTimer(this);
     connect(cardChangeTimer, &QTimer::timeout, this, &HomeWidget::updateRandomCard);
@@ -51,6 +120,14 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
             &HomeWidget::initializeBackgroundFromSource);
     connect(&SettingsCache::instance(), &SettingsCache::themeChanged, this,
             &HomeWidget::updateButtonsToBackgroundColor);
+}
+
+void HomeWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    if (m_animWidget) {
+        m_animWidget->resize(size());
+    }
 }
 
 void HomeWidget::initializeBackgroundFromSource()
@@ -160,7 +237,24 @@ void HomeWidget::updateBackgroundProperties()
 {
     background = backgroundSourceCard->getBackground();
     updateButtonsToBackgroundColor();
-    update(); // Triggers repaint
+
+    // Push new background into QML
+    m_animController->setBackground(background);
+
+    // Update card name label in QML
+    ExactCard card = backgroundSourceCard->getCard();
+    if (card) {
+        QString name = card.getCardPtr()->getName();
+        if (card.getPrinting().getSet()) {
+            name += " (" + card.getPrinting().getSet()->getCorrectedShortName() + ") " +
+                    card.getPrinting().getProperty("num");
+        }
+        m_animController->setCardName(name);
+    } else {
+        m_animController->setCardName(QString{});
+    }
+
+    update();
 }
 
 void HomeWidget::updateButtonsToBackgroundColor()
@@ -313,66 +407,5 @@ QPair<QColor, QColor> HomeWidget::extractDominantColors(const QPixmap &pixmap)
 
 void HomeWidget::paintEvent(QPaintEvent *event)
 {
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    if (!background.isNull()) {
-        QSize widgetSize = size() * devicePixelRatio();
-        QPixmap toDraw = background.scaled(widgetSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-
-        // Draw scaled background centered
-        QSize bgSize = toDraw.size();
-        QPoint topLeft((widgetSize.width() - bgSize.width()) / (devicePixelRatio() * 2), // undo scaling for painter
-                       (widgetSize.height() - bgSize.height()) / (devicePixelRatio() * 2));
-
-        painter.drawPixmap(topLeft, toDraw);
-    }
-
-    // Draw translucent black overlay with rounded corners
-    QRectF overlayRect(5, 5, width() - 10, height() - 10);
-    QPainterPath roundedRectPath;
-    roundedRectPath.addRoundedRect(overlayRect, 20, 20);
-
-    QColor semiTransparentBlack(0, 0, 0, static_cast<int>(255 * 0.33));
-    painter.fillPath(roundedRectPath, semiTransparentBlack);
-
-    // Card name overlay (bottom-right)
-    QString cardName;
-    ExactCard card = backgroundSourceCard->getCard();
-    if (card) {
-        cardName = card.getCardPtr()->getName();
-        if (card.getPrinting().getSet() != nullptr) {
-            cardName += " (" + card.getPrinting().getSet()->getCorrectedShortName() + ") " +
-                        card.getPrinting().getProperty("num");
-        }
-    }
-
-    if (!cardName.isEmpty() && SettingsCache::instance().getHomeTabDisplayCardName()) {
-        QFont font = painter.font();
-        font.setPointSize(14);
-        font.setBold(true);
-        painter.setFont(font);
-
-        QFontMetrics fm(font);
-        constexpr int padding = 10;
-        constexpr int margin = 15;
-
-        QRect textRect = fm.boundingRect(cardName);
-
-        QRect bgRect(width() - textRect.width() - padding * 2 - margin,
-                     height() - textRect.height() - padding * 2 - margin, textRect.width() + padding * 2,
-                     textRect.height() + padding * 2);
-
-        // Background bubble
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(0, 0, 0, 160));
-        painter.drawRoundedRect(bgRect, 8, 8);
-
-        // Text
-        painter.setPen(Qt::white);
-        painter.drawText(bgRect.adjusted(padding, padding, -padding, -padding), Qt::AlignRight | Qt::AlignVCenter,
-                         cardName);
-    }
-
     QWidget::paintEvent(event);
 }
