@@ -50,6 +50,7 @@ QVariantMap CardAnimationController::nextCard()
     }
 
     const QString id = m_available.takeFirst();
+    emit cardAvailableChanged();
     m_inUse[id] = m_allCards.value(id);
 
     qInfo() << "CardAnimationController::nextCard — handing out id" << id
@@ -170,6 +171,7 @@ void CardAnimationController::onCardReady(const QString &numericId, const QImage
 
     m_pending.remove(numericId);
     m_available.append(numericId);
+    emit cardAvailableChanged();
 
     qInfo() << "CardAnimationController::onCardReady" << numericId << "| available:" << m_available.size()
             << "| pending:" << m_pending.size();

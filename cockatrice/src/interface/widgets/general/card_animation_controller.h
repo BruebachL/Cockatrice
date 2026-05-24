@@ -1,6 +1,8 @@
 #ifndef COCKATRICE_CARD_ANIMATION_CONTROLLER_H
 #define COCKATRICE_CARD_ANIMATION_CONTROLLER_H
 
+#include "home_background_provider.h"
+
 #include <QHash>
 #include <QImage>
 #include <QObject>
@@ -101,27 +103,27 @@ inline AnimatedCardBackgroundConfig river()
 inline AnimatedCardBackgroundConfig storm()
 {
     AnimatedCardBackgroundConfig c;
-    c.cardsPerSecond = 1.5f;
-    c.maxCards = 18;
+    c.cardsPerSecond = 3.5f;
+    c.maxCards = 50;
     c.minLifetimeSecs = 4.0f;
     c.maxLifetimeSecs = 8.0f;
     c.angleDeg = -42.0f;
     c.minSpeed = 100.0f;
     c.maxSpeed = 180.0f;
-    c.minScale = 0.30f;
-    c.maxScale = 0.90f;
+    c.minScale = 2.30f;
+    c.maxScale = 2.90f;
     c.maxInitialRotDeg = 35.0f;
     c.maxRotSpeedDeg = 28.0f;
-    c.peakOpacity = 0.72f;
+    c.peakOpacity = 1.00f;
     c.fadeInFrac = 0.07f;
     c.fadeOutFrac = 0.10f;
-    c.trailLength = 6;
-    c.trailIntervalMs = 75;
+    c.trailLength = 0;
+    c.trailIntervalMs = 0;
     c.trailOpacityDecay = 0.42f;
     c.turbAmplitude = 45.0f;
     c.turbFrequency = 0.90f;
-    c.glowOpacity = 0.28f;
-    c.enableParticles = true;
+    c.glowOpacity = 0.00f;
+    c.enableParticles = false;
     return c;
 }
 
@@ -162,12 +164,16 @@ class CardAnimationController : public QObject
     // Every config field exposed as a read-only QML property.
     // QML reacts to configChanged() when applyConfig() is called.
 #define CAP(type, name) Q_PROPERTY(type name READ name NOTIFY configChanged)
+    Q_PROPERTY(int backgroundVersion READ backgroundVersion NOTIFY backgroundVersionChanged)
+    Q_PROPERTY(QString cardNameText READ cardNameText NOTIFY cardNameTextChanged)
     CAP(float, cardsPerSecond)
     CAP(int, maxCards)
     CAP(float, angleDeg)
     CAP(float, minSpeed)
     CAP(float, maxSpeed)
     CAP(float, baseCardWidth)
+    CAP(float, minLifetimeSecs)
+    CAP(float, maxLifetimeSecs)
     CAP(float, minScale)
     CAP(float, maxScale)
     CAP(float, maxInitialRotDeg)
@@ -186,6 +192,7 @@ class CardAnimationController : public QObject
     CAP(bool, enableShadow)
     CAP(float, shadowOffsetPx)
     CAP(bool, enableParticles)
+
 #undef CAP
 
 public:
@@ -202,6 +209,44 @@ public:
     Q_INVOKABLE void returnCard(const QString &id);
 
     // ── Property accessors ──────────────────────────────────────────────────
+    int backgroundVersion() const
+    {
+        return m_backgroundVersion;
+    }
+    QString cardNameText() const
+    {
+        return m_cardNameText;
+    }
+
+    // Called by HomeWidget when the background pixmap changes.
+    // Forwards the image to the provider and bumps backgroundVersion so
+    // QML bindings re-trigger automatically.
+    void setBackground(const QPixmap &pixmap)
+    {
+        if (m_bgProvider) {
+            m_bgProvider->setBackground(pixmap);
+        }
+        ++m_backgroundVersion;
+        emit backgroundVersionChanged();
+    }
+
+    // Called by HomeWidget when the displayed card name changes.
+    void setCardName(const QString &name)
+    {
+        if (m_cardNameText == name) {
+            return;
+        }
+        m_cardNameText = name;
+        emit cardNameTextChanged();
+    }
+
+    // Store a non-owning pointer to the provider so setBackground() can
+    // forward to it.  The engine owns the provider; this is just a handle.
+    void setBackgroundProvider(HomeBackgroundProvider *p)
+    {
+        m_bgProvider = p;
+    }
+
     float cardsPerSecond() const
     {
         return m_cfg.cardsPerSecond;
@@ -233,6 +278,14 @@ public:
     float maxScale() const
     {
         return m_cfg.maxScale;
+    }
+    float minLifetimeSecs() const
+    {
+        return m_cfg.minLifetimeSecs;
+    }
+    float maxLifetimeSecs() const
+    {
+        return m_cfg.maxLifetimeSecs;
     }
     float maxInitialRotDeg() const
     {
@@ -302,6 +355,9 @@ public:
 signals:
     void configChanged();
     void readyChanged();
+    void backgroundVersionChanged();
+    void cardNameTextChanged();
+    void cardAvailableChanged();
 
 private:
     bool m_readyEmitted = false;
@@ -309,6 +365,10 @@ private:
     void onCardReady(const QString &numericId, const QImage &img);
 
     AnimatedCardBackgroundConfig m_cfg;
+
+    int m_backgroundVersion{0};
+    QString m_cardNameText;
+    HomeBackgroundProvider *m_bgProvider{nullptr};
 
     // ── Card pool ────────────────────────────────────────────────────────────
     // We give QML integer string IDs ("0", "1", …) that are URL-safe.

@@ -350,6 +350,7 @@ set(cockatrice_SOURCES
     src/interface/widgets/general/card_animation_controller.h
     src/interface/widgets/general/card_animation_image_provider.cpp
     src/interface/widgets/general/card_animation_image_provider.h
+    src/interface/widgets/general/home_background_provider.h
 )
 
 add_subdirectory(sounds)
