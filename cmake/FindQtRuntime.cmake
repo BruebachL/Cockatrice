@@ -23,6 +23,8 @@ if(WITH_CLIENT)
       WebSockets
       Widgets
       Xml
+      Quick
+      QuickWidgets
   )
 endif()
 if(WITH_ORACLE)

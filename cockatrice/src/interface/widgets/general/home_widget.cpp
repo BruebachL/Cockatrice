@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QQmlContext>
 #include <QVBoxLayout>
 #include <libcockatrice/card/database/card_database_manager.h>
 #include <libcockatrice/network/client/remote/remote_client.h>
@@ -24,7 +25,8 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
 
     gradientColors = extractDominantColors(background);
 
-    layout->addWidget(createButtons(), 1, 1, Qt::AlignVCenter | Qt::AlignHCenter);
+    auto buttonsGroupBox = createButtons();
+    layout->addWidget(buttonsGroupBox, 1, 1, Qt::AlignVCenter | Qt::AlignHCenter);
 
     layout->setRowStretch(0, 1);
     layout->setRowStretch(2, 1);
@@ -32,6 +34,87 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
     layout->setColumnStretch(2, 1);
 
     setLayout(layout);
+
+    m_animController = new CardAnimationController(this);
+    qInfo() << "HomeWidget: CardAnimationController created";
+
+    QSurfaceFormat fmt;
+    fmt.setSamples(4);         // 4× MSAA — smooth card edges
+    fmt.setAlphaBufferSize(8); // enable per-pixel transparency
+                               // fmt.setSwapInterval(1);   // uncomment to lock to display vsync
+
+    m_animWidget = new QQuickWidget(this);
+    m_animWidget->setFormat(fmt); // ← must come before setSource / show
+
+    // Wire QML engine warnings to our log so failures are never silent.
+    connect(m_animWidget->engine(), &QQmlEngine::warnings, this, [](const QList<QQmlError> &warnings) {
+        for (const QQmlError &w : warnings) {
+            qWarning() << "QML:" << w.toString();
+        }
+    });
+
+    // Register the card-art image provider BEFORE loading QML.
+    m_animWidget->engine()->addImageProvider(QStringLiteral("cardanim"),
+                                             new CardAnimImageProvider(m_animController)); // engine takes ownership
+    qInfo() << "HomeWidget: cardanim image provider registered";
+
+    // Expose the controller as a context variable.
+    // In QML use:  property QtObject cardAnimController: null
+    // (NOT 'required property') — context properties satisfy plain bindings,
+    // not 'required' ones.
+    m_animWidget->rootContext()->setContextProperty(QStringLiteral("cardAnimController"), m_animController);
+    qInfo() << "HomeWidget: cardAnimController context property set";
+
+    // Transparent compositing — shows the QPainter background through.
+    // Do NOT set WA_TranslucentBackground (native-window flag, wrong here)
+    // Do NOT set WA_AlwaysStackOnTop    (forces GL surface above all siblings,
+    //                                    including the buttons — broken)
+    m_animWidget->setClearColor(Qt::transparent);
+    m_animWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+
+    // Load the QML scene.  For qrc:/ resources make sure CMakeLists has:
+    //   qt_add_resources(... PREFIX "/qml" FILES CardAnimBackground.qml AnimatedCard.qml)
+    m_animWidget->setSource(QUrl(QStringLiteral("qrc:/resources/qml/CardAnimBackground.qml")));
+    // Check that the QML actually loaded.
+    if (m_animWidget->status() == QQuickWidget::Error) {
+        qCritical() << "HomeWidget: QML failed to load:";
+        for (const QQmlError &e : m_animWidget->errors()) {
+            qCritical() << "  " << e.toString();
+        }
+    } else {
+        qInfo() << "HomeWidget: QML loaded OK, status:" << m_animWidget->status();
+    }
+
+    // ── Z-order: animation sits between the background paint and the buttons ──
+    // stackUnder() is the only z-order call needed.  The two WA_* attributes
+    // that were here before fought each other and broke rendering.
+    m_animWidget->stackUnder(buttonsGroupBox);
+    qInfo() << "HomeWidget: m_animWidget stacked under buttonsGroupBox";
+
+    // ── Geometry ──────────────────────────────────────────────────────────────
+    // At constructor time the widget hasn't been laid out yet, so size() is
+    // often 0×0.  We set a sane fallback; resizeEvent() keeps it in sync.
+    // Do NOT call show() — the widget is visible automatically when the parent
+    // is shown (standard Qt child-widget behaviour).
+    m_animWidget->move(0, 0);
+    if (!size().isEmpty()) {
+        m_animWidget->resize(size());
+    }
+
+    // ── Preset wiring (uncomment + add signal to SettingsCache) ──────────────
+    /*
+    connect(&SettingsCache::instance(), &SettingsCache::homeTabAnimPresetChanged, this,
+            [this](int id) {
+                using P = AnimatedCardPresets;
+                static const AnimatedCardBackgroundConfig presets[] = {
+                    P::river(), P::whisper(), P::storm(), P::constellation()
+                };
+                if (id >= 0 && id < 4) {
+                    m_animController->applyConfig(presets[id]);
+                    qInfo() << "HomeWidget: animation preset" << id << "applied";
+                }
+            });
+    */
 
     cardChangeTimer = new QTimer(this);
     connect(cardChangeTimer, &QTimer::timeout, this, &HomeWidget::updateRandomCard);
@@ -51,6 +134,14 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
             &HomeWidget::initializeBackgroundFromSource);
     connect(&SettingsCache::instance(), &SettingsCache::themeChanged, this,
             &HomeWidget::updateButtonsToBackgroundColor);
+}
+
+void HomeWidget::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    if (m_animWidget) {
+        m_animWidget->resize(size());
+    }
 }
 
 void HomeWidget::initializeBackgroundFromSource()

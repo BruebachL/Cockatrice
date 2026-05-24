@@ -346,6 +346,10 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_budget_navigation_widget.h
     src/interface/widgets/utility/compact_push_button.cpp
     src/interface/widgets/utility/compact_push_button.h
+    src/interface/widgets/general/card_animation_controller.cpp
+    src/interface/widgets/general/card_animation_controller.h
+    src/interface/widgets/general/card_animation_image_provider.cpp
+    src/interface/widgets/general/card_animation_image_provider.h
 )
 
 add_subdirectory(sounds)

@@ -9,9 +9,12 @@
 #define HOME_WIDGET_H
 #include "../../../interface/widgets/tabs/tab_supervisor.h"
 #include "../cards/card_info_picture_art_crop_widget.h"
+#include "card_animation_controller.h"
+#include "card_animation_image_provider.h"
 #include "home_styled_button.h"
 
 #include <QGridLayout>
+#include <QQuickWidget>
 #include <QWidget>
 #include <libcockatrice/network/client/abstract/abstract_client.h>
 
@@ -35,6 +38,8 @@ public slots:
     void updateConnectButton(const ClientStatus status);
 
 private:
+    CardAnimationController *m_animController{nullptr};
+    QQuickWidget *m_animWidget{nullptr};
     QGridLayout *layout;
     QTimer *cardChangeTimer;
     TabSupervisor *tabSupervisor;
@@ -47,6 +52,9 @@ private:
 
     void setRandomCard(ExactCard &newCard);
     void loadBackgroundSourceDeck();
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 };
 
 #endif // HOME_WIDGET_H
