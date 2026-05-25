@@ -8,6 +8,9 @@
         <file>resources/qml/CardAnimBackground.qml</file>
         <file>resources/qml/AnimatedCard.qml</file>
         <file>resources/qml/CardWaveGrid.qml</file>
+        <file>resources/qml/Bullshit.qml</file>
+        <file>resources/qml/shaders/icefire.frag.qsb</file>
+        <file>resources/qml/shaders/rect.frag.qsb</file>
 
         <file>resources/icons/arrow_bottom_green.svg</file>
         <file>resources/icons/arrow_down_green.svg</file>

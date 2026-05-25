@@ -59,6 +59,7 @@ Item {
         console.warn("[QML] tryAddCards | current:", gridData.length, "target:", targetCount)
 
         var safety = 0
+        var added = 0
 
         while (gridData.length < targetCount && safety < 20) {
             safety++
@@ -66,8 +67,8 @@ Item {
             var c = cardAnimController.nextCard()
 
             if (!c || !c.id) {
-                console.warn("[QML] no card available yet — stopping fill (have:", gridData.length, ")")
-                return
+                console.warn("[QML] pool empty — will retry later (current:", gridData.length, ")")
+                break   // ❗ important change: NOT return
             }
 
             console.warn("[QML] adding card:", c.id)
@@ -78,11 +79,12 @@ Item {
                 col: gridData.length % cols,
                 row: Math.floor(gridData.length / cols)
             })
+
+            added++
         }
 
-        console.warn("[QML] tryAddCards DONE →", gridData.length)
+        console.warn("[QML] tryAddCards DONE → added:", added, "total:", gridData.length)
 
-        // force model refresh
         gridDataChanged()
     }
 

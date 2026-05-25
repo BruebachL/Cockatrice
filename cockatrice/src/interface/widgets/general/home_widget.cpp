@@ -66,7 +66,7 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
     // ── QML source ────────────────────────────────────────────────────────────
     m_animWidget->setClearColor(Qt::black); // opaque — QML draws the bg itself
     m_animWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    m_animWidget->setSource(QUrl(QStringLiteral("qrc:/resources/qml/CardAnimBackground.qml")));
+    m_animWidget->setSource(QUrl(QStringLiteral("qrc:/resources/qml/Bullshit.qml")));
 
     if (m_animWidget->status() == QQuickWidget::Error) {
         for (const auto &e : m_animWidget->errors()) {
