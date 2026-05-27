@@ -11,6 +11,9 @@ message ModeratorCommand {
         FORCE_ACTIVATE_USER = 1007;
         GET_ADMIN_NOTES = 1008;
         UPDATE_ADMIN_NOTES = 1009;
+        REPORT_LIST = 1200;
+        REPORT_ASSIGN = 1201;
+        REPORT_RESOLVE = 1202;
     }
     extensions 100 to max;
 }

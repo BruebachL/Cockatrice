@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `cockatrice_schema_version` (
   PRIMARY KEY  (`version`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
-INSERT INTO cockatrice_schema_version VALUES(34);
+INSERT INTO cockatrice_schema_version VALUES(35);
 
 -- users and user data tables
 CREATE TABLE IF NOT EXISTS `cockatrice_users` (
@@ -230,6 +230,27 @@ CREATE TABLE IF NOT EXISTS `cockatrice_warnings` (
   PRIMARY KEY (`user_id`,`time_of`),
   INDEX `idx_time_of` (`time_of`),
   INDEX `idx_user_name` (`user_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `cockatrice_reports` (
+ `id`                  int(11) unsigned NOT NULL AUTO_INCREMENT,
+ `reporter_id`         int(7) unsigned NULL,
+ `reporter_name`       varchar(35) NOT NULL,
+ `reported_user_id`    int(7) unsigned NULL,
+ `reported_user_name`  varchar(35) NOT NULL,
+ `game_id`             int(7) unsigned NULL,
+ `category`            varchar(255) NOT NULL,
+ `description`         text NOT NULL,
+ `created_at`          datetime NOT NULL,
+ `status`              enum('open','assigned','resolved','dismissed') NOT NULL DEFAULT 'open',
+ `assigned_to`         int(7) unsigned NULL,
+ `resolution_note`     text,
+ PRIMARY KEY (`id`),
+ INDEX `idx_status`    (`status`),
+ INDEX `idx_created`   (`created_at`),
+ FOREIGN KEY (`reporter_id`)      REFERENCES `cockatrice_users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+ FOREIGN KEY (`reported_user_id`) REFERENCES `cockatrice_users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+ FOREIGN KEY (`assigned_to`)      REFERENCES `cockatrice_users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `cockatrice_log` (

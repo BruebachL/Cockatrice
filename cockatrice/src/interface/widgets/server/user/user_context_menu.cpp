@@ -1,5 +1,6 @@
 #include "user_context_menu.h"
 
+#include "../../dialogs/dlg_report_user.h"
 #include "../../interface/widgets/tabs/tab_account.h"
 #include "../../interface/widgets/tabs/tab_game.h"
 #include "../../interface/widgets/tabs/tab_supervisor.h"
@@ -41,6 +42,7 @@ UserContextMenu::UserContextMenu(TabSupervisor *_tabSupervisor, QWidget *parent,
     aAddToIgnoreList = new QAction(QString(), this);
     aRemoveFromIgnoreList = new QAction(QString(), this);
     aKick = new QAction(QString(), this);
+    aReport = new QAction(QString(), this);
     aWarnUser = new QAction(QString(), this);
     aWarnHistory = new QAction(QString(), this);
     aBan = new QAction(QString(), this);
@@ -64,6 +66,7 @@ void UserContextMenu::retranslateUi()
     aAddToIgnoreList->setText(tr("Add to &ignore list"));
     aRemoveFromIgnoreList->setText(tr("Remove from &ignore list"));
     aKick->setText(tr("Kick from &game"));
+    aReport->setText(tr("Report user"));
     aWarnUser->setText(tr("Warn user"));
     aWarnHistory->setText(tr("View user's war&n history"));
     aBan->setText(tr("Ban from &server"));
@@ -383,6 +386,7 @@ void UserContextMenu::showContextMenu(const QPoint &pos,
         aRemoveMessages = new QAction(tr("Remove this user's messages"), this);
         menu->addAction(aRemoveMessages);
     }
+    menu->addAction(aReport);
     if (game && (game->isHost() || !tabSupervisor->getAdminLocked())) {
         menu->addSeparator();
         menu->addAction(aKick);
@@ -480,6 +484,9 @@ void UserContextMenu::showContextMenu(const QPoint &pos,
         cmd.set_player_id(playerId);
 
         game->getGameEventHandler()->sendGameCommand(cmd);
+    } else if (actionClicked == aReport) {
+        auto dlgReport = new DlgReportUser(client, userName, 30, nullptr);
+        dlgReport->exec();
     } else if (actionClicked == aBan) {
         Command_GetUserInfo cmd;
         cmd.set_user_name(userName.toStdString());

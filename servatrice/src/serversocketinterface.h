@@ -24,6 +24,10 @@
 #include <QMutex>
 #include <QTcpSocket>
 #include <QWebSocket>
+#include <libcockatrice/protocol/pb/command_report.pb.h>
+#include <libcockatrice/protocol/pb/command_report_assign.pb.h>
+#include <libcockatrice/protocol/pb/command_report_list.pb.h>
+#include <libcockatrice/protocol/pb/command_report_resolve.pb.h>
 #include <server_protocolhandler.h>
 
 class Servatrice;
@@ -102,6 +106,7 @@ private:
     Response::ResponseCode cmdReplayGetCode(const Command_ReplayGetCode &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdReplaySubmitCode(const Command_ReplaySubmitCode &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdBanFromServer(const Command_BanFromServer &cmd, ResponseContainer &rc);
+    Response::ResponseCode cmdReportList(const Command_ReportList &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdWarnUser(const Command_WarnUser &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdGetLogHistory(const Command_ViewLogHistory &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdGetBanHistory(const Command_GetBanHistory &cmd, ResponseContainer &rc);
@@ -109,6 +114,8 @@ private:
     Response::ResponseCode cmdGetWarnHistory(const Command_GetWarnHistory &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdShutdownServer(const Command_ShutdownServer &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdUpdateServerMessage(const Command_UpdateServerMessage &cmd, ResponseContainer &rc);
+    Response::ResponseCode cmdReportAssign(const Command_ReportAssign &cmd, ResponseContainer &);
+    Response::ResponseCode cmdReportResolve(const Command_ReportResolve &cmd, ResponseContainer &);
     Response::ResponseCode cmdRegisterAccount(const Command_Register &cmd, ResponseContainer &rc);
     Response::ResponseCode cmdActivateAccount(const Command_Activate &cmd, ResponseContainer & /* rc */);
     Response::ResponseCode cmdReloadConfig(const Command_ReloadConfig & /* cmd */, ResponseContainer & /*rc*/);
@@ -122,6 +129,7 @@ private:
     Response::ResponseCode cmdForgotPasswordChallenge(const Command_ForgotPasswordChallenge &cmd,
                                                       ResponseContainer &rc);
     Response::ResponseCode cmdRequestPasswordSalt(const Command_RequestPasswordSalt &cmd, ResponseContainer &rc);
+    Response::ResponseCode cmdReport(const Command_Report &cmd, ResponseContainer &);
     Response::ResponseCode processExtendedSessionCommand(int cmdType, const SessionCommand &cmd, ResponseContainer &rc);
     Response::ResponseCode
     processExtendedModeratorCommand(int cmdType, const ModeratorCommand &cmd, ResponseContainer &rc);

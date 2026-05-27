@@ -1,6 +1,7 @@
 #include "tab_supervisor.h"
 
 #include "../../../client/settings/cache_settings.h"
+#include "../dialogs/dlg_report_queue.h"
 #include "../interface/pixel_map_generator.h"
 #include "../interface/widgets/server/user/user_list_manager.h"
 #include "../interface/widgets/server/user/user_list_widget.h"
@@ -182,6 +183,13 @@ TabSupervisor::TabSupervisor(AbstractClient *_client, QMenu *tabsMenu, QWidget *
     aTabLog = new QAction(this);
     aTabLog->setCheckable(true);
     connect(aTabLog, &QAction::triggered, this, &TabSupervisor::actTabLog);
+
+    aTabReport = new QAction(this);
+    aTabReport->setCheckable(true);
+    connect(aTabReport, &QAction::triggered, this, [this]() {
+        auto reportDlg = new DlgReportQueue(client, this);
+        reportDlg->exec();
+    });
 
     connect(&SettingsCache::instance().shortcuts(), &ShortcutsSettings::shortCutChanged, this,
             &TabSupervisor::refreshShortcuts);
@@ -435,6 +443,7 @@ void TabSupervisor::start(const ServerInfo_User &_userInfo)
         tabsMenu->addSeparator();
         tabsMenu->addAction(aTabAdmin);
         tabsMenu->addAction(aTabLog);
+        tabsMenu->addAction(aTabReport);
 
         if (SettingsCache::instance().getTabAdminOpen()) {
             openTabAdmin();

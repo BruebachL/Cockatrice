@@ -33,6 +33,7 @@ message SessionCommand {
         REPLAY_DELETE_MATCH = 1103;
         REPLAY_GET_CODE = 1104;
         REPLAY_SUBMIT_CODE = 1105;
+        REPORT = 1200;
     }
     extensions 100 to max;
 }

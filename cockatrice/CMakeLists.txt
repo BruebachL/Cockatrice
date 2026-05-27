@@ -43,6 +43,8 @@ set(cockatrice_SOURCES
     src/interface/widgets/dialogs/dlg_local_game_options.cpp
     src/interface/widgets/dialogs/dlg_manage_sets.cpp
     src/interface/widgets/dialogs/dlg_register.cpp
+    src/interface/widgets/dialogs/dlg_report_user.cpp
+    src/interface/widgets/dialogs/dlg_report_queue.cpp
     src/interface/widgets/dialogs/dlg_select_set_for_cards.cpp
     src/interface/widgets/dialogs/dlg_settings.cpp
     src/interface/widgets/dialogs/dlg_startup_card_check.cpp
@@ -346,6 +348,10 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_budget_navigation_widget.h
     src/interface/widgets/utility/compact_push_button.cpp
     src/interface/widgets/utility/compact_push_button.h
+    src/interface/widgets/dialogs/dlg_report_user.cpp
+    src/interface/widgets/dialogs/dlg_report_user.h
+    src/interface/widgets/dialogs/dlg_report_queue.cpp
+    src/interface/widgets/dialogs/dlg_report_queue.h
 )
 
 add_subdirectory(sounds)

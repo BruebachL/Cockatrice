@@ -112,7 +112,8 @@ private:
     bool isLocalGame;
 
     QAction *aTabHome, *aTabDeckEditor, *aTabVisualDeckEditor, *aTabEdhRec, *aTabArchidekt, *aTabVisualDeckStorage,
-        *aTabVisualDatabaseDisplay, *aTabServer, *aTabAccount, *aTabDeckStorage, *aTabReplays, *aTabAdmin, *aTabLog;
+        *aTabVisualDatabaseDisplay, *aTabServer, *aTabAccount, *aTabDeckStorage, *aTabReplays, *aTabAdmin, *aTabLog,
+        *aTabReport;
 
     int myAddTab(Tab *tab, QAction *manager = nullptr);
     void addCloseButtonToTab(Tab *tab, int tabIndex, QAction *manager);

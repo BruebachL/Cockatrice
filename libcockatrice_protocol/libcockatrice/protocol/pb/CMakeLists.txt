@@ -39,6 +39,10 @@ set(PROTO_FILES
     command_replay_list.proto
     command_replay_modify_match.proto
     command_replay_submit_code.proto
+    command_report.proto
+    command_report_assign.proto
+    command_report_list.proto
+    command_report_resolve.proto
     command_reveal_cards.proto
     command_reverse_turn.proto
     command_roll_die.proto
@@ -138,6 +142,7 @@ set(PROTO_FILES
     response_replay_download.proto
     response_replay_get_code.proto
     response_replay_list.proto
+    response_report_list.proto
     response_viewlog_history.proto
     response_warn_history.proto
     response_warn_list.proto
@@ -158,6 +163,7 @@ set(PROTO_FILES
     serverinfo_playerproperties.proto
     serverinfo_replay.proto
     serverinfo_replay_match.proto
+    serverinfo_report.proto
     serverinfo_room.proto
     serverinfo_user.proto
     serverinfo_warning.proto
