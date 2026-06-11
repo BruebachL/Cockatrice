@@ -10,6 +10,7 @@
 #include "../interface/widgets/tabs/tab_supervisor.h"
 #include "../interface/widgets/utility/get_text_with_max.h"
 #include "games_list_item_delegate.h"
+#include "games_list_sort_bar.h"
 #include "games_model.h"
 #include "user/user_list_manager.h"
 
@@ -49,6 +50,7 @@ GameSelector::GameSelector(AbstractClient *_client,
     if (cardStyle) {
         auto *cardView = new TilingListView(this);
         cardView->setItemDelegate(new GameListItemDelegate(_rooms, _gameTypes, this));
+        cardView = cardView;
         gameListView = cardView;
     } else {
         auto *treeView = new QTreeView(this);
@@ -79,11 +81,6 @@ GameSelector::GameSelector(AbstractClient *_client,
     if (showFilters) {
         gameListProxyModel->setSourceModel(gameListModel);
         gameListProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
-        if (cardStyle) {
-            // The proxy drives sorting for the card view; the tree view uses
-            // its own header-click sorting instead.
-            gameListProxyModel->sort(gameListModel->startTimeColIndex(), Qt::AscendingOrder);
-        }
         gameListView->setModel(gameListProxyModel);
     } else {
         gameListView->setModel(gameListModel);
@@ -157,8 +154,33 @@ GameSelector::GameSelector(AbstractClient *_client,
     if (showFilters && restoresettings) {
         mainLayout->addWidget(quickFilterToolBar);
     }
+
+    if (cardView) {
+        cardViewSortBar = new GamesListSortBar(
+            {
+                {tr("Start time"), gameListModel->startTimeColIndex()},
+                {tr("Description"), 1}, // adjust column indices to match GamesModel constants
+                {tr("Creator"), 3},
+                {tr("Players"), 6},
+            },
+            this);
+
+        connect(cardViewSortBar, &GamesListSortBar::sortChanged, this,
+                [this](int col, Qt::SortOrder ord) { gameListProxyModel->sort(col, ord); });
+        connect(cardViewSortBar, &GamesListSortBar::columnsRequested, cardView, &TilingListView::setRequestedColumns);
+        connect(cardView, &TilingListView::layoutRecalculated, cardViewSortBar,
+                &GamesListSortBar::onLayoutRecalculated);
+    }
+
+    if (cardViewSortBar) {
+        mainLayout->addWidget(cardViewSortBar);
+    }
     mainLayout->addWidget(gameListView);
     mainLayout->addLayout(buttonLayout);
+
+    if (cardViewSortBar) {
+        cardViewSortBar->emitInitialSort();
+    }
 
     retranslateUi();
     setLayout(mainLayout);

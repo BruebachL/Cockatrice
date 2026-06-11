@@ -22,6 +22,8 @@ class TabSupervisor;
 class TabRoom;
 class ServerInfo_Game;
 class Response;
+class GamesListSortBar;
+class TilingListView;
 
 /**
  * @class GameSelector
@@ -138,6 +140,8 @@ private:
     /// needs view-specific API casts locally; everything else uses the
     /// QAbstractItemView subset.
     QAbstractItemView *gameListView;
+    TilingListView *cardView = nullptr;          ///< Aliases gameListView when card style is active.
+    GamesListSortBar *cardViewSortBar = nullptr; ///< Non-null when card style is active.
 
     GamesModel *gameListModel;           /**< Model containing all games. */
     GamesProxyModel *gameListProxyModel; /**< Proxy model for filtering and sorting the game list. */
