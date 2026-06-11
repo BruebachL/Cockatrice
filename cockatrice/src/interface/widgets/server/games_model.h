@@ -31,6 +31,20 @@ private:
     static const int NUM_COLS = 8; /**< Number of columns in the table. */
 
 public:
+    /**
+     * @brief Custom item data roles for GamesModel.
+     *
+     * SortRole     — used by GamesProxyModel for sorting (alias of Qt::UserRole).
+     * GameDataRole — returns the full ServerInfo_Game value so delegates and
+     *                proxy filters can read it without going through individual
+     *                column accessors.
+     */
+    enum Roles
+    {
+        SortRole = Qt::UserRole,
+        GameDataRole = Qt::UserRole + 2,
+    };
+
     static const int SORT_ROLE = Qt::UserRole + 1; /**< Role used for sorting. */
 
     /**

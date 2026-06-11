@@ -1,5 +1,7 @@
 #include "game_selector.h"
 
+#include "../../pixel_map_generator.h"
+#include "../general/layout_containers/tiling_list_view.h"
 #include "../interface/widgets/dialogs/dlg_create_game.h"
 #include "../interface/widgets/dialogs/dlg_filter_games.h"
 #include "../interface/widgets/tabs/tab_account.h"
@@ -7,6 +9,7 @@
 #include "../interface/widgets/tabs/tab_room.h"
 #include "../interface/widgets/tabs/tab_supervisor.h"
 #include "../interface/widgets/utility/get_text_with_max.h"
+#include "games_list_item_delegate.h"
 #include "games_model.h"
 #include "user/user_list_manager.h"
 
@@ -14,6 +17,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QPainter>
 #include <QPushButton>
 #include <QTreeView>
 #include <libcockatrice/network/client/abstract/abstract_client.h>
@@ -32,37 +36,57 @@ GameSelector::GameSelector(AbstractClient *_client,
                            QWidget *parent)
     : QGroupBox(parent), client(_client), tabSupervisor(_tabSupervisor), room(_room), showFilters(_showfilters)
 {
-    gameListView = new QTreeView;
-    gameListView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(gameListView, &QTreeView::customContextMenuRequested, this, &GameSelector::customContextMenu);
-
     gameListModel = new GamesModel(_rooms, _gameTypes, this);
     gameListProxyModel = new GamesProxyModel(this, tabSupervisor->getUserListManager());
+
+    // Build the view appropriate for the current style setting.
+    // Each branch performs all view-specific setup before assigning
+    // gameListView so the shared code below can treat both uniformly.
+
+    // const bool cardStyle = SettingsCache::instance().getStyleGamesList();
+    const bool cardStyle = true;
+
+    if (cardStyle) {
+        auto *cardView = new TilingListView(this);
+        cardView->setItemDelegate(new GameListItemDelegate(_rooms, _gameTypes, this));
+        gameListView = cardView;
+    } else {
+        auto *treeView = new QTreeView(this);
+        treeView->setIconSize(QSize(13, 13));
+        treeView->setSortingEnabled(true);
+        treeView->sortByColumn(gameListModel->startTimeColIndex(), Qt::AscendingOrder);
+        treeView->setAlternatingRowColors(true);
+        treeView->setRootIsDecorated(true);
+        // game created width
+        treeView->setColumnWidth(1, treeView->columnWidth(2) * 0.7);
+        // players width
+        treeView->resizeColumnToContents(6);
+        // description width
+        treeView->setColumnWidth(2, treeView->columnWidth(2) * 1.7);
+        // creator width
+        treeView->setColumnWidth(3, treeView->columnWidth(3) * 1.2);
+        // game type width
+        treeView->setColumnWidth(4, treeView->columnWidth(4) * 1.4);
+        treeView->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        if (_room) {
+            treeView->header()->hideSection(gameListModel->roomColIndex());
+        }
+        gameListView = treeView;
+    }
+
+    gameListView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     if (showFilters) {
         gameListProxyModel->setSourceModel(gameListModel);
         gameListProxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
+        if (cardStyle) {
+            // The proxy drives sorting for the card view; the tree view uses
+            // its own header-click sorting instead.
+            gameListProxyModel->sort(gameListModel->startTimeColIndex(), Qt::AscendingOrder);
+        }
         gameListView->setModel(gameListProxyModel);
     } else {
         gameListView->setModel(gameListModel);
-    }
-    gameListView->setIconSize(QSize(13, 13));
-    gameListView->setSortingEnabled(true);
-    gameListView->sortByColumn(gameListModel->startTimeColIndex(), Qt::AscendingOrder);
-    gameListView->setAlternatingRowColors(true);
-    gameListView->setRootIsDecorated(true);
-    // game created width
-    gameListView->setColumnWidth(1, gameListView->columnWidth(2) * 0.7);
-    // players width
-    gameListView->resizeColumnToContents(6);
-    // description width
-    gameListView->setColumnWidth(2, gameListView->columnWidth(2) * 1.7);
-    // creator width
-    gameListView->setColumnWidth(3, gameListView->columnWidth(3) * 1.2);
-    // game type width
-    gameListView->setColumnWidth(4, gameListView->columnWidth(4) * 1.4);
-    if (_room) {
-        gameListView->header()->hideSection(gameListModel->roomColIndex());
     }
 
     if (room) {
@@ -73,12 +97,9 @@ GameSelector::GameSelector(AbstractClient *_client,
         gameListProxyModel->loadFilterParameters(gameTypeMap);
     }
 
-    gameListView->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-
     if (showFilters && restoresettings) {
         quickFilterToolBar = new GameSelectorQuickFilterToolBar(this, tabSupervisor, gameListProxyModel, gameTypeMap);
-        quickFilterToolBar->setVisible(showFilters && restoresettings &&
-                                       SettingsCache::instance().getShowGameSelectorFilterToolbar());
+        quickFilterToolBar->setVisible(SettingsCache::instance().getShowGameSelectorFilterToolbar());
 
         connect(&SettingsCache::instance(), &SettingsCache::showGameSelectorFilterToolbarChanged, this, [this] {
             quickFilterToolBar->setVisible(SettingsCache::instance().getShowGameSelectorFilterToolbar());
@@ -90,6 +111,7 @@ GameSelector::GameSelector(AbstractClient *_client,
     filterButton = new QPushButton;
     filterButton->setIcon(QPixmap("theme:icons/search"));
     connect(filterButton, &QPushButton::clicked, this, &GameSelector::actSetFilter);
+
     clearFilterButton = new QPushButton;
     clearFilterButton->setIcon(QPixmap("theme:icons/clearsearch"));
     bool filtersSetToDefault = showFilters && gameListProxyModel->areFilterParametersSetToDefaults();
@@ -141,7 +163,7 @@ GameSelector::GameSelector(AbstractClient *_client,
     retranslateUi();
     setLayout(mainLayout);
 
-    setMinimumWidth((qreal)(gameListView->columnWidth(0) * gameListModel->columnCount()) / 1.5);
+    setMinimumWidth(320);
     setMinimumHeight(200);
 
     connect(joinButton, &QPushButton::clicked, this, &GameSelector::actJoin);
@@ -150,7 +172,8 @@ GameSelector::GameSelector(AbstractClient *_client,
     connect(joinAsJudgeSpectatorButton, &QPushButton::clicked, this, &GameSelector::actJoinAsJudgeSpectator);
     connect(gameListView->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             &GameSelector::actSelectedGameChanged);
-    connect(gameListView, &QTreeView::activated, this, &GameSelector::actJoin);
+    connect(gameListView, &QAbstractItemView::activated, this, &GameSelector::actJoin);
+    connect(gameListView, &QAbstractItemView::customContextMenuRequested, this, &GameSelector::customContextMenu);
 
     connect(client, &AbstractClient::ignoreListReceived, this, &GameSelector::ignoreListReceived);
     connect(client, &AbstractClient::addToListEventReceived, this, &GameSelector::processAddToListEvent);
@@ -269,11 +292,8 @@ void GameSelector::actJoin()
 
 void GameSelector::actJoinAsJudge()
 {
-    if (!(tabSupervisor->getUserInfo()->user_level() & ServerInfo_User::IsJudge)) {
-        joinGame();
-    } else {
-        joinGame(false, true);
-    }
+    const bool isJudge = tabSupervisor->getUserInfo()->user_level() & ServerInfo_User::IsJudge;
+    joinGame(false, isJudge);
 }
 
 void GameSelector::actJoinAsSpectator()
@@ -283,11 +303,8 @@ void GameSelector::actJoinAsSpectator()
 
 void GameSelector::actJoinAsJudgeSpectator()
 {
-    if (!(tabSupervisor->getUserInfo()->user_level() & ServerInfo_User::IsJudge)) {
-        joinGame(true);
-    } else {
-        joinGame(true, true);
-    }
+    const bool isJudge = tabSupervisor->getUserInfo()->user_level() & ServerInfo_User::IsJudge;
+    joinGame(true, isJudge);
 }
 
 void GameSelector::customContextMenu(const QPoint &point)
@@ -392,7 +409,6 @@ void GameSelector::enableButtons()
         createButton->setEnabled(true);
     }
 
-    // Enable buttons for the currently selected game
     enableButtonsForIndex(gameListView->currentIndex());
 }
 

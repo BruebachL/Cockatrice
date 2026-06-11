@@ -69,9 +69,15 @@ QVariant GamesModel::data(const QModelIndex &index, int role) const
     if (role == Qt::UserRole) {
         return index.row();
     }
+
+    if (role == GameDataRole && index.row() < gameList.size()) {
+        return QVariant::fromValue(gameList[index.row()]);
+    }
+
     if (role != Qt::DisplayRole && role != SORT_ROLE && role != Qt::DecorationRole && role != Qt::TextAlignmentRole) {
         return QVariant();
     }
+
     if ((index.row() >= gameList.size()) || (index.column() >= columnCount())) {
         return QVariant();
     }
