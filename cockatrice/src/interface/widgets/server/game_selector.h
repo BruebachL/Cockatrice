@@ -4,12 +4,14 @@
 #include "game_selector_quick_filter_toolbar.h"
 #include "game_type_map.h"
 
+#include <QAbstractItemView>
 #include <QGroupBox>
+#include <QListView>
+#include <QStyledItemDelegate>
 #include <libcockatrice/protocol/pb/commands.pb.h>
 #include <libcockatrice/protocol/pb/event_add_to_list.pb.h>
 #include <libcockatrice/protocol/pb/event_remove_from_list.pb.h>
 
-class QTreeView;
 class GamesModel;
 class GamesProxyModel;
 class QPushButton;
@@ -25,6 +27,15 @@ class Response;
  * @class GameSelector
  * @ingroup Lobby
  * @brief Provides a widget for displaying, filtering, joining, spectating, and creating games in a room.
+ *
+ * When SettingsCache::instance().getStyleGamesList() is true the game list is
+ * shown as a responsive card grid (TilingListView + GameListItemDelegate).
+ * When false it falls back to the classic QTreeView column layout.
+ *
+ * The active view is stored as a QAbstractItemView* so shared API (setModel,
+ * selectionModel, activated, indexAt, etc.) can be called without casting.
+ * View-specific setup (column widths, header, delegate) is performed with
+ * local casts inside the constructor where each path is initialised.
  *
  * The GameSelector displays all available games in a QTreeView. It supports filtering,
  * creating, joining, spectating, and viewing game details. Integrates with TabSupervisor
@@ -122,7 +133,12 @@ private:
     TabSupervisor *tabSupervisor; /**< Reference to TabSupervisor for managing tabs and rooms. */
     TabRoom *room;                /**< The current room. */
 
-    QTreeView *gameListView;             /**< View widget for displaying the game list. */
+    /// Active game-list view. Points to a TilingListView (card style) or a
+    /// QTreeView (classic style) depending on getStyleGamesList().  Code that
+    /// needs view-specific API casts locally; everything else uses the
+    /// QAbstractItemView subset.
+    QAbstractItemView *gameListView;
+
     GamesModel *gameListModel;           /**< Model containing all games. */
     GamesProxyModel *gameListProxyModel; /**< Proxy model for filtering and sorting the game list. */
 
