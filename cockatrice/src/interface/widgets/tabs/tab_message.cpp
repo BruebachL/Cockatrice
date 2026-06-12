@@ -6,8 +6,10 @@
 #include "../interface/widgets/server/user/user_list_manager.h"
 #include "../interface/widgets/utility/custom_line_edit.h"
 #include "../main.h"
+#include "tab_supervisor.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QDebug>
 #include <QMenu>
 #include <QSystemTrayIcon>

@@ -354,6 +354,12 @@ set(cockatrice_SOURCES
     src/interface/widgets/tabs/api/edhrec/display/commander/edhrec_commander_api_response_budget_navigation_widget.h
     src/interface/widgets/utility/compact_push_button.cpp
     src/interface/widgets/utility/compact_push_button.h
+    src/interface/widgets/server/chat_view/chat_parser.cpp
+    src/interface/widgets/server/chat_view/chat_parser.h
+    src/interface/widgets/server/chat_view/chat_model.cpp
+    src/interface/widgets/server/chat_view/chat_model.h
+    src/interface/widgets/server/chat_view/chat_message_delegate.cpp
+    src/interface/widgets/server/chat_view/chat_message_delegate.h
 )
 
 add_subdirectory(sounds)

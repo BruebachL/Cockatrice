@@ -156,7 +156,7 @@ TabRoom::TabRoom(TabSupervisor *_tabSupervisor,
 void TabRoom::retranslateUi()
 {
     gameSelector->retranslateUi();
-    chatView->retranslateUi();
+    // chatView->retranslateUi();
     userList->retranslateUi();
     sayLabel->setText(tr("&Say:"));
     chatGroupBox->setTitle(tr("Chat"));
