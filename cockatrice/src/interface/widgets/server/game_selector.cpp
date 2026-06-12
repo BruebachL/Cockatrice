@@ -48,10 +48,12 @@ GameSelector::GameSelector(AbstractClient *_client,
     const bool cardStyle = true;
 
     if (cardStyle) {
-        auto *cardView = new TilingListView(this);
-        cardView->setItemDelegate(new GameListItemDelegate(_rooms, _gameTypes, this));
-        cardView = cardView;
+        const QMap<QString, QPixmap> *avatarCache = &tabSupervisor->getUserListManager()->getAvatarProvider()->cache();
+        cardView = new TilingListView(this);
         gameListView = cardView;
+        auto *delegate = new GameListItemDelegate(_rooms, _gameTypes, avatarCache, this);
+        cardView->setItemDelegate(delegate);
+
     } else {
         auto *treeView = new QTreeView(this);
         treeView->setIconSize(QSize(13, 13));

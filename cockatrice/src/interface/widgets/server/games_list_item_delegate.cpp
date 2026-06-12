@@ -6,28 +6,30 @@
 #include "games_model.h"
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QTimeZone>
+
+// ── Constructor / sizeHint ────────────────────────────────────────────────────
 
 GameListItemDelegate::GameListItemDelegate(const QMap<int, QString> &rooms,
                                            const QMap<int, GameTypeMap> &gameTypes,
+                                           const QMap<QString, QPixmap> *avatarCache,
                                            QObject *parent)
-    : QStyledItemDelegate(parent), rooms(rooms), gameTypes(gameTypes)
+    : QStyledItemDelegate(parent), rooms(rooms), gameTypes(gameTypes), m_avatarCache(avatarCache)
 {
 }
 
 QSize GameListItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &) const
 {
     if (const auto *v = qobject_cast<const TilingListView *>(option.widget)) {
-        return QSize(v->cellWidth(), 90);
+        return QSize(v->cellWidth(), 48);
     }
-    return QSize(320, 90);
+    return QSize(500, 48);
 }
 
-// ----------------------------------------------------------------------------
-// Static helpers
-// ----------------------------------------------------------------------------
+// ── Static helpers ────────────────────────────────────────────────────────────
 
-QColor GameListItemDelegate::accentForGame(const ServerInfo_Game &game)
+/*static*/ QColor GameListItemDelegate::accentForGame(const ServerInfo_Game &game)
 {
     if (game.started()) {
         return QColor(239, 68, 68); // red    — in progress
@@ -36,9 +38,37 @@ QColor GameListItemDelegate::accentForGame(const ServerInfo_Game &game)
         return QColor(249, 115, 22); // orange — full
     }
     if (game.with_password()) {
-        return QColor(59, 130, 246); // blue   — password protected
+        return QColor(59, 130, 246); // blue   — password
     }
     return QColor(34, 197, 94); // green  — open
+}
+
+/*static*/ void GameListItemDelegate::typeColors(const QString &name, QColor &outBg, QColor &outFg)
+{
+    uint h = 5381u;
+    for (const QChar c : name) {
+        h = h * 33u ^ static_cast<uint>(c.unicode());
+    }
+
+    struct Slot
+    {
+        QColor bg, fg;
+    };
+    static const Slot palette[] = {
+        {QColor(20, 50, 80), QColor(96, 165, 220)},  // steel-blue
+        {QColor(48, 25, 75), QColor(167, 139, 250)}, // indigo
+        {QColor(15, 58, 32), QColor(74, 222, 128)},  // emerald
+        {QColor(68, 32, 12), QColor(251, 146, 60)},  // amber
+        {QColor(60, 18, 25), QColor(248, 113, 113)}, // rose
+        {QColor(12, 55, 55), QColor(45, 212, 191)},  // teal
+        {QColor(50, 48, 12), QColor(217, 210, 80)},  // yellow
+        {QColor(55, 18, 50), QColor(244, 114, 182)}, // pink
+    };
+    constexpr int N = static_cast<int>(sizeof(palette) / sizeof(palette[0]));
+
+    const int idx = static_cast<int>(h % static_cast<uint>(N));
+    outBg = palette[idx].bg;
+    outFg = palette[idx].fg;
 }
 
 /*static*/ int GameListItemDelegate::paintBadge(QPainter *p,
@@ -60,16 +90,13 @@ QColor GameListItemDelegate::accentForGame(const ServerInfo_Game &game)
     return w;
 }
 
-// ----------------------------------------------------------------------------
-// paintCardBackground
-// ----------------------------------------------------------------------------
+// ── paintCardBackground ───────────────────────────────────────────────────────
 
 void GameListItemDelegate::paintCardBackground(QPainter *p,
                                                const QRectF &card,
                                                const QColor &accent,
                                                bool selected) const
 {
-    // Main card gradient
     QLinearGradient bg(card.topLeft(), card.bottomRight());
     bg.setColorAt(0, selected ? accent.darker(200) : QColor(22, 28, 38));
     bg.setColorAt(1, selected ? QColor(30, 38, 52) : QColor(14, 18, 26));
@@ -77,179 +104,216 @@ void GameListItemDelegate::paintCardBackground(QPainter *p,
     p->setBrush(bg);
     p->drawRoundedRect(card, cardRadius, cardRadius);
 
-    // Left accent bar
     p->setBrush(accent);
     p->drawRoundedRect(QRectF(card.left(), card.top(), accentBarWidth, card.height()), accentBarRadius,
                        accentBarRadius);
 
-    // Subtle border
     p->setPen(QPen(accent.darker(300), 0.5));
     p->setBrush(Qt::NoBrush);
     p->drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), cardRadius, cardRadius);
 }
 
-// ----------------------------------------------------------------------------
-// paintRow1 — title + age badge
-// ----------------------------------------------------------------------------
+// ── paintCreatorAvatar ────────────────────────────────────────────────────────
 
-void GameListItemDelegate::paintRow1(QPainter *p,
-                                     const QStyleOptionViewItem &option,
-                                     const QRect &rect,
-                                     const ServerInfo_Game &game,
-                                     const QColor &accent,
-                                     int lx,
-                                     int rx,
-                                     const QFont &titleFont,
-                                     const QFont &badgeFont) const
+void GameListItemDelegate::paintCreatorAvatar(QPainter *p,
+                                              const QRect &avatarRect,
+                                              const ServerInfo_Game &game,
+                                              const QColor &accent) const
 {
-    Q_UNUSED(option);
-    const QColor titleColor = game.started() ? QColor(150, 160, 175) : QColor(220, 228, 240);
-    const int rowTop = rect.top() + row1Y;
+    const auto &creator = game.creator_info();
+    const QString creatorName = QString::fromStdString(creator.name());
 
-    // Age badge — drawn first so we know how wide it is before placing the title
+    QPainterPath clip;
+    clip.addEllipse(avatarRect);
+    p->save();
+    p->setClipPath(clip);
+
+    bool drewRealAvatar = false;
+    if (m_avatarCache) {
+        const auto it = m_avatarCache->find(creatorName);
+        if (it != m_avatarCache->end() && !it->isNull()) {
+            p->drawPixmap(avatarRect,
+                          it->scaled(avatarRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+            drewRealAvatar = true;
+        }
+    }
+
+    if (!drewRealAvatar) {
+        p->setPen(Qt::NoPen);
+        p->setBrush(QColor(28, 35, 46));
+        p->drawEllipse(avatarRect);
+
+        const QPixmap pawn = UserLevelPixmapGenerator::generatePixmap(
+            avatarFallbackPawn, UserLevelFlags(creator.user_level()), creator.pawn_colors(), false,
+            QString::fromStdString(creator.privlevel()));
+        p->drawPixmap(avatarRect.center().x() - avatarFallbackPawn / 2,
+                      avatarRect.center().y() - avatarFallbackPawn / 2, pawn);
+    }
+
+    p->restore();
+
+    p->setPen(QPen(accent, 1.5));
+    p->setBrush(Qt::NoBrush);
+    p->drawEllipse(QRectF(avatarRect).adjusted(-0.75, -0.75, 0.75, 0.75));
+}
+
+// ── Zone painters ─────────────────────────────────────────────────────────────
+
+void GameListItemDelegate::paintAge(QPainter *p,
+                                    const QStyleOptionViewItem &option,
+                                    const QRect &rect,
+                                    const ServerInfo_Game &game,
+                                    int ageLeft) const
+{
     const qint64 ageSecs =
         QDateTime::fromSecsSinceEpoch(game.start_time(), QTimeZone::utc()).secsTo(QDateTime::currentDateTimeUtc());
     const QString ageStr = GamesModel::getGameCreatedString(static_cast<int>(ageSecs));
-    const int ageBadgeW =
-        paintBadge(p, QPoint(rx - QFontMetrics(badgeFont).horizontalAdvance(ageStr) - badgeHPad * 2, rowTop), row1H - 2,
-                   ageStr, accent.darker(250), accent.lighter(150), badgeFont);
 
-    // Lock icon (password-protected games)
-    int titleX = lx;
+    p->setFont(option.font);
+    p->setPen(QColor(80, 95, 115));
+    p->drawText(QRect(ageLeft, rect.top(), zoneAgeW, rect.height()), Qt::AlignVCenter | Qt::AlignLeft, ageStr);
+}
+
+void GameListItemDelegate::paintCreator(QPainter *p,
+                                        const QStyleOptionViewItem &option,
+                                        const QRect &rect,
+                                        const ServerInfo_Game &game,
+                                        int creatorLeft) const
+{
+    const QString name = QString::fromStdString(game.creator_info().name());
+    const QFontMetrics cfm(option.font);
+    p->setFont(option.font);
+    p->setPen(QColor(110, 125, 145));
+    p->drawText(QRect(creatorLeft, rect.top(), zoneCreatorW, rect.height()), Qt::AlignVCenter | Qt::AlignLeft,
+                cfm.elidedText(name, Qt::ElideRight, zoneCreatorW));
+}
+
+void GameListItemDelegate::paintTitle(QPainter *p,
+                                      const QStyleOptionViewItem &option,
+                                      const QRect &rect,
+                                      const ServerInfo_Game &game,
+                                      int lx,
+                                      int titleW,
+                                      const QFont &titleFont) const
+{
+    Q_UNUSED(option);
+
+    int x = lx;
+    int w = titleW;
+
     if (game.with_password()) {
-        p->drawPixmap(titleX, rowTop + 1, LockPixmapGenerator::generatePixmap(lockSize));
-        titleX += lockTextGap;
+        const int iconY = rect.top() + (rect.height() - lockSize) / 2;
+        p->drawPixmap(x, iconY, LockPixmapGenerator::generatePixmap(lockSize));
+        x += lockTextGap;
+        w -= lockTextGap;
     }
 
-    // Game title — elided to avoid overlapping the age badge
-    const int titleW = rx - ageBadgeW - titleX - badgeGap;
-    const QRect titleRect(titleX, rowTop, titleW, row1H);
-    const QString elidedTitle =
-        QFontMetrics(titleFont).elidedText(QString::fromStdString(game.description()), Qt::ElideRight, titleW);
+    if (w <= 0) {
+        return;
+    }
+
+    const QColor color = game.started() ? QColor(150, 160, 175) : QColor(220, 228, 240);
+    const QString elided =
+        QFontMetrics(titleFont).elidedText(QString::fromStdString(game.description()), Qt::ElideRight, w);
+
     p->setFont(titleFont);
-    p->setPen(titleColor);
-    p->drawText(titleRect, Qt::AlignVCenter | Qt::AlignLeft, elidedTitle);
+    p->setPen(color);
+    p->drawText(QRect(x, rect.top(), w, rect.height()), Qt::AlignVCenter | Qt::AlignLeft, elided);
 }
 
-// ----------------------------------------------------------------------------
-// paintRow2 — creator pawn + name + game-type badges
-// ----------------------------------------------------------------------------
-
-void GameListItemDelegate::paintRow2(QPainter *p,
-                                     const QStyleOptionViewItem &option,
-                                     const QRect &rect,
-                                     const ServerInfo_Game &game,
-                                     int lx,
-                                     int rx,
-                                     const QFont &badgeFont) const
+void GameListItemDelegate::paintTypeBadges(QPainter *p,
+                                           const QRect &rect,
+                                           const ServerInfo_Game &game,
+                                           int typesLeft,
+                                           const QFont &badgeFont) const
 {
-    const int rowTop = rect.top() + row2Y;
-
-    // Creator pawn icon + name
-    const auto &creator = game.creator_info();
-    const QPixmap pawn =
-        UserLevelPixmapGenerator::generatePixmap(pawnSize, UserLevelFlags(creator.user_level()), creator.pawn_colors(),
-                                                 false, QString::fromStdString(creator.privlevel()));
-    p->drawPixmap(lx, rowTop + 1, pawn);
-
-    const QString creatorName = QString::fromStdString(creator.name());
-    const QFontMetrics cfm(option.font);
-    p->setFont(option.font);
-    p->setPen(QColor(148, 163, 184));
-    p->drawText(lx + pawnTextGap, rowTop, nameMaxW, row2H, Qt::AlignVCenter | Qt::AlignLeft,
-                cfm.elidedText(creatorName, Qt::ElideRight, nameMaxW));
-
-    // Game-type badge pills, laid out right-to-left
     const GameTypeMap &gtMap = gameTypes.value(game.room_id());
-    QStringList typeNames;
-    typeNames.reserve(game.game_types_size());
-    for (int i = 0; i < game.game_types_size(); ++i) {
-        typeNames << gtMap.value(game.game_types(i));
-    }
+    const int badgeY = rect.top() + (rect.height() - badgeH) / 2;
+    const int xMax = typesLeft + zoneTypesW;
 
-    int tbx = rx;
-    for (const QString &typeName : std::as_const(typeNames)) {
+    int x = typesLeft;
+    for (int i = 0; i < game.game_types_size(); ++i) {
+        const QString typeName = gtMap.value(game.game_types(i));
+        if (typeName.isEmpty()) {
+            continue;
+        }
         const int tw = QFontMetrics(badgeFont).horizontalAdvance(typeName) + badgeHPad * 2;
-        tbx -= tw;
-        paintBadge(p, QPoint(tbx, rowTop), row2H - 1, typeName, QColor(30, 58, 80), QColor(96, 165, 200), badgeFont);
-        tbx -= badgeGap;
+        if (x + tw > xMax) {
+            break;
+        }
+        QColor bg, fg;
+        typeColors(typeName, bg, fg);
+        paintBadge(p, QPoint(x, badgeY), badgeH, typeName, bg, fg, badgeFont);
+        x += tw + badgeGap;
     }
 }
 
-// ----------------------------------------------------------------------------
-// paintRow3 — players · spectators · restrictions
-// ----------------------------------------------------------------------------
-
-void GameListItemDelegate::paintRow3(QPainter *p,
-                                     const QStyleOptionViewItem &option,
-                                     const QRect &rect,
-                                     const ServerInfo_Game &game,
-                                     int lx,
-                                     int rx) const
+void GameListItemDelegate::paintStatus(QPainter *p,
+                                       const QRect &rect,
+                                       const ServerInfo_Game &game,
+                                       int statusLeft,
+                                       const QColor &accent,
+                                       const QFont &badgeFont) const
 {
-    const int rowTop = rect.top() + row3Y;
-    const QFontMetrics cfm(option.font);
-    p->setFont(option.font);
-
-    // Helper: draw a mid-dot divider and advance the x cursor
-    auto drawDivider = [&](int &x) {
-        p->setPen(QColor(50, 60, 75));
-        p->drawText(x, rowTop, dividerW, row3H, Qt::AlignCenter, QStringLiteral("·"));
-        x += dividerW + dividerGap;
+    Q_UNUSED(accent);
+    // Build the ordered list of status pills.  Each pill is a short label with
+    // explicit bg/fg colours derived from game state.
+    struct Pill
+    {
+        QString text;
+        QColor bg;
+        QColor fg;
     };
+    QVector<Pill> pills;
 
-    // Players
+    // Players — always first, colour encodes availability
     const bool full = game.player_count() >= game.max_players();
-    const QString playerStr = QStringLiteral("👥 %1/%2").arg(game.player_count()).arg(game.max_players());
-    p->setPen(full ? QColor(249, 115, 22) : QColor(148, 163, 184));
-    const int pw = cfm.horizontalAdvance(playerStr);
-    p->drawText(lx, rowTop, pw, row3H, Qt::AlignVCenter | Qt::AlignLeft, playerStr);
+    const bool started = game.started();
+    const QString players = QStringLiteral("%1/%2").arg(game.player_count()).arg(game.max_players());
+    const QColor playerBg = started ? QColor(90, 20, 20) : full ? QColor(90, 42, 10) : QColor(15, 50, 25);
+    const QColor playerFg = started ? QColor(248, 113, 113) : full ? QColor(251, 146, 60) : QColor(74, 222, 128);
+    pills.append({players, playerBg, playerFg});
 
-    int infoX = lx + pw + sectionGap;
-    drawDivider(infoX);
-
-    // Spectators (omitted entirely when not allowed)
+    // Spectators — only when allowed; label encodes chat/omniscient flags
     if (game.spectators_allowed()) {
-        QString specStr = QStringLiteral("👁 %1").arg(game.spectators_count());
+        QString specLabel = QStringLiteral("👁 %1").arg(game.spectators_count());
         if (game.spectators_can_chat() && game.spectators_omniscient()) {
-            specStr += QStringLiteral(" (chat+hands)");
+            specLabel += QStringLiteral(" c+h");
         } else if (game.spectators_can_chat()) {
-            specStr += QStringLiteral(" (chat)");
+            specLabel += QStringLiteral(" chat");
         } else if (game.spectators_omniscient()) {
-            specStr += QStringLiteral(" (hands)");
+            specLabel += QStringLiteral(" hands");
         }
-        p->setPen(QColor(148, 163, 184));
-        const int sw = cfm.horizontalAdvance(specStr);
-        p->drawText(infoX, rowTop, sw, row3H, Qt::AlignVCenter | Qt::AlignLeft, specStr);
-        infoX += sw + sectionGap;
-        drawDivider(infoX);
+        pills.append({specLabel, QColor(15, 40, 65), QColor(96, 165, 220)});
     }
 
-    // Restriction tags
-    QStringList restr;
+    // Restriction tags — one pill each
     if (game.only_buddies()) {
-        restr << tr("buddies");
+        pills.append({tr("buddies"), QColor(48, 25, 75), QColor(167, 139, 250)});
     }
     if (game.only_registered()) {
-        restr << tr("reg. only");
+        pills.append({tr("reg."), QColor(50, 48, 12), QColor(217, 210, 80)});
     }
     if (game.share_decklists_on_load()) {
-        restr << tr("open decks");
-    }
-    if (game.started()) {
-        restr << tr("in progress");
+        pills.append({tr("open decks"), QColor(12, 55, 55), QColor(45, 212, 191)});
     }
 
-    if (!restr.isEmpty()) {
-        p->setPen(QColor(100, 110, 130));
-        p->drawText(infoX, rowTop, rx - infoX, row3H, Qt::AlignVCenter | Qt::AlignLeft,
-                    cfm.elidedText(restr.join(QStringLiteral(" · ")), Qt::ElideRight, rx - infoX));
+    // Draw left-to-right within the zone, stopping when space is exhausted
+    const int badgeY = rect.top() + (rect.height() - badgeH) / 2;
+    const int xMax = statusLeft + zoneStatusW;
+    int x = statusLeft;
+
+    for (const Pill &pill : std::as_const(pills)) {
+        const int tw = QFontMetrics(badgeFont).horizontalAdvance(pill.text) + badgeHPad * 2;
+        if (x + tw > xMax) {
+            break;
+        }
+        paintBadge(p, QPoint(x, badgeY), badgeH, pill.text, pill.bg, pill.fg, badgeFont);
+        x += tw + badgeGap;
     }
 }
 
-// ----------------------------------------------------------------------------
-// paint — orchestrates the three-row card
-// ----------------------------------------------------------------------------
+// ── paint — zone layout ───────────────────────────────────────────────────────
 
 void GameListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
@@ -266,23 +330,36 @@ void GameListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     const QRect rect = option.rect;
     const bool selected = option.state & QStyle::State_Selected;
     const QColor accent = accentForGame(game);
-    const int lx = rect.left() + leftPad;
+    const QRectF card = QRectF(rect).adjusted(cardMarginH, cardMarginV, -cardMarginH, -cardMarginV);
+
+    // ── Left-anchored zones (left-to-right) ───────────────────────────────────
+    const int ageLeft = rect.left() + leftPad; // age butts up against accent bar
+    const int avatarLeft = ageLeft + zoneAgeW + avatarGap;
+    const int avatarY = rect.top() + (rect.height() - avatarSize) / 2;
+    const QRect avatarRect(avatarLeft, avatarY, avatarSize, avatarSize);
+    const int creatorLeft = avatarLeft + avatarSize + creatorGap;
+    const int lx = creatorLeft + zoneCreatorW + interZoneGap; // title start
+
+    // ── Right-anchored zones (right-to-left) ──────────────────────────────────
     const int rx = rect.right() - rightPad;
+    const int statusLeft = rx - zoneStatusW;
+    const int typesLeft = statusLeft - interZoneGap - zoneTypesW;
+    const int titleW = typesLeft - interZoneGap - lx;
 
     QFont titleFont = option.font;
     titleFont.setBold(true);
-    titleFont.setPointSizeF(titleFont.pointSizeF() * titleFontScale);
 
     QFont badgeFont = option.font;
     badgeFont.setPointSizeF(badgeFont.pointSizeF() * badgeFontScale);
     badgeFont.setBold(true);
 
-    const QRectF card = QRectF(rect).adjusted(cardMarginH, cardMarginV, -cardMarginH, -cardMarginV);
-
     paintCardBackground(painter, card, accent, selected);
-    paintRow1(painter, option, rect, game, accent, lx, rx, titleFont, badgeFont);
-    paintRow2(painter, option, rect, game, lx, rx, badgeFont);
-    paintRow3(painter, option, rect, game, lx, rx);
+    paintAge(painter, option, rect, game, ageLeft);
+    paintCreatorAvatar(painter, avatarRect, game, accent);
+    paintCreator(painter, option, rect, game, creatorLeft);
+    paintTitle(painter, option, rect, game, lx, titleW, titleFont);
+    paintTypeBadges(painter, rect, game, typesLeft, badgeFont);
+    paintStatus(painter, rect, game, statusLeft, accent, badgeFont);
 
     painter->restore();
 }

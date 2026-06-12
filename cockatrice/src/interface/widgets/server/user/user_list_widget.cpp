@@ -464,11 +464,9 @@ UserListWidget::UserListWidget(TabSupervisor *_tabSupervisor,
                                QWidget *parent)
     : QGroupBox(parent), tabSupervisor(_tabSupervisor), client(_client), type(_type), onlineCount(0)
 {
-    avatarProvider = new UserAvatarProvider(client, this);
-    cardArtProvider = new UserCardArtProvider(this);
-
-    itemDelegate =
-        new UserListItemDelegate(this, &avatarProvider->cache(), &cardArtProvider->cache(), &cardArtParamsMap);
+    itemDelegate = new UserListItemDelegate(this, &tabSupervisor->getUserListManager()->getAvatarProvider()->cache(),
+                                            &tabSupervisor->getUserListManager()->getCardArtProvider()->cache(),
+                                            &cardArtParamsMap);
 
     userContextMenu = new UserContextMenu(tabSupervisor, this);
     connect(userContextMenu, &UserContextMenu::openMessageDialog, this, &UserListWidget::openMessageDialog);
@@ -489,9 +487,9 @@ UserListWidget::UserListWidget(TabSupervisor *_tabSupervisor,
     userTree->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     userTree->header()->setStretchLastSection(true);
 
-    connect(avatarProvider, &UserAvatarProvider::avatarUpdated, this,
+    connect(tabSupervisor->getUserListManager()->getAvatarProvider(), &UserAvatarProvider::avatarUpdated, this,
             [this](const QString &) { userTree->viewport()->update(); });
-    connect(cardArtProvider, &UserCardArtProvider::cardArtUpdated, this,
+    connect(tabSupervisor->getUserListManager()->getCardArtProvider(), &UserCardArtProvider::cardArtUpdated, this,
             [this](const QString &) { userTree->viewport()->update(); });
 
     connect(&SettingsCache::instance(), &SettingsCache::styleUserListChanged, this, &UserListWidget::applyDisplayMode);
@@ -601,7 +599,7 @@ void UserListWidget::processUserInfo(const ServerInfo_User &user, bool online)
         params.verticalOffset = cap.vertical_offset();
         params.zoom = cap.zoom();
         cardArtParamsMap.insert(userName, params);
-        cardArtProvider->requestCardArt(userName, params.cardName);
+        tabSupervisor->getUserListManager()->getCardArtProvider()->requestCardArt(userName, params.cardName);
     } else {
         cardArtParamsMap.remove(userName); // clear stale params on removal
     }
@@ -617,7 +615,7 @@ void UserListWidget::processUserInfo(const ServerInfo_User &user, bool online)
             ++onlineCount;
         }
         updateCount();
-        avatarProvider->requestAvatar(userName);
+        tabSupervisor->getUserListManager()->getAvatarProvider()->requestAvatar(userName);
     }
     item->setOnline(online);
     userTree->viewport()->update();

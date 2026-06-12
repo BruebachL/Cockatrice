@@ -13,6 +13,8 @@
 #include <QWidget>
 #include <libcockatrice/protocol/pb/serverinfo_user.pb.h>
 
+class UserAvatarProvider;
+class UserCardArtProvider;
 class AbstractClient;
 class Event_AddToList;
 class Event_ListRooms;
@@ -31,6 +33,8 @@ private:
     AbstractClient *client;
     ServerInfo_User *ownUserInfo;
     QMap<QString, ServerInfo_User> onlineUsers, buddyUsers, ignoredUsers;
+    UserAvatarProvider *avatarProvider;
+    UserCardArtProvider *cardArtProvider;
 
 private slots:
     void setOwnUserInfo(const ServerInfo_User &userInfo);
@@ -60,6 +64,16 @@ public:
     [[nodiscard]] const QMap<QString, ServerInfo_User> &getIgnoreList() const
     {
         return ignoredUsers;
+    }
+
+    [[nodiscard]] UserAvatarProvider *getAvatarProvider() const
+    {
+        return avatarProvider;
+    }
+
+    [[nodiscard]] UserCardArtProvider *getCardArtProvider() const
+    {
+        return cardArtProvider;
     }
 
     [[nodiscard]] bool isOwnUserRegistered() const override;

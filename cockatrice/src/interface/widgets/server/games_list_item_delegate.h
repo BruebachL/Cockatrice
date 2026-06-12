@@ -3,65 +3,88 @@
 
 #include "game_type_map.h"
 
+#include <QMap>
+#include <QPixmap>
 #include <QStyledItemDelegate>
+
 class ServerInfo_Game;
 
 /**
  * @class GameListItemDelegate
- * @brief Paints each game in the TilingListView as a dark card with three rows.
+ * @brief Paints each game in the TilingListView as a compact single-row card.
  *
- * Row 1 — game title (bold, elided) + age badge top-right
- * Row 2 — creator pawn icon + creator name + game-type pill badges right-aligned
- * Row 3 — player count · spectator count · restriction tags
+ * Each card is 48 px tall.  All attribute zones are always present at fixed
+ * pixel widths — there are no conditional zones, so the layout never shifts
+ * and every column is always scannable regardless of card width.
  *
- * A coloured accent bar on the left edge encodes game state:
- *   green  = open
- *   blue   = password protected
- *   orange = full
- *   red    = in progress
+ * Zone layout (left → right, all always visible):
  *
- * Only used when SettingsCache::instance().getStyleGamesList() returns true.
+ * @code
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │▌  (●)  │  Game Title (flex)  │  Creator  │  Types  │  👥 N/M  │·│  age  │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ * @endcode
+ *
+ * Title is the only flexible zone; it receives all width not consumed by the
+ * fixed zones.  minCardW in TilingListView is set high enough (500 px) that
+ * every zone always has comfortable room.
+ *
+ * Avatar: real image from m_avatarCache when available; neutral dark fill
+ *         plus the creator's pawn otherwise.  Accent ring encodes join state:
+ *         green = open · blue = password · orange = full · red = in progress.
+ *
+ * Type badge colours derive from a stable djb2 hash of the type name so the
+ * same type always maps to the same palette slot across sessions.
  */
 class GameListItemDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
 
-    // --- Layout constants (pixels, relative to option.rect unless noted) ---
-    static constexpr int cardMarginH = 4; ///< Horizontal inset from option.rect to card edge
-    static constexpr int cardMarginV = 3; ///< Vertical inset from option.rect to card edge
+    // ── Card chrome ───────────────────────────────────────────────────────────
+    static constexpr int cardMarginH = 4;
+    static constexpr int cardMarginV = 3;
     static constexpr int cardRadius = 7;
     static constexpr int accentBarWidth = 4;
     static constexpr int accentBarRadius = 2;
-    static constexpr int leftPad = 16; ///< Left content margin (right of accent bar)
-    static constexpr int rightPad = 8; ///< Right content margin
-    static constexpr int row1Y = 10;   ///< Row 1 top, relative to rect.top()
-    static constexpr int row1H = 16;
-    static constexpr int row2Y = 33; ///< Row 2 top, relative to rect.top()
-    static constexpr int row2H = 14;
-    static constexpr int row3Y = 56; ///< Row 3 top, relative to rect.top()
-    static constexpr int row3H = 14;
-    static constexpr int pawnSize = 13;
-    static constexpr int lockSize = 13;
-    static constexpr int lockTextGap = 17; ///< X advance after lock icon
-    static constexpr int pawnTextGap = 17; ///< X advance after pawn icon
-    static constexpr int nameMaxW = 160;
-    static constexpr int badgeHPad = 5; ///< Horizontal padding inside a pill badge (each side)
-    static constexpr int badgeGap = 4;  ///< Gap between successive badges
-    static constexpr int badgeRadius = 3;
-    static constexpr int dividerW = 6;
-    static constexpr int dividerGap = 4; ///< Total advance after a "·" divider
-    static constexpr int sectionGap = 8; ///< Gap between adjacent row-3 sections
 
-    // --- Font scale factors ---
-    static constexpr double titleFontScale = 1.05;
-    static constexpr double badgeFontScale = 0.68;
+    // ── Left-anchored zones (left-to-right, before title) ─────────────────────
+    static constexpr int leftPad = 8; ///< rect.left() → age left (just clears accent bar)
+    static constexpr int zoneAgeW = 44;
+    static constexpr int avatarGap = 6; ///< age right → avatar left
+    static constexpr int avatarSize = 36;
+    static constexpr int avatarFallbackPawn = 26;
+    static constexpr int creatorGap = 8; ///< avatar right → creator left
+    static constexpr int zoneCreatorW = 100;
+    static constexpr int lockSize = 13;
+    static constexpr int lockTextGap = 17;
+
+    // ── Right-anchored zones (right-to-left, after title) ─────────────────────
+    static constexpr int rightPad = 8;
+    static constexpr int zoneTypesW = 90;
+    static constexpr int zoneStatusW = 110; ///< Players + spectator + restriction pills
+    static constexpr int interZoneGap = 8;
+
+    // ── Badge geometry ────────────────────────────────────────────────────────
+    static constexpr int badgeH = 14;
+    static constexpr int badgeHPad = 5;
+    static constexpr int badgeGap = 4;
+    static constexpr int badgeRadius = 3;
+
+    static constexpr double badgeFontScale = 0.72;
 
     const QMap<int, QString> rooms;
     const QMap<int, GameTypeMap> gameTypes;
+    const QMap<QString, QPixmap> *m_avatarCache; ///< Non-owning; null = pawn fallback always
 
 public:
+    /**
+     * @param avatarCache  Pointer to the live username→pixmap cache kept by
+     *                     UserListManager (or null for pawn-only fallback).
+     *                     The map must outlive this delegate.
+     */
     GameListItemDelegate(const QMap<int, QString> &rooms,
                          const QMap<int, GameTypeMap> &gameTypes,
+                         const QMap<QString, QPixmap> *avatarCache,
                          QObject *parent = nullptr);
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
@@ -71,46 +94,83 @@ private:
     /** Returns the accent colour encoding the game's current join state. */
     static QColor accentForGame(const ServerInfo_Game &game);
 
+    /**
+     * Maps a game-type display name to a stable bg/fg colour pair via djb2 hash.
+     * Deterministic across sessions — independent of Qt's per-process qHash seed.
+     */
+    static void typeColors(const QString &name, QColor &outBg, QColor &outFg);
+
     /** Draws the rounded card background gradient and left accent bar. */
     void paintCardBackground(QPainter *p, const QRectF &card, const QColor &accent, bool selected) const;
 
-    /** Draws row 1: lock icon (optional), elided game title, age badge. */
-    void paintRow1(QPainter *p,
-                   const QStyleOptionViewItem &option,
-                   const QRect &rect,
-                   const ServerInfo_Game &game,
-                   const QColor &accent,
-                   int lx,
-                   int rx,
-                   const QFont &titleFont,
-                   const QFont &badgeFont) const;
-
-    /** Draws row 2: creator pawn + name, game-type pill badges (right-aligned). */
-    void paintRow2(QPainter *p,
-                   const QStyleOptionViewItem &option,
-                   const QRect &rect,
-                   const ServerInfo_Game &game,
-                   int lx,
-                   int rx,
-                   const QFont &badgeFont) const;
-
-    /** Draws row 3: player count · spectator info · restriction tags. */
-    void paintRow3(QPainter *p,
-                   const QStyleOptionViewItem &option,
-                   const QRect &rect,
-                   const ServerInfo_Game &game,
-                   int lx,
-                   int rx) const;
+    /**
+     * Draws the 36 px circular creator avatar.
+     * Real image used when m_avatarCache has an entry for the creator username;
+     * falls back to a neutral dark fill with the creator's pawn at
+     * avatarFallbackPawn px.  Accent-coloured ring drawn in both cases.
+     */
+    void
+    paintCreatorAvatar(QPainter *p, const QRect &avatarRect, const ServerInfo_Game &game, const QColor &accent) const;
 
     /**
-     * @brief Draws a pill-shaped badge and returns its pixel width.
-     * @param p        Active painter.
-     * @param topLeft  Top-left corner of the badge.
-     * @param h        Badge height in pixels.
-     * @param text     Label text.
-     * @param bg       Background colour.
-     * @param fg       Foreground (text) colour.
-     * @param font     Font used to measure and render the text.
+     * Zone: bold game title occupying all flexible width left of the creator
+     * zone.  Optional lock icon is prepended for password-protected games.
+     * Title elides if it exceeds titleW.
+     */
+    void paintTitle(QPainter *p,
+                    const QStyleOptionViewItem &option,
+                    const QRect &rect,
+                    const ServerInfo_Game &game,
+                    int lx,
+                    int titleW,
+                    const QFont &titleFont) const;
+
+    /** Zone: creator name (regular weight, dimmer colour), elided to zoneCreatorW. */
+    void paintCreator(QPainter *p,
+                      const QStyleOptionViewItem &option,
+                      const QRect &rect,
+                      const ServerInfo_Game &game,
+                      int creatorLeft) const;
+
+    /**
+     * Zone: game-type pill badges drawn left-to-right within zoneTypesW.
+     * Badges that exceed the zone width are silently omitted.
+     */
+    void paintTypeBadges(QPainter *p,
+                         const QRect &rect,
+                         const ServerInfo_Game &game,
+                         int typesLeft,
+                         const QFont &badgeFont) const;
+
+    /**
+     * Zone: player count, spectator mode, and restriction tags rendered as
+     * pill badges left-to-right within zoneStatusW.  Badges that exceed the
+     * zone are silently omitted.  Colour encodes join state: red = in progress,
+     * orange = full, blue = password, grey = open.
+     */
+    void paintStatus(QPainter *p,
+                     const QRect &rect,
+                     const ServerInfo_Game &game,
+                     int statusLeft,
+                     const QColor &accent,
+                     const QFont &badgeFont) const;
+
+    /** Zone: creation age string right-aligned within zoneAgeW. */
+    void paintAge(QPainter *p,
+                  const QStyleOptionViewItem &option,
+                  const QRect &rect,
+                  const ServerInfo_Game &game,
+                  int ageLeft) const;
+
+    /**
+     * Draws a pill-shaped badge and returns its pixel width.
+     * @param p       Active painter.
+     * @param topLeft Top-left corner of the badge rectangle.
+     * @param h       Badge height in pixels.
+     * @param text    Label text.
+     * @param bg      Background colour.
+     * @param fg      Foreground (text) colour.
+     * @param font    Font used for measurement and rendering.
      * @return Width of the rendered badge including horizontal padding.
      */
     static int paintBadge(QPainter *p,

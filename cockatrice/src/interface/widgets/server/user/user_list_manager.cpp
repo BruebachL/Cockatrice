@@ -1,6 +1,8 @@
 #include "user_list_manager.h"
 
 #include "../../client/sound_engine.h"
+#include "user_avatar_provider.h"
+#include "user_card_art_provider.h"
 #include "user_info_box.h"
 
 #include <libcockatrice/network/client/abstract/abstract_client.h>
@@ -22,6 +24,9 @@ UserListManager::UserListManager(AbstractClient *_client, QObject *parent)
     connect(client, &AbstractClient::addToListEventReceived, this, &UserListManager::processAddToListEvent);
     connect(client, &AbstractClient::removeFromListEventReceived, this, &UserListManager::processRemoveFromListEvent);
     connect(client, &AbstractClient::userInfoChanged, this, &UserListManager::setOwnUserInfo);
+
+    avatarProvider = new UserAvatarProvider(client, this);
+    cardArtProvider = new UserCardArtProvider(this);
 }
 
 UserListManager::~UserListManager()

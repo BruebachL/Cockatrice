@@ -148,8 +148,6 @@ public:
 
 private:
     UserListManager *manager = nullptr;
-    UserAvatarProvider *avatarProvider = nullptr;
-    UserCardArtProvider *cardArtProvider = nullptr;
     QMap<QString, CardArtParams> cardArtParamsMap;
 
     QMap<QString, UserListTWI *> users;
