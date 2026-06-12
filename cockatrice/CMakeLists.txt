@@ -358,6 +358,12 @@ set(cockatrice_SOURCES
     src/interface/widgets/utility/compact_push_button.h
     src/interface/widgets/server/games_list_sort_bar.cpp
     src/interface/widgets/server/games_list_sort_bar.h
+    src/interface/widgets/server/chat_view/chat_parser.cpp
+    src/interface/widgets/server/chat_view/chat_parser.h
+    src/interface/widgets/server/chat_view/chat_model.cpp
+    src/interface/widgets/server/chat_view/chat_model.h
+    src/interface/widgets/server/chat_view/chat_message_delegate.cpp
+    src/interface/widgets/server/chat_view/chat_message_delegate.h
 )
 
 add_subdirectory(sounds)
