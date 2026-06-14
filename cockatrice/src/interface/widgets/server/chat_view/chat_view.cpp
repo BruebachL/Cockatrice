@@ -3,106 +3,44 @@
 #include "../../../../client/settings/cache_settings.h"
 #include "../../client/sound_engine.h"
 #include "../../interface/pixel_map_generator.h"
-#include "../../interface/widgets/tabs/tab_account.h"
 #include "../user/user_context_menu.h"
 #include "../user/user_list_manager.h"
 #include "../user/user_list_proxy.h"
 
 #include <QApplication>
+#include <QClipboard>
 #include <QDateTime>
 #include <QDesktopServices>
+#include <QGuiApplication>
+#include <QKeyEvent>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QRegularExpression>
 #include <QScrollBar>
 #include <libcockatrice/network/server/remote/user_level.h>
 
-const QColor DEFAULT_MENTION_COLOR = QColor(194, 31, 47);
+// ── Constructor ───────────────────────────────────────────────────────────────
 
-UserMessagePosition::UserMessagePosition(QTextCursor &cursor)
+ChatView::ChatView(TabSupervisor *tabSupervisor, AbstractGame *game, bool showTimestamps, QWidget *parent)
+    : QAbstractScrollArea(parent), tabSupervisor(tabSupervisor), game(game),
+      userListProxy(tabSupervisor->getUserListManager()), showTimestamps(showTimestamps)
 {
-    block = cursor.block();
-    relativePosition = cursor.position() - block.position();
-}
+    m_ownUserName = userListProxy->getOwnUsername();
+    m_mention = "@" + m_ownUserName;
 
-ChatView::ChatView(TabSupervisor *_tabSupervisor, AbstractGame *_game, bool _showTimestamps, QWidget *parent)
-    : QTextBrowser(parent), tabSupervisor(_tabSupervisor), game(_game),
-      userListProxy(_tabSupervisor->getUserListManager()), evenNumber(true), showTimestamps(_showTimestamps),
-      hoveredItemType(HoveredNothing)
-{
-    adjustColorsToPalette();
-
-    connect(&SettingsCache::instance(), &SettingsCache::themeChanged, this, &ChatView::adjustColorsToPalette);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    viewport()->setMouseTracking(true);
+    viewport()->setAutoFillBackground(false);
 
     userContextMenu = new UserContextMenu(tabSupervisor, this, game);
-    connect(userContextMenu, SIGNAL(openMessageDialog(QString, bool)), this, SIGNAL(openMessageDialog(QString, bool)));
+    connect(userContextMenu, &UserContextMenu::openMessageDialog, this, &ChatView::openMessageDialog);
 
-    ownUserName = userListProxy->getOwnUsername();
-    mention = "@" + ownUserName;
-
-    mentionFormat.setFontWeight(QFont::Bold);
-
-    mentionFormatOtherUser.setFontWeight(QFont::Bold);
-    mentionFormatOtherUser.setForeground(linkColor);
-    mentionFormatOtherUser.setAnchor(true);
-
-    viewport()->setCursor(Qt::IBeamCursor);
-    setReadOnly(true);
-    setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::LinksAccessibleByMouse);
-    setOpenLinks(false);
-    connect(this, &ChatView::anchorClicked, this, &ChatView::openLink);
-}
-
-void ChatView::adjustColorsToPalette()
-{
-    if (palette().windowText().color().lightness() > 200) {
-        document()->setDefaultStyleSheet(R"(
-           a { text-decoration: none; color: rgb(71,158,252); }
-           .blue { color: rgb(71,158,252); }
-        )");
-        serverMessageColor = QColor(0xFF, 0x73, 0x83);
-        otherUserColor = otherUserColor.lighter(150);
-        linkColor = QColor(71, 158, 252);
-    } else {
-        document()->setDefaultStyleSheet(R"(
-            a { text-decoration: none; color: blue; }
-            .blue { color: blue }
-        )");
-        linkColor = palette().link().color();
-    }
-
-    QTimer::singleShot(0, this, &ChatView::refreshBlockColors);
-}
-
-void ChatView::refreshBlockColors()
-{
-    QTextDocument *doc = document();
-
-    // Empty QTextDocuments still have 1 block, so we need handle this edge case
-    if (doc->isEmpty()) {
-        evenNumber = true;
-        return;
-    }
-
-    QTextCursor cursor(doc);
-    bool even = true; // start fresh
-
-    for (QTextBlock block = doc->begin(); block.isValid(); block = block.next()) {
-        QTextBlockFormat fmt = block.blockFormat();
-
-        if (even) {
-            fmt.setBackground(palette().base());
-        } else {
-            fmt.setBackground(palette().window());
-        }
-
-        fmt.setForeground(palette().text());
-
-        cursor.setPosition(block.position());
-        cursor.setBlockFormat(fmt);
-
-        even = !even;
-    }
-
-    evenNumber = even; // keep future rows consistent
+    // When the avatar provider finishes loading any avatar, repaint so the
+    // new image appears in place of the pawn fallback.
+    connect(tabSupervisor->getUserListManager()->getAvatarProvider(), &UserAvatarProvider::avatarUpdated, viewport(),
+            QOverload<>::of(&QWidget::update));
 }
 
 void ChatView::retranslateUi()
@@ -110,414 +48,1034 @@ void ChatView::retranslateUi()
     userContextMenu->retranslateUi();
 }
 
-QTextCursor ChatView::prepareBlock(bool same)
+// ── Geometry ──────────────────────────────────────────────────────────────────
+
+int ChatView::textLeft() const
 {
-    lastSender.clear();
+    // All three message kinds share the same text left edge so the text column
+    // is visually consistent. Compressed messages just omit the avatar/header.
+    return leftPad + avatarSize + avatarGap;
+}
 
-    QTextDocument *doc = document();
-    QTextCursor cursor(doc);
+int ChatView::availableTextWidth(int viewportWidth) const
+{
+    return viewportWidth - textLeft() - rightPad;
+}
 
-    cursor.movePosition(QTextCursor::End);
-    if (same) {
-        cursor.insertHtml("<br>");
-    } else {
-        QTextBlockFormat blockFormat;
-        if (evenNumber) {
-            blockFormat.setBackground(palette().base());
-        } else {
-            blockFormat.setBackground(palette().window());
-        }
+int ChatView::messageTop(int idx) const
+{
+    int y = 0;
+    for (int i = 0; i < idx; ++i) {
+        y += m_layouts.at(i).totalHeight;
+    }
+    return y;
+}
 
-        evenNumber = !evenNumber;
+// ── Layout ────────────────────────────────────────────────────────────────────
 
-        blockFormat.setForeground(palette().text());
-        blockFormat.setBottomMargin(4);
+void ChatView::layoutMessage(int idx, int availableWidth)
+{
+    const ChatMessage &msg = m_messages.at(idx);
+    MessageLayout &layout = m_layouts[idx];
 
-        // Empty QTextDocuments still have 1 block. Just write to that block instead of inserting a new one
-        if (!doc->isEmpty()) {
-            cursor.insertBlock(blockFormat);
+    // Server messages don't have an avatar column — start text closer to the
+    // left edge so the wide indent doesn't waste space on system lines.
+    const int msgTextLeft =
+        (msg.kind == ChatMessage::Server) ? leftPad + accentBarWidth + 8 : leftPad + avatarSize + avatarGap;
+    layout.textLeft = msgTextLeft;
+
+    const int tw = availableWidth - msgTextLeft - rightPad;
+
+    // Base font — bold for bold server messages
+    QFont layoutFont = font();
+    if (msg.kind == ChatMessage::Server && msg.serverBold) {
+        layoutFont.setBold(true);
+    }
+
+    // Build QTextLayout format ranges from spans
+    QVector<QTextLayout::FormatRange> formats;
+    formats.reserve(msg.spans.size());
+    for (const ChatSpan &span : msg.spans) {
+        const QTextCharFormat fmt = formatForSpan(span);
+        if (fmt != QTextCharFormat{}) {
+            QTextLayout::FormatRange fr;
+            fr.start = span.start;
+            fr.length = span.length;
+            fr.format = fmt;
+            formats << fr;
         }
     }
 
-    return cursor;
+    layout.textLayout->setText(msg.text);
+    layout.textLayout->setFont(layoutFont);
+    layout.textLayout->setFormats(formats);
+
+    // Perform line layout
+    layout.textLayout->beginLayout();
+    int lineY = 0;
+    while (true) {
+        QTextLine line = layout.textLayout->createLine();
+        if (!line.isValid()) {
+            break;
+        }
+        line.setLineWidth(qMax(tw, 1));
+        line.setPosition(QPointF(0, lineY));
+        lineY += qCeil(line.height());
+    }
+    layout.textLayout->endLayout();
+
+    // Compute item height by kind
+    const int textH = qMax(0, qCeil(layout.textLayout->boundingRect().height()));
+
+    switch (msg.kind) {
+        case ChatMessage::Full:
+            layout.textTop = headerH + textTopPad;
+            layout.totalHeight = qMax(layout.textTop + textH + textBottomPad, headerH + textBottomPad);
+            break;
+        case ChatMessage::Compressed:
+            layout.textTop = compressedTopPad;
+            layout.totalHeight = layout.textTop + textH + compressedBottomPad;
+            break;
+        case ChatMessage::Server:
+            layout.textTop = serverHeaderH + serverTopPad; // header band + gap
+            layout.totalHeight = layout.textTop + textH + serverBottomPad;
+            break;
+    }
+    layout.totalHeight += cardSpacingV;
+    // Note: layout.textLeft already set above — do NOT reassign textLeft() here
+    layout.valid = true;
+
+    // Precompute link hit areas (local to text origin)
+    layout.linkAreas.clear();
+    for (const ChatSpan &span : msg.spans) {
+        if (span.type != ChatSpan::CardLink && span.type != ChatSpan::UrlLink && span.type != ChatSpan::OtherMention) {
+            continue;
+        }
+
+        QRectF spanRect;
+        const int spanEnd = span.start + span.length;
+        for (int l = 0; l < layout.textLayout->lineCount(); ++l) {
+            const QTextLine line = layout.textLayout->lineAt(l);
+            const int lineEnd = line.textStart() + line.textLength();
+            if (span.start >= lineEnd || spanEnd <= line.textStart()) {
+                continue;
+            }
+            const int ovStart = qMax(span.start, line.textStart());
+            const int ovEnd = qMin(spanEnd, lineEnd);
+            qreal x1 = line.cursorToX(ovStart, QTextLine::Leading);
+            qreal x2 = line.cursorToX(ovEnd, QTextLine::Trailing);
+            if (x1 > x2) {
+                qSwap(x1, x2);
+            }
+            const QRectF r(x1, line.y(), x2 - x1, line.height());
+            spanRect = spanRect.isEmpty() ? r : spanRect.united(r);
+        }
+        if (!spanRect.isEmpty()) {
+            layout.linkAreas.append({spanRect, span.href});
+        }
+    }
+}
+
+void ChatView::relayoutAll(int availableWidth)
+{
+    for (int i = 0; i < m_messages.size(); ++i) {
+        layoutMessage(i, availableWidth);
+    }
+    m_totalH = 0;
+    for (const MessageLayout &l : m_layouts) {
+        m_totalH += l.totalHeight;
+    }
+    m_lastWidth = availableWidth;
+    updateScrollRange();
+}
+
+void ChatView::updateScrollRange()
+{
+    const int vh = viewport()->height();
+    verticalScrollBar()->setRange(0, qMax(0, m_totalH - vh));
+    verticalScrollBar()->setPageStep(vh);
+}
+
+void ChatView::scrollToBottom()
+{
+    verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+}
+
+// ── Adding messages ───────────────────────────────────────────────────────────
+
+void ChatView::addMessage(ChatMessage &&msg)
+{
+    const bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum() - 2;
+
+    m_messages.push_back(std::move(msg));
+    m_layouts.push_back(MessageLayout{});
+
+    const int idx = m_messages.size() - 1;
+    layoutMessage(idx, viewport()->width());
+    m_totalH += m_layouts.at(idx).totalHeight;
+    updateScrollRange();
+
+    if (atBottom) {
+        scrollToBottom();
+    }
+    viewport()->update();
+}
+
+void ChatView::appendMessage(QString raw,
+                             RoomMessageTypeFlags messageType,
+                             const ServerInfo_User &userInfo,
+                             bool /*playerBold*/)
+{
+    m_highlightedWords = SettingsCache::instance().getHighlightWords().split(' ', Qt::SkipEmptyParts);
+    const bool mentionEnabled = SettingsCache::instance().getChatMention();
+
+    const QString userName = QString::fromStdString(userInfo.name());
+    const bool isUserMessage = !(userName.toLower() == "servatrice" || userName.isEmpty());
+
+    ChatMessage msg;
+    msg.timestamp = QDateTime::currentDateTime();
+    msg.userInfo = userInfo;
+
+    if (isUserMessage) {
+        // ── Normal user message ───────────────────────────────────────────────
+        const bool sameSender =
+            (userName == m_lastSender) && !m_messages.isEmpty() && m_messages.last().kind != ChatMessage::Server;
+        msg.kind = sameSender ? ChatMessage::Compressed : ChatMessage::Full;
+        msg.accentColor = sameSender ? m_messages.last().accentColor // inherit from parent
+                                     : accentForUser(userInfo);
+        m_lastSender = userName;
+        parseMessageText(raw, msg, mentionEnabled);
+
+    } else if (messageType == Event_RoomSay::ChatHistory) {
+        // ── Chat history: "[d MMM yyyy HH:mm:ss] sender: body" ────────────────
+        // processRoomSayEvent prepends the timestamp before calling us, so the
+        // sender name is embedded in the text when userInfo is unavailable.
+        static const QRegularExpression histRe(QStringLiteral("^\\[([^\\]]+)\\]\\s+(\\S+):\\s+(.*)$"));
+        const QRegularExpressionMatch m = histRe.match(raw);
+
+        if (m.hasMatch()) {
+            const QString tsStr = m.captured(1);
+            const QString sender = m.captured(2);
+            const QString body = m.captured(3);
+
+            ServerInfo_User synth;
+            synth.set_name(sender.toStdString());
+            msg.userInfo = synth;
+            const bool sameHistorySender =
+                sender == m_lastHistorySender && !m_messages.isEmpty() && m_messages.last().kind != ChatMessage::Server;
+            m_lastHistorySender = sender;
+
+            msg.kind = sameHistorySender ? ChatMessage::Compressed : ChatMessage::Full;
+            msg.accentColor = accentForUser(synth);
+
+            const QDateTime hist = QDateTime::fromString(tsStr, QStringLiteral("d MMM yyyy HH:mm:ss"));
+            if (hist.isValid()) {
+                msg.timestamp = hist;
+            }
+
+            // Fetch the user's full info and avatar from the server.
+            // requestAvatar is a no-op if the entry is already cached or in flight.
+            tabSupervisor->getUserListManager()->getAvatarProvider()->requestAvatar(sender);
+
+            m_lastSender.clear();
+            parseMessageText(body, msg, false);
+        } else {
+            // Unrecognised format — plain server line
+            msg.kind = ChatMessage::Server;
+            msg.accentColor = QColor(65, 80, 100);
+            msg.serverColor = QStringLiteral("#888888");
+            m_lastSender.clear();
+            parseMessageText(raw, msg, false);
+        }
+
+    } else {
+        // ── System / server message ───────────────────────────────────────────
+        msg.kind = ChatMessage::Server;
+        msg.accentColor = QColor(65, 80, 100);
+        // Server messages break any live compression chain
+        m_lastSender.clear();
+        parseMessageText(raw, msg, mentionEnabled);
+    }
+
+    addMessage(std::move(msg));
+}
+
+void ChatView::appendHtmlServerMessage(const QString &html, bool bold, QString color)
+{
+    ChatMessage msg;
+    msg.kind = ChatMessage::Server;
+    msg.timestamp = QDateTime::currentDateTime();
+    msg.serverBold = bold;
+    msg.serverColor = color;
+    msg.text = stripHtml(html);
+    if (!msg.text.isEmpty()) {
+        msg.spans.append({ChatSpan::Plain, 0, static_cast<int>(msg.text.length()), {}});
+    }
+    addMessage(std::move(msg));
 }
 
 void ChatView::appendHtml(const QString &html)
 {
-    bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum();
-    prepareBlock().insertHtml(html);
-    if (atBottom) {
-        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
-    }
+    appendHtmlServerMessage(html, false, {});
 }
 
-void ChatView::appendHtmlServerMessage(const QString &html, bool optionalIsBold, QString optionalFontColor)
+// ── Span parsing ──────────────────────────────────────────────────────────────
+
+void ChatView::appendSpan(ChatMessage &msg, ChatSpan::Type type, const QString &text, const QString &href)
 {
-    bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum();
-
-    QString htmlText =
-        "<font color=" + ((optionalFontColor.size() > 0) ? optionalFontColor : serverMessageColor.name()) + ">" +
-        QDateTime::currentDateTime().toString("[hh:mm:ss] ") + html + "</font>";
-
-    if (optionalIsBold) {
-        htmlText = "<b>" + htmlText + "</b>";
+    if (text.isEmpty()) {
+        return;
     }
-
-    prepareBlock().insertHtml(htmlText);
-    if (atBottom) {
-        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
-    }
+    ChatSpan span;
+    span.type = type;
+    span.start = msg.text.length();
+    span.length = text.length();
+    span.href = href;
+    msg.text += text;
+    msg.spans << span;
 }
 
-void ChatView::appendCardTag(QTextCursor &cursor, const QString &cardName)
+void ChatView::parseMessageText(QString raw, ChatMessage &msg, bool mentionEnabled)
 {
-    QTextCharFormat oldFormat = cursor.charFormat();
-    QTextCharFormat anchorFormat = oldFormat;
-    anchorFormat.setForeground(linkColor);
-    anchorFormat.setAnchor(true);
-    anchorFormat.setAnchorHref("card://" + cardName);
-    anchorFormat.setFontItalic(true);
-
-    cursor.setCharFormat(anchorFormat);
-    cursor.insertText(cardName);
-    cursor.setCharFormat(oldFormat);
-}
-
-void ChatView::appendUrlTag(QTextCursor &cursor, QString url)
-{
-    if (!url.contains("://")) {
-        url.prepend("https://");
-    }
-
-    QTextCharFormat oldFormat = cursor.charFormat();
-    QTextCharFormat anchorFormat = oldFormat;
-    anchorFormat.setForeground(linkColor);
-    anchorFormat.setAnchor(true);
-    anchorFormat.setAnchorHref(url);
-    anchorFormat.setUnderlineColor(linkColor);
-    anchorFormat.setFontUnderline(true);
-
-    cursor.setCharFormat(anchorFormat);
-    cursor.insertText(url);
-    cursor.setCharFormat(oldFormat);
-}
-
-void ChatView::appendMessage(QString message,
-                             RoomMessageTypeFlags messageType,
-                             const ServerInfo_User &userInfo,
-                             bool playerBold)
-{
-    const QString userName = QString::fromStdString(userInfo.name());
-    const UserLevelFlags userLevel = UserLevelFlags(userInfo.user_level());
-
-    bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum();
-    // messageType should be Event_RoomSay::UserMessage though we don't actually check
-    bool isUserMessage = !(userName.toLower() == "servatrice" || userName.isEmpty());
-    bool sameSender = isUserMessage && userName == lastSender;
-    QTextCursor cursor = prepareBlock(sameSender);
-    lastSender = userName;
-
-    // timestamp
-    if (showTimestamps && ((!sameSender && isUserMessage) || userName.toLower() == "servatrice")) {
-        QTextCharFormat timeFormat;
-        timeFormat.setForeground(serverMessageColor);
-        timeFormat.setFontWeight(QFont::Bold);
-        cursor.setCharFormat(timeFormat);
-        cursor.insertText(QDateTime::currentDateTime().toString("[hh:mm:ss] "));
-    }
-
-    // nickname
-    if (isUserMessage) {
-        QTextCharFormat senderFormat;
-        if (userName == ownUserName) {
-            senderFormat.setForeground(QBrush(getCustomMentionColor()));
-            senderFormat.setFontWeight(QFont::Bold);
-        } else {
-            senderFormat.setForeground(QBrush(otherUserColor));
-            if (playerBold) {
-                senderFormat.setFontWeight(QFont::Bold);
-            }
-        }
-        senderFormat.setAnchor(true);
-        senderFormat.setAnchorHref("user://" + QString::number(userLevel) + "_" + userName);
-        if (sameSender) {
-            cursor.insertText("    ");
-        } else {
-            const int pixelSize = QFontInfo(cursor.charFormat().font()).pixelSize();
-            bool isBuddy = userListProxy->isUserBuddy(userName);
-            const QString privLevel = userInfo.has_privlevel() ? QString::fromStdString(userInfo.privlevel()) : "NONE";
-            cursor.insertImage(UserLevelPixmapGenerator::generatePixmap(pixelSize, userLevel, userInfo.pawn_colors(),
-                                                                        isBuddy, privLevel)
-                                   .toImage());
-            cursor.insertText(" ");
-            cursor.setCharFormat(senderFormat);
-            cursor.insertText(userName);
-            cursor.insertText(": ");
-            userMessagePositions[userName].append(cursor);
-        }
-    }
-
-    // use different color for server messages
-    defaultFormat = QTextCharFormat();
-    if (!isUserMessage) {
-        if (messageType == Event_RoomSay::ChatHistory) {
-            //! \todo Remove hardcoded color.
-            defaultFormat.setForeground(Qt::gray);
-            defaultFormat.setFontWeight(QFont::Light);
-            defaultFormat.setFontItalic(true);
-            static const QRegularExpression userNameRegex("^(\\[[^\\]]*\\]\\s)(\\S+):\\s");
-            auto match = userNameRegex.match(message);
-            if (match.hasMatch()) {
-                cursor.setCharFormat(defaultFormat);
-                UserMessagePosition pos(cursor);
-                pos.relativePosition = match.captured(0).length(); // set message start
-                auto before = match.captured(1);
-                auto sentBy = match.captured(2);
-                cursor.insertText(before); // add message timestamp
-                QTextCharFormat senderFormat(defaultFormat);
-                senderFormat.setAnchor(true);
-                // this underscore is important, it is used to add the user level, but in this case the level is
-                // unknown, if the name contains an underscore it would split up the name
-                senderFormat.setAnchorHref("user://_" + sentBy);
-                cursor.setCharFormat(senderFormat);
-                cursor.insertText(sentBy);                   // add username with href so it shows the menu
-                userMessagePositions[sentBy].append(pos);    // save message position
-                message.remove(0, pos.relativePosition - 2); // do not remove semicolon
-            }
-        } else {
-            //! \todo Remove hardcoded color.
-            defaultFormat.setForeground(Qt::darkGreen);
-            defaultFormat.setFontWeight(QFont::Bold);
-        }
-    }
-    cursor.setCharFormat(defaultFormat);
-
-    bool mentionEnabled = SettingsCache::instance().getChatMention();
-    highlightedWords = SettingsCache::instance().getHighlightWords().split(' ', Qt::SkipEmptyParts);
-
-    // parse the message
-    while (message.size()) {
-        QChar c = message.at(0);
+    while (!raw.isEmpty()) {
+        const QChar c = raw.at(0);
         switch (c.toLatin1()) {
             case '[':
-                checkTag(cursor, message);
+                parseTag(raw, msg);
                 break;
             case '@':
                 if (mentionEnabled) {
-                    checkMention(cursor, message, userName, userLevel);
+                    parseMention(raw, msg);
                 } else {
-                    cursor.insertText(c, defaultFormat);
-                    message = message.mid(1);
+                    appendSpan(msg, ChatSpan::Plain, QString(c));
+                    raw = raw.mid(1);
                 }
-                break;
-            case ' ':
-                cursor.insertText(c, defaultFormat);
-                message = message.mid(1);
                 break;
             default:
                 if (c.isLetterOrNumber()) {
-                    checkWord(cursor, message);
+                    parseWord(raw, msg);
                 } else {
-                    cursor.insertText(c, defaultFormat);
-                    message = message.mid(1);
+                    appendSpan(msg, ChatSpan::Plain, QString(c));
+                    raw = raw.mid(1);
                 }
                 break;
         }
     }
+}
+
+void ChatView::parseTag(QString &raw, ChatMessage &msg)
+{
+    // [card]Name[/card]
+    if (raw.startsWith("[card]")) {
+        raw = raw.mid(6);
+        const int closeIdx = raw.indexOf("[/card]");
+        const QString name = (closeIdx == -1) ? raw : raw.left(closeIdx);
+        raw = (closeIdx == -1) ? QString{} : raw.mid(closeIdx + 7);
+        appendSpan(msg, ChatSpan::CardLink, name, "card://" + name);
+        return;
+    }
+
+    // [[Name]]
+    if (raw.startsWith("[[")) {
+        raw = raw.mid(2);
+        const int closeIdx = raw.indexOf("]]");
+        const QString name = (closeIdx == -1) ? raw : raw.left(closeIdx);
+        raw = (closeIdx == -1) ? QString{} : raw.mid(closeIdx + 2);
+        appendSpan(msg, ChatSpan::CardLink, name, "card://" + name);
+        return;
+    }
+
+    // [url]Link[/url]
+    if (raw.startsWith("[url]")) {
+        raw = raw.mid(5);
+        const int closeIdx = raw.indexOf("[/url]");
+        const QString url = (closeIdx == -1) ? raw : raw.left(closeIdx);
+        raw = (closeIdx == -1) ? QString{} : raw.mid(closeIdx + 6);
+        const QString href = url.startsWith("www.") ? "https://" + url : url;
+        appendSpan(msg, ChatSpan::UrlLink, url, href);
+        return;
+    }
+
+    // No valid tag — fall through to word parsing
+    parseWord(raw, msg);
+}
+
+void ChatView::parseMention(QString &raw, ChatMessage &msg)
+{
+    static const QRegularExpression notAlphaNum(QStringLiteral("[^a-zA-Z0-9]"));
+
+    const int firstSpace = raw.indexOf(' ');
+    QString candidate = (firstSpace == -1) ? raw.mid(1) : raw.mid(1, firstSpace - 1);
+    const QString original = candidate;
+
+    while (!candidate.isEmpty()) {
+        // Self-mention
+        if (m_ownUserName.toLower() == candidate.toLower()) {
+            soundEngine->playSound("chat_mention");
+            appendSpan(msg, ChatSpan::SelfMention, m_mention);
+            raw = raw.mid(m_mention.size());
+            showSystemPopup(QString::fromStdString(msg.userInfo.name()));
+            return;
+        }
+
+        // Global /all from moderator
+        if (isModeratorSendingGlobal(UserLevelFlags(msg.userInfo.user_level()), candidate)) {
+            soundEngine->playSound("all_mention");
+            appendSpan(msg, ChatSpan::SelfMention, "@" + candidate);
+            raw = raw.mid(candidate.size() + 1);
+            showSystemPopup(QString::fromStdString(msg.userInfo.name()));
+            return;
+        }
+
+        // Other online user
+        const ServerInfo_User *onlineUser = userListProxy->getOnlineUser(candidate);
+        if (onlineUser) {
+            const QString correctName = QString::fromStdString(onlineUser->name());
+            const QString href = QStringLiteral("user://%1_%2").arg(onlineUser->user_level()).arg(correctName);
+            appendSpan(msg, ChatSpan::OtherMention, "@" + correctName, href);
+            raw = raw.mid(correctName.size() + 1);
+            return;
+        }
+
+        if (candidate.right(1).indexOf(notAlphaNum) == -1 || candidate.size() < 2) {
+            appendSpan(msg, ChatSpan::Plain, "@" + original);
+            raw = raw.mid(original.size() + 1);
+            return;
+        }
+        candidate.chop(1);
+    }
+
+    parseWord(raw, msg);
+}
+
+void ChatView::parseWord(QString &raw, ChatMessage &msg)
+{
+    // Extract next word (up to first space)
+    const int firstSpace = raw.indexOf(' ');
+    QString word;
+    if (firstSpace == -1) {
+        word = raw;
+        raw.clear();
+    } else {
+        word = raw.left(firstSpace);
+        raw = raw.mid(firstSpace);
+    }
+
+    // Strip trailing punctuation into a separate suffix
+    int lastAlnum = word.size() - 1;
+    while (lastAlnum >= 0 && !word.at(lastAlnum).isLetterOrNumber()) {
+        --lastAlnum;
+    }
+    const QString suffix = word.mid(lastAlnum + 1);
+    word = word.left(lastAlnum + 1);
+
+    // URL check
+    if (word.startsWith("http://", Qt::CaseInsensitive) || word.startsWith("https://", Qt::CaseInsensitive) ||
+        word.startsWith("www.", Qt::CaseInsensitive)) {
+        const QUrl qurl(word);
+        if (qurl.isValid()) {
+            const QString href = word.startsWith("www.", Qt::CaseInsensitive) ? "https://" + word : word;
+            appendSpan(msg, ChatSpan::UrlLink, word, href);
+            if (!suffix.isEmpty()) {
+                appendSpan(msg, ChatSpan::Plain, suffix);
+            }
+            return;
+        }
+    }
+
+    // Custom highlighted word
+    for (const QString &hw : m_highlightedWords) {
+        if (word.compare(hw, Qt::CaseInsensitive) == 0) {
+            appendSpan(msg, ChatSpan::Highlight, word + suffix);
+            return;
+        }
+    }
+
+    appendSpan(msg, ChatSpan::Plain, word + suffix);
+}
+
+// ── Painting ──────────────────────────────────────────────────────────────────
+
+void ChatView::paintEvent(QPaintEvent * /*event*/)
+{
+    QPainter p(viewport());
+    p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
+
+    p.fillRect(viewport()->rect(), QColor(12, 15, 22));
+
+    const int scrollY = verticalScrollBar()->value();
+    const int viewH = viewport()->height();
+    // const int vw      = viewport()->width();
+
+    int y = 0;
+    for (int i = 0; i < m_messages.size(); ++i) {
+        const int itemH = m_layouts.at(i).totalHeight;
+        const int screenY = y - scrollY;
+
+        if (screenY + itemH < 0) {
+            y += itemH;
+            continue;
+        }
+        if (screenY >= viewH) {
+            break;
+        }
+
+        paintMessage(p, i, screenY);
+        y += itemH;
+    }
+}
+
+void ChatView::paintMessage(QPainter &p, int idx, int screenY) const
+{
+    const ChatMessage &msg = m_messages.at(idx);
+    const MessageLayout &layout = m_layouts.at(idx);
+    const int vw = viewport()->width();
+
+    // ── Compressed: text only, sits inside the parent Full card ──────────────
+    if (msg.kind == ChatMessage::Compressed) {
+        paintText(p, idx, screenY + layout.textTop);
+        return;
+    }
+
+    // ── Full / Server: compute how far the card extends ───────────────────────
+    //
+    // For Full messages the card stretches downward to cover all immediately
+    // following Compressed messages, making them visually part of the same card.
+    // The final cardSpacingV (inter-card gap) comes from the last item in the group.
+
+    int groupEndY = screenY + layout.totalHeight; // Y after this item's cardSpacingV
+
+    if (msg.kind == ChatMessage::Full) {
+        for (int j = idx + 1; j < m_messages.size(); ++j) {
+            if (m_messages.at(j).kind != ChatMessage::Compressed) {
+                break;
+            }
+            groupEndY += m_layouts.at(j).totalHeight;
+        }
+    }
+
+    // Card bottom = groupEnd minus the trailing spacing and margin
+    const int cardTop = screenY + cardMarginV;
+    const int cardBottom = groupEndY - cardSpacingV - cardMarginV;
+
+    const QRectF card(cardMarginH, cardTop, vw - 2 * cardMarginH, cardBottom - cardTop);
+
+    paintCardBackground(p, card, msg.accentColor);
+
+    if (msg.kind == ChatMessage::Full) {
+        paintHeader(p, QRect(0, screenY, vw, headerH), msg, msg.accentColor);
+    } else if (msg.kind == ChatMessage::Server && showTimestamps) {
+        // Mini-header: just a right-aligned timestamp, no avatar or username
+        QFont tsFont = font();
+        tsFont.setPointSizeF(tsFont.pointSizeF() * 0.78);
+        p.setFont(tsFont);
+        p.setPen(QColor(70, 85, 105));
+        const QString ts = msg.timestamp.toString(QStringLiteral("hh:mm"));
+        const int tsW = QFontMetrics(tsFont).horizontalAdvance(ts) + 6;
+        p.drawText(QRect(vw - rightPad - tsW, screenY + cardMarginV, tsW, serverHeaderH),
+                   Qt::AlignVCenter | Qt::AlignRight, ts);
+    }
+
+    paintText(p, idx, screenY + layout.textTop);
+}
+
+void ChatView::paintCardBackground(QPainter &p, const QRectF &card, const QColor &accent) const
+{
+    QLinearGradient bg(card.topLeft(), card.bottomRight());
+    bg.setColorAt(0, QColor(22, 28, 38));
+    bg.setColorAt(1, QColor(14, 18, 26));
+    p.setPen(Qt::NoPen);
+    p.setBrush(bg);
+    p.drawRoundedRect(card, cardRadius, cardRadius);
+
+    p.setBrush(accent);
+    p.drawRoundedRect(QRectF(card.left(), card.top(), accentBarWidth, card.height()), accentBarRadius, accentBarRadius);
+
+    p.setPen(QPen(accent.darker(300), 0.5));
+    p.setBrush(Qt::NoBrush);
+    p.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), cardRadius, cardRadius);
+}
+
+void ChatView::paintHeader(QPainter &p, const QRect &headerRect, const ChatMessage &msg, const QColor &accent) const
+{
+    const QString userName = QString::fromStdString(msg.userInfo.name());
+    const UserLevelFlags level(msg.userInfo.user_level());
+
+    // Avatar
+    const int avatarX = headerRect.left() + leftPad;
+    const int avatarY = headerRect.top() + (headerH - avatarSize) / 2;
+    const QRect avatarRect(avatarX, avatarY, avatarSize, avatarSize);
+    paintAvatar(p, avatarRect, msg, accent);
+
+    const int tx = avatarX + avatarSize + avatarGap;
+    const int rx = headerRect.right() - rightPad;
+
+    // Timestamp
+    int tsReserve = 0;
+    if (showTimestamps) {
+        QFont tsFont = font();
+        tsFont.setPointSizeF(tsFont.pointSizeF() * 0.78);
+        p.setFont(tsFont);
+        p.setPen(QColor(70, 85, 105));
+        const QString ts = msg.timestamp.toString(QStringLiteral("hh:mm"));
+        tsReserve = QFontMetrics(tsFont).horizontalAdvance(ts) + 6;
+        p.drawText(QRect(rx - tsReserve, headerRect.top(), tsReserve, headerH), Qt::AlignVCenter | Qt::AlignRight, ts);
+    }
+
+    // Username — coloured by level
+    QFont nameFont = font();
+    nameFont.setBold(true);
+    p.setFont(nameFont);
+
+    const QColor nameColor = [&]() -> QColor {
+        if (level.testFlag(ServerInfo_User::IsAdmin)) {
+            return QColor(245, 158, 11);
+        }
+        if (level.testFlag(ServerInfo_User::IsModerator)) {
+            return QColor(59, 130, 246);
+        }
+        if (level.testFlag(ServerInfo_User::IsJudge)) {
+            return QColor(168, 85, 247);
+        }
+        if (userName == m_ownUserName) {
+            return QColor(74, 222, 128);
+        }
+        return QColor(210, 220, 235);
+    }();
+
+    const int nameW = rx - tx - tsReserve - 4;
+    const QString elidedName = QFontMetrics(nameFont).elidedText(userName, Qt::ElideRight, nameW);
+    p.setPen(nameColor);
+    p.drawText(QRect(tx, headerRect.top(), nameW, headerH), Qt::AlignVCenter | Qt::AlignLeft, elidedName);
+}
+
+void ChatView::paintAvatar(QPainter &p, const QRect &avatarRect, const ChatMessage &msg, const QColor &accent) const
+{
+    const QString userName = QString::fromStdString(msg.userInfo.name());
+    const UserLevelFlags level(msg.userInfo.user_level());
+    const QString privLevel = QString::fromStdString(msg.userInfo.privlevel());
+
+    QPainterPath clip;
+    clip.addEllipse(avatarRect);
+    p.save();
+    p.setClipPath(clip);
+
+    bool drewAvatar = false;
+    const auto *avatarCache = &tabSupervisor->getUserListManager()->getAvatarProvider()->cache();
+    if (avatarCache) {
+        const auto it = avatarCache->find(userName);
+        if (it != avatarCache->end() && !it->isNull()) {
+            p.drawPixmap(avatarRect,
+                         it->scaled(avatarRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+            drewAvatar = true;
+        }
+    }
+
+    if (!drewAvatar) {
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(28, 35, 46));
+        p.drawEllipse(avatarRect);
+
+        const QPixmap pawn = UserLevelPixmapGenerator::generatePixmap(avatarFallbackPawn, level,
+                                                                      msg.userInfo.pawn_colors(), false, privLevel);
+        p.drawPixmap(avatarRect.center().x() - avatarFallbackPawn / 2, avatarRect.center().y() - avatarFallbackPawn / 2,
+                     pawn);
+    }
+
+    p.restore();
+
+    p.setPen(QPen(accent, 1.5));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(QRectF(avatarRect).adjusted(-0.75, -0.75, 0.75, 0.75));
+}
+
+void ChatView::paintText(QPainter &p, int idx, int textScreenY) const
+{
+    const MessageLayout &layout = m_layouts.at(idx);
+    const ChatMessage &msg = m_messages.at(idx);
+
+    // Selection ranges for this message
+    QVector<QTextLayout::FormatRange> selections;
+    SelPoint lo, hi;
+    normalisedSelection(lo, hi);
+
+    if (lo.msg >= 0 && idx >= lo.msg && idx <= hi.msg) {
+        const int selStart = (idx == lo.msg) ? lo.pos : 0;
+        const int selEnd = (idx == hi.msg) ? hi.pos : msg.text.length();
+        const int selLen = selEnd - selStart;
+        if (selLen > 0) {
+            QTextLayout::FormatRange sel;
+            sel.start = selStart;
+            sel.length = selLen;
+            sel.format.setBackground(QColor(59, 130, 246, 110));
+            sel.format.setForeground(Qt::white);
+            selections << sel;
+        }
+    }
+
+    // Base text colour — QTextLayout uses the painter pen for spans without
+    // an explicit foreground format (i.e. ChatSpan::Plain)
+    const QColor baseColor = (msg.kind == ChatMessage::Server)
+                                 ? (msg.serverColor.isEmpty() ? QColor(0xFF, 0x73, 0x83) : QColor(msg.serverColor))
+                                 : QColor(195, 208, 225);
+
+    p.save();
+    p.setPen(baseColor);
+    p.translate(layout.textLeft, textScreenY);
+    layout.textLayout->draw(&p, QPointF(0, 0), selections);
+    p.restore();
+}
+
+// ── Colours ───────────────────────────────────────────────────────────────────
+
+/*static*/ QColor ChatView::accentForUser(const ServerInfo_User &user)
+{
+    const UserLevelFlags level(user.user_level());
+    if (level.testFlag(ServerInfo_User::IsAdmin)) {
+        return QColor(245, 158, 11);
+    }
+    if (level.testFlag(ServerInfo_User::IsModerator)) {
+        return QColor(59, 130, 246);
+    }
+    if (level.testFlag(ServerInfo_User::IsJudge)) {
+        return QColor(168, 85, 247);
+    }
+    return QColor(75, 90, 110);
+}
+
+QTextCharFormat ChatView::formatForSpan(const ChatSpan &span) const
+{
+    QTextCharFormat fmt;
+    switch (span.type) {
+        case ChatSpan::Plain:
+            break; // base painter pen colour used
+        case ChatSpan::SelfMention:
+            fmt.setFontWeight(QFont::Bold);
+            fmt.setBackground(QColor(194, 31, 47, 180));
+            fmt.setForeground(Qt::white);
+            break;
+        case ChatSpan::OtherMention:
+            fmt.setFontWeight(QFont::Bold);
+            fmt.setForeground(m_linkColor);
+            break;
+        case ChatSpan::CardLink:
+            fmt.setFontItalic(true);
+            fmt.setForeground(m_linkColor);
+            break;
+        case ChatSpan::UrlLink:
+            fmt.setFontUnderline(true);
+            fmt.setForeground(m_linkColor);
+            break;
+        case ChatSpan::Highlight:
+            fmt.setFontWeight(QFont::Bold);
+            fmt.setBackground(QColor(194, 31, 47, 120));
+            fmt.setForeground(Qt::white);
+            break;
+    }
+    return fmt;
+}
+
+// ── Hit-testing ───────────────────────────────────────────────────────────────
+
+QPair<int, int> ChatView::hitTest(const QPoint &viewportPos) const
+{
+    const int absY = viewportPos.y() + verticalScrollBar()->value();
+
+    int y = 0;
+    for (int i = 0; i < m_layouts.size(); ++i) {
+        const MessageLayout &layout = m_layouts.at(i);
+        const int itemH = layout.totalHeight;
+        if (absY < y + itemH) {
+            if (!layout.valid || m_messages.at(i).text.isEmpty()) {
+                return {i, 0};
+            }
+            const int localX = viewportPos.x() - layout.textLeft;
+            const int localY = absY - y - layout.textTop;
+
+            int charPos = m_messages.at(i).text.length();
+            for (int l = 0; l < layout.textLayout->lineCount(); ++l) {
+                const QTextLine line = layout.textLayout->lineAt(l);
+                if (localY >= line.y() && localY < line.y() + line.height()) {
+                    charPos = line.xToCursor(localX, QTextLine::CursorBetweenCharacters);
+                    break;
+                }
+                if (l == layout.textLayout->lineCount() - 1 && localY >= line.y() + line.height()) {
+                    charPos = line.textStart() + line.textLength();
+                }
+            }
+            return {i, charPos};
+        }
+        y += itemH;
+    }
+    return {-1, 0};
+}
+
+QString ChatView::hrefAt(const QPoint &viewportPos) const
+{
+    const int absY = viewportPos.y() + verticalScrollBar()->value();
+
+    int y = 0;
+    for (int i = 0; i < m_layouts.size(); ++i) {
+        const MessageLayout &layout = m_layouts.at(i);
+        if (absY < y + layout.totalHeight) {
+            const qreal localX = viewportPos.x() - layout.textLeft;
+            const qreal localY = absY - y - layout.textTop;
+            for (const LinkHitArea &area : layout.linkAreas) {
+                if (area.rect.contains(localX, localY)) {
+                    return area.href;
+                }
+            }
+            return {};
+        }
+        y += layout.totalHeight;
+    }
+    return {};
+}
+
+void ChatView::updateHover(const QPoint &viewportPos)
+{
+    const QString href = hrefAt(viewportPos);
+    if (href == m_hoveredHref) {
+        return;
+    }
+    m_hoveredHref = href;
+
+    if (href.isEmpty()) {
+        m_hoveredType = HoveredNothing;
+        viewport()->setCursor(Qt::IBeamCursor);
+        emit deleteCardInfoPopup(QStringLiteral("_"));
+        return;
+    }
+
+    const int delim = href.indexOf("://");
+    const QString scheme = href.left(delim);
+    const QString content = href.mid(delim + 3);
+
+    if (scheme == "card") {
+        m_hoveredType = HoveredCard;
+        viewport()->setCursor(Qt::PointingHandCursor);
+        emit cardNameHovered(content);
+    } else if (scheme == "user") {
+        m_hoveredType = HoveredUser;
+        viewport()->setCursor(Qt::PointingHandCursor);
+    } else {
+        m_hoveredType = HoveredUrl;
+        viewport()->setCursor(Qt::PointingHandCursor);
+    }
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+
+void ChatView::normalisedSelection(SelPoint &lo, SelPoint &hi) const
+{
+    if (m_selAnchor.msg < 0 || m_selFocus.msg < 0) {
+        lo = hi = {-1, 0};
+        return;
+    }
+    const bool anchorFirst =
+        m_selAnchor.msg < m_selFocus.msg || (m_selAnchor.msg == m_selFocus.msg && m_selAnchor.pos <= m_selFocus.pos);
+    lo = anchorFirst ? m_selAnchor : m_selFocus;
+    hi = anchorFirst ? m_selFocus : m_selAnchor;
+}
+
+QString ChatView::selectedText() const
+{
+    SelPoint lo, hi;
+    normalisedSelection(lo, hi);
+    if (lo.msg < 0) {
+        return {};
+    }
+
+    QString result;
+    for (int i = lo.msg; i <= hi.msg && i < m_messages.size(); ++i) {
+        const QString &text = m_messages.at(i).text;
+        const int start = (i == lo.msg) ? lo.pos : 0;
+        const int end = (i == hi.msg) ? hi.pos : text.length();
+        if (i > lo.msg) {
+            result += '\n';
+        }
+        result += text.mid(start, end - start);
+    }
+    return result;
+}
+
+// ── Event handlers ────────────────────────────────────────────────────────────
+
+/*void ChatView::scrollContentsBy(int dx#1#, int dy#1#)
+{
+    viewport()->update();
+}*/
+
+void ChatView::resizeEvent(QResizeEvent *event)
+{
+    QAbstractScrollArea::resizeEvent(event);
+
+    const bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum() - 2;
+
+    const int vw = viewport()->width();
+
+    if (vw != m_lastWidth) {
+        relayoutAll(vw);
+    } else {
+        updateScrollRange();
+    }
 
     if (atBottom) {
-        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+        scrollToBottom();
     }
 }
-
-void ChatView::checkTag(QTextCursor &cursor, QString &message)
+void ChatView::mousePressEvent(QMouseEvent *event)
 {
-    if (message.startsWith("[card]")) {
-        message = message.mid(6);
-        int closeTagIndex = message.indexOf("[/card]");
-        QString cardName = message.left(closeTagIndex);
-        if (closeTagIndex == -1) {
-            message.clear();
-        } else {
-            message = message.mid(closeTagIndex + 7);
-        }
-
-        appendCardTag(cursor, cardName);
+    if (event->button() == Qt::LeftButton) {
+        const auto [msgIdx, charPos] = hitTest(event->pos());
+        m_selAnchor = {msgIdx, charPos};
+        m_selFocus = {msgIdx, charPos};
+        m_selecting = true;
+        viewport()->update();
         return;
     }
 
-    if (message.startsWith("[[")) {
-        message = message.mid(2);
-        int closeTagIndex = message.indexOf("]]");
-        QString cardName = message.left(closeTagIndex);
-        if (closeTagIndex == -1) {
-            message.clear();
-        } else {
-            message = message.mid(closeTagIndex + 2);
-        }
-
-        appendCardTag(cursor, cardName);
-        return;
-    }
-
-    if (message.startsWith("[url]")) {
-        message = message.mid(5);
-        int closeTagIndex = message.indexOf("[/url]");
-        QString url = message.left(closeTagIndex);
-        if (closeTagIndex == -1) {
-            message.clear();
-        } else {
-            message = message.mid(closeTagIndex + 6);
-        }
-
-        appendUrlTag(cursor, url);
-        return;
-    }
-
-    // no valid tag found
-    checkWord(cursor, message);
-}
-
-void ChatView::checkMention(QTextCursor &cursor, QString &message, const QString &userName, UserLevelFlags userLevel)
-{
-    const static auto notALetterOrNumber = QRegularExpression("[^a-zA-Z0-9]");
-
-    int firstSpace = message.indexOf(' ');
-    QString fullMentionUpToSpaceOrEnd = (firstSpace == -1) ? message.mid(1) : message.mid(1, firstSpace - 1);
-    QString mentionIntact = fullMentionUpToSpaceOrEnd;
-
-    while (fullMentionUpToSpaceOrEnd.size()) {
-        const ServerInfo_User *onlineUser = userListProxy->getOnlineUser(fullMentionUpToSpaceOrEnd);
-        if (onlineUser) // Is there a user online named this?
-        {
-            if (ownUserName.toLower() == fullMentionUpToSpaceOrEnd.toLower()) // Is this user you?
-            {
-                // You have received a valid mention!!
-                soundEngine->playSound("chat_mention");
-                mentionFormat.setBackground(QBrush(getCustomMentionColor()));
-                mentionFormat.setForeground(SettingsCache::instance().getChatMentionForeground() ? QBrush(Qt::white)
-                                                                                                 : QBrush(Qt::black));
-                cursor.insertText(mention, mentionFormat);
-                message = message.mid(mention.size());
-                showSystemPopup(userName);
-            } else {
-                QString correctUserName = QString::fromStdString(onlineUser->name());
-                mentionFormatOtherUser.setAnchorHref("user://" + QString::number(onlineUser->user_level()) + "_" +
-                                                     correctUserName);
-                cursor.insertText("@" + correctUserName, mentionFormatOtherUser);
-
-                message = message.mid(correctUserName.size() + 1);
+    if (event->button() == Qt::RightButton) {
+        const QString href = hrefAt(event->pos());
+        if (!href.isEmpty()) {
+            const int delim = href.indexOf("://");
+            const QString scheme = href.left(delim);
+            const QString content = href.mid(delim + 3);
+            if (scheme == "user") {
+                const int underscore = content.indexOf('_');
+                UserLevelFlags level(content.left(underscore).toInt());
+                const QString userName = content.mid(underscore + 1);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                userContextMenu->showContextMenu(event->globalPosition().toPoint(), userName, level, this);
+#else
+                userContextMenu->showContextMenu(event->globalPos(), userName, level, this);
+#endif
             }
-
-            cursor.setCharFormat(defaultFormat);
-            return;
         }
-
-        if (isModeratorSendingGlobal(userLevel, fullMentionUpToSpaceOrEnd)) {
-            // Moderator Sending Global Message
-            soundEngine->playSound("all_mention");
-            mentionFormat.setBackground(QBrush(getCustomMentionColor()));
-            mentionFormat.setForeground(SettingsCache::instance().getChatMentionForeground() ? QBrush(Qt::white)
-                                                                                             : QBrush(Qt::black));
-            cursor.insertText("@" + fullMentionUpToSpaceOrEnd, mentionFormat);
-            message = message.mid(fullMentionUpToSpaceOrEnd.size() + 1);
-            showSystemPopup(userName);
-
-            cursor.setCharFormat(defaultFormat);
-            return;
-        }
-
-        if (fullMentionUpToSpaceOrEnd.right(1).indexOf(notALetterOrNumber) == -1 ||
-            fullMentionUpToSpaceOrEnd.size() < 2) {
-            cursor.insertText("@" + mentionIntact, defaultFormat);
-            message = message.mid(mentionIntact.size() + 1);
-            cursor.setCharFormat(defaultFormat);
-            return;
-        }
-
-        fullMentionUpToSpaceOrEnd.chop(1);
     }
-
-    // no valid mention found
-    checkWord(cursor, message);
 }
 
-void ChatView::checkWord(QTextCursor &cursor, QString &message)
+void ChatView::mouseMoveEvent(QMouseEvent *event)
 {
-    // extract the first word
-    QString rest;
-    QString fullWordUpToSpaceOrEnd = extractNextWord(message, rest);
+    updateHover(event->pos());
 
-    // check urls
-    if (fullWordUpToSpaceOrEnd.startsWith("http://", Qt::CaseInsensitive) ||
-        fullWordUpToSpaceOrEnd.startsWith("https://", Qt::CaseInsensitive) ||
-        fullWordUpToSpaceOrEnd.startsWith("www.", Qt::CaseInsensitive)) {
-        QUrl qUrl(fullWordUpToSpaceOrEnd);
-        if (qUrl.isValid()) {
-            appendUrlTag(cursor, fullWordUpToSpaceOrEnd);
-            cursor.insertText(rest, defaultFormat);
-            return;
+    if (m_selecting && (event->buttons() & Qt::LeftButton)) {
+        const auto [msgIdx, charPos] = hitTest(event->pos());
+        if (msgIdx >= 0) {
+            m_selFocus = {msgIdx, charPos};
+            viewport()->update();
         }
     }
-
-    // check word mentions
-    for (const QString &word : highlightedWords) {
-        if (fullWordUpToSpaceOrEnd.compare(word, Qt::CaseInsensitive) == 0) {
-            // You have received a valid mention of custom word!!
-            highlightFormat.setBackground(QBrush(getCustomHighlightColor()));
-            highlightFormat.setForeground(SettingsCache::instance().getChatHighlightForeground() ? QBrush(Qt::white)
-                                                                                                 : QBrush(Qt::black));
-            cursor.insertText(fullWordUpToSpaceOrEnd, highlightFormat);
-            cursor.insertText(rest, defaultFormat);
-            QApplication::alert(this);
-            return;
-        }
-    }
-
-    // not a special word; just print it
-    cursor.insertText(fullWordUpToSpaceOrEnd + rest, defaultFormat);
 }
 
-QString ChatView::extractNextWord(QString &message, QString &rest)
+void ChatView::mouseReleaseEvent(QMouseEvent *event)
 {
-    // get the first next space and extract the word
-    QString word;
-    int firstSpace = message.indexOf(' ');
-    if (firstSpace == -1) {
-        word = message;
-        message.clear();
+    if (event->button() == Qt::LeftButton) {
+        m_selecting = false;
+
+        // Zero-length selection = click — activate any link under the cursor
+        if (m_selAnchor.msg == m_selFocus.msg && m_selAnchor.pos == m_selFocus.pos) {
+            const QString href = hrefAt(event->pos());
+            if (!href.isEmpty()) {
+                const int delim = href.indexOf("://");
+                const QString scheme = href.left(delim);
+                const QString content = href.mid(delim + 3);
+
+                if (scheme == "card") {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+                    emit showCardInfoPopup(event->globalPosition().toPoint(), {content});
+#else
+                    emit showCardInfoPopup(event->globalPos(), {content});
+#endif
+                } else if (scheme == "user") {
+                    const int underscore = content.indexOf('_');
+                    const QString userName = content.mid(underscore + 1);
+                    if (event->modifiers() == Qt::ControlModifier) {
+                        emit openMessageDialog(userName, true);
+                    } else {
+                        emit addMentionTag("@" + userName);
+                    }
+                } else {
+                    QDesktopServices::openUrl(QUrl(href));
+                }
+            }
+        }
+    }
+
+    if (event->button() == Qt::LeftButton || event->button() == Qt::MiddleButton) {
+        emit deleteCardInfoPopup(QStringLiteral("_"));
+    }
+}
+
+void ChatView::wheelEvent(QWheelEvent *event)
+{
+    if (!event->pixelDelta().isNull()) {
+        // Smooth trackpad / high-resolution wheel: use pixel delta directly
+        verticalScrollBar()->setValue(verticalScrollBar()->value() - event->pixelDelta().y());
     } else {
-        word = message.mid(0, firstSpace);
-        message = message.mid(firstSpace);
+        // Standard notched mouse wheel: 120 units per notch → scroll 60px
+        const int pixels = -(event->angleDelta().y() * 60) / 120;
+        verticalScrollBar()->setValue(verticalScrollBar()->value() + pixels);
     }
+    event->accept();
+}
 
-    // remove any punctuation from the end and pass it separately
-    for (int len = word.size() - 1; len >= 0; --len) {
-        if (word.at(len).isLetterOrNumber()) {
-            rest = word.mid(len + 1);
-            return word.mid(0, len + 1);
+void ChatView::keyPressEvent(QKeyEvent *event)
+{
+    if (event->matches(QKeySequence::Copy)) {
+        const QString text = selectedText();
+        if (!text.isEmpty()) {
+            QGuiApplication::clipboard()->setText(text);
+        }
+        return;
+    }
+    QAbstractScrollArea::keyPressEvent(event);
+}
+
+void ChatView::leaveEvent(QEvent * /*event*/)
+{
+    m_hoveredHref.clear();
+    m_hoveredType = HoveredNothing;
+    viewport()->setCursor(Qt::IBeamCursor);
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+void ChatView::clearChat()
+{
+    m_messages.clear();
+    m_layouts.clear();
+    m_totalH = 0;
+    m_lastSender.clear();
+    m_selAnchor = {-1, 0};
+    m_selFocus = {-1, 0};
+    updateScrollRange();
+    viewport()->update();
+}
+
+void ChatView::redactMessages(const QString &userName, int amount)
+{
+    const QString placeholder = tr("[message removed]");
+    int count = 0;
+    for (int i = m_messages.size() - 1; i >= 0 && count < amount; --i) {
+        const QString msgUser = QString::fromStdString(m_messages.at(i).userInfo.name());
+        if (msgUser == userName && !m_messages.at(i).redacted) {
+            m_messages[i].text = placeholder;
+            m_messages[i].spans = {{ChatSpan::Plain, 0, static_cast<int>(placeholder.length()), {}}};
+            m_messages[i].redacted = true;
+            layoutMessage(i, viewport()->width());
+            ++count;
         }
     }
-
-    rest = word;
-    return QString();
+    m_totalH = 0;
+    for (const MessageLayout &l : m_layouts) {
+        m_totalH += l.totalHeight;
+    }
+    updateScrollRange();
+    viewport()->update();
 }
 
-bool ChatView::isModeratorSendingGlobal(QFlags<ServerInfo_User::UserLevelFlag> userLevelFlag, QString message)
-{
-    int userLevel = QString::number(userLevelFlag).toInt();
-
-    QStringList getAttentionList;
-    getAttentionList << "/all"; // Send a message to all users
-
-    return (getAttentionList.contains(message) &&
-            (userLevel & ServerInfo_User::IsModerator || userLevel & ServerInfo_User::IsAdmin));
-}
-
-void ChatView::actMessageClicked()
-{
-    emit messageClickedSignal();
-}
+// ── Misc ──────────────────────────────────────────────────────────────────────
 
 void ChatView::showSystemPopup(const QString &userName)
 {
@@ -527,174 +1085,20 @@ void ChatView::showSystemPopup(const QString &userName)
     }
 }
 
-QColor ChatView::getCustomMentionColor()
+/*static*/ bool ChatView::isModeratorSendingGlobal(QFlags<ServerInfo_User::UserLevelFlag> level, const QString &word)
 {
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 4, 0))
-    QColor customColor = QColor::fromString("#" + SettingsCache::instance().getChatMentionColor());
-#else
-    QColor customColor;
-    customColor.setNamedColor("#" + SettingsCache::instance().getChatMentionColor());
-#endif
-    return customColor.isValid() ? customColor : DEFAULT_MENTION_COLOR;
+    static const QStringList globalCommands{QStringLiteral("/all")};
+    return globalCommands.contains(word) && (level & ServerInfo_User::IsModerator || level & ServerInfo_User::IsAdmin);
 }
 
-QColor ChatView::getCustomHighlightColor()
+/*static*/ QString ChatView::stripHtml(const QString &html)
 {
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 4, 0))
-    QColor customColor = QColor::fromString("#" + SettingsCache::instance().getChatMentionColor());
-#else
-    QColor customColor;
-    customColor.setNamedColor("#" + SettingsCache::instance().getChatMentionColor());
-#endif
-    return customColor.isValid() ? customColor : DEFAULT_MENTION_COLOR;
-}
-
-void ChatView::clearChat()
-{
-    document()->clear();
-    lastSender = "";
-    evenNumber = true;
-}
-
-void ChatView::redactMessages(const QString &userName, int amount)
-{
-    auto &messagePositions = userMessagePositions[userName];
-    bool removedLastMessage = false;
-    QTextCursor cursor(document());
-    for (; !messagePositions.isEmpty() && amount != 0; --amount) {
-        auto position = messagePositions.takeLast();   // go backwards from last message
-        cursor.setPosition(position.block.position()); // move to start of block, then continue to start of message
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, position.relativePosition);
-        cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor); // select until end of block
-        cursor.removeSelectedText();
-        // if the cursor is at the end of the text it is possible to add text to this block still
-        removedLastMessage |= cursor.atEnd();
-        // we will readd this position later
-    }
-    if (removedLastMessage) {
-        cursor.movePosition(QTextCursor::End);
-        messagePositions.append(cursor);
-        // note that this message might stay empty, this is not harmful as it will simply remove nothing the next time
-    }
-}
-
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-void ChatView::enterEvent(QEnterEvent * /*event*/)
-#else
-void ChatView::enterEvent(QEvent * /*event*/)
-#endif
-{
-    setMouseTracking(true);
-}
-
-void ChatView::leaveEvent(QEvent * /*event*/)
-{
-    setMouseTracking(false);
-}
-
-QTextFragment ChatView::getFragmentUnderMouse(const QPoint &pos) const
-{
-    QTextCursor cursor(cursorForPosition(pos));
-    QTextBlock block(cursor.block());
-    QTextBlock::iterator it;
-    for (it = block.begin(); !(it.atEnd()); ++it) {
-        QTextFragment frag = it.fragment();
-        if (frag.contains(cursor.position())) {
-            return frag;
-        }
-    }
-    return QTextFragment();
-}
-
-void ChatView::mouseMoveEvent(QMouseEvent *event)
-{
-    QString anchorHref = getFragmentUnderMouse(event->pos()).charFormat().anchorHref();
-    if (!anchorHref.isEmpty()) {
-        const int delimiterIndex = anchorHref.indexOf("://");
-        if (delimiterIndex != -1) {
-            const QString scheme = anchorHref.left(delimiterIndex);
-            hoveredContent = anchorHref.mid(delimiterIndex + 3);
-            if (scheme == "card") {
-                hoveredItemType = HoveredCard;
-                emit cardNameHovered(hoveredContent);
-            } else if (scheme == "user") {
-                hoveredItemType = HoveredUser;
-            } else {
-                hoveredItemType = HoveredUrl;
-            }
-            viewport()->setCursor(Qt::PointingHandCursor);
-        } else {
-            hoveredItemType = HoveredNothing;
-            viewport()->setCursor(Qt::IBeamCursor);
-        }
-    } else {
-        hoveredItemType = HoveredNothing;
-        viewport()->setCursor(Qt::IBeamCursor);
-    }
-
-    QTextBrowser::mouseMoveEvent(event);
-}
-
-void ChatView::mousePressEvent(QMouseEvent *event)
-{
-    switch (hoveredItemType) {
-        case HoveredCard: {
-            if ((event->button() == Qt::MiddleButton) || (event->button() == Qt::LeftButton))
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-                emit showCardInfoPopup(event->globalPosition().toPoint(), {hoveredContent});
-#else
-                emit showCardInfoPopup(event->globalPos(), {hoveredContent});
-#endif
-            break;
-        }
-        case HoveredUser: {
-            if (event->button() != Qt::MiddleButton) {
-                const int delimiterIndex = hoveredContent.indexOf("_");
-                const QString userName = hoveredContent.mid(delimiterIndex + 1);
-                switch (event->button()) {
-                    case Qt::RightButton: {
-                        UserLevelFlags userLevel(hoveredContent.left(delimiterIndex).toInt());
-#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
-                        userContextMenu->showContextMenu(event->globalPosition().toPoint(), userName, userLevel, this);
-#else
-                        userContextMenu->showContextMenu(event->globalPos(), userName, userLevel, this);
-#endif
-                        break;
-                    }
-                    case Qt::LeftButton: {
-                        if (event->modifiers() == Qt::ControlModifier) {
-                            emit openMessageDialog(userName, true);
-                        } else {
-                            emit addMentionTag("@" + userName);
-                        }
-                        break;
-                    }
-                    default:
-                        break;
-                }
-            }
-            break;
-        }
-        default: {
-            QTextBrowser::mousePressEvent(event);
-        }
-    }
-}
-
-void ChatView::mouseReleaseEvent(QMouseEvent *event)
-{
-    if ((event->button() == Qt::MiddleButton) || (event->button() == Qt::LeftButton)) {
-        emit deleteCardInfoPopup(QString("_"));
-    }
-
-    QTextBrowser::mouseReleaseEvent(event);
-}
-
-void ChatView::openLink(const QUrl &link)
-{
-    if ((link.scheme() == "card") || (link.scheme() == "user")) {
-        return;
-    }
-
-    QDesktopServices::openUrl(link);
+    static const QRegularExpression tagRe(QStringLiteral("<[^>]*>"));
+    QString result = html;
+    result.remove(tagRe);
+    result.replace(QStringLiteral("&lt;"), QStringLiteral("<"));
+    result.replace(QStringLiteral("&gt;"), QStringLiteral(">"));
+    result.replace(QStringLiteral("&amp;"), QStringLiteral("&"));
+    result.replace(QStringLiteral("&nbsp;"), QStringLiteral(" "));
+    return result.trimmed();
 }

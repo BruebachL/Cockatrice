@@ -138,7 +138,7 @@ void MessageLogWidget::logConcede(int playerId)
     soundEngine->playSound("player_concede");
     appendHtmlServerMessage(
         tr("%1 has conceded the game.")
-            .arg(sanitizeHtml(game->getPlayerManager()->getPlayer(playerId)->getPlayerInfo()->getName())),
+            .arg(sanitizeHtml(getGame()->getPlayerManager()->getPlayer(playerId)->getPlayerInfo()->getName())),
         true);
 }
 
@@ -147,7 +147,7 @@ void MessageLogWidget::logUnconcede(int playerId)
     soundEngine->playSound("player_concede");
     appendHtmlServerMessage(
         tr("%1 has unconceded the game.")
-            .arg(sanitizeHtml(game->getPlayerManager()->getPlayer(playerId)->getPlayerInfo()->getName())),
+            .arg(sanitizeHtml(getGame()->getPlayerManager()->getPlayer(playerId)->getPlayerInfo()->getName())),
         true);
 }
 
