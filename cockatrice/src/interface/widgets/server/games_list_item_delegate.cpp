@@ -22,9 +22,9 @@ GameListItemDelegate::GameListItemDelegate(const QMap<int, QString> &rooms,
 QSize GameListItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &) const
 {
     if (const auto *v = qobject_cast<const TilingListView *>(option.widget)) {
-        return QSize(v->cellWidth(), 48);
+        return QSize(v->cellWidth(), 80);
     }
-    return QSize(500, 48);
+    return QSize(500, 80);
 }
 
 // ── Static helpers ────────────────────────────────────────────────────────────
@@ -97,6 +97,7 @@ void GameListItemDelegate::paintCardBackground(QPainter *p,
                                                const QColor &accent,
                                                bool selected) const
 {
+    // Main card
     QLinearGradient bg(card.topLeft(), card.bottomRight());
     bg.setColorAt(0, selected ? accent.darker(200) : QColor(22, 28, 38));
     bg.setColorAt(1, selected ? QColor(30, 38, 52) : QColor(14, 18, 26));
@@ -104,10 +105,29 @@ void GameListItemDelegate::paintCardBackground(QPainter *p,
     p->setBrush(bg);
     p->drawRoundedRect(card, cardRadius, cardRadius);
 
+    // Left column panel — dark fill that fades right toward the content area.
+    // Width covers accent bar + leftPad + age zone + half the gap to avatar.
+    const qreal panelW = accentBarWidth + leftPad + zoneAgeW + ageRightPad * 0.5;
+    QLinearGradient panel(card.topLeft(), QPointF(card.left() + panelW, card.top()));
+    panel.setColorAt(0.0, QColor(8, 11, 18));
+    panel.setColorAt(1.0, QColor(8, 11, 18, 0));
+    p->setBrush(panel);
+    p->setPen(Qt::NoPen);
+
+    // Clip to card shape so the panel respects the rounded corners
+    QPainterPath cardPath;
+    cardPath.addRoundedRect(card, cardRadius, cardRadius);
+    p->save();
+    p->setClipPath(cardPath);
+    p->drawRect(QRectF(card.left(), card.top(), panelW, card.height()));
+    p->restore();
+
+    // Accent bar — drawn on top of the panel so it stays crisp
     p->setBrush(accent);
     p->drawRoundedRect(QRectF(card.left(), card.top(), accentBarWidth, card.height()), accentBarRadius,
                        accentBarRadius);
 
+    // Subtle border
     p->setPen(QPen(accent.darker(300), 0.5));
     p->setBrush(Qt::NoBrush);
     p->drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), cardRadius, cardRadius);
@@ -157,11 +177,11 @@ void GameListItemDelegate::paintCreatorAvatar(QPainter *p,
     p->drawEllipse(QRectF(avatarRect).adjusted(-0.75, -0.75, 0.75, 0.75));
 }
 
-// ── Zone painters ─────────────────────────────────────────────────────────────
+// ── Row 1 painters ────────────────────────────────────────────────────────────
 
 void GameListItemDelegate::paintAge(QPainter *p,
                                     const QStyleOptionViewItem &option,
-                                    const QRect &rect,
+                                    const QRect &row1Rect,
                                     const ServerInfo_Game &game,
                                     int ageLeft) const
 {
@@ -171,12 +191,12 @@ void GameListItemDelegate::paintAge(QPainter *p,
 
     p->setFont(option.font);
     p->setPen(QColor(80, 95, 115));
-    p->drawText(QRect(ageLeft, rect.top(), zoneAgeW, rect.height()), Qt::AlignVCenter | Qt::AlignLeft, ageStr);
+    p->drawText(QRect(ageLeft, row1Rect.top(), zoneAgeW, row1Rect.height()), Qt::AlignVCenter | Qt::AlignLeft, ageStr);
 }
 
 void GameListItemDelegate::paintCreator(QPainter *p,
                                         const QStyleOptionViewItem &option,
-                                        const QRect &rect,
+                                        const QRect &row1Rect,
                                         const ServerInfo_Game &game,
                                         int creatorLeft) const
 {
@@ -184,13 +204,114 @@ void GameListItemDelegate::paintCreator(QPainter *p,
     const QFontMetrics cfm(option.font);
     p->setFont(option.font);
     p->setPen(QColor(110, 125, 145));
-    p->drawText(QRect(creatorLeft, rect.top(), zoneCreatorW, rect.height()), Qt::AlignVCenter | Qt::AlignLeft,
+    p->drawText(QRect(creatorLeft, row1Rect.top(), zoneCreatorW, row1Rect.height()), Qt::AlignVCenter | Qt::AlignLeft,
                 cfm.elidedText(name, Qt::ElideRight, zoneCreatorW));
+}
+
+void GameListItemDelegate::paintStatus(QPainter *p,
+                                       const QRect &row1Rect,
+                                       const ServerInfo_Game &game,
+                                       int statusLeft,
+                                       int rx,
+                                       const QFont &badgeFont) const
+{
+    struct Pill
+    {
+        QString text;
+        QColor bg;
+        QColor fg;
+    };
+    QVector<Pill> pills;
+
+    if (game.only_buddies()) {
+        pills.append({tr("buddies"), QColor(48, 25, 75), QColor(167, 139, 250)});
+    }
+    if (game.only_registered()) {
+        pills.append({tr("reg."), QColor(50, 48, 12), QColor(217, 210, 80)});
+    }
+    if (game.share_decklists_on_load()) {
+        pills.append({tr("open decks"), QColor(12, 55, 55), QColor(45, 212, 191)});
+    }
+
+    if (pills.isEmpty()) {
+        return;
+    }
+
+    const QFontMetrics bfm(badgeFont);
+    int totalW = -badgeGap;
+    for (const Pill &pill : std::as_const(pills)) {
+        totalW += bfm.horizontalAdvance(pill.text) + badgeHPad * 2 + badgeGap;
+    }
+
+    while (!pills.isEmpty() && totalW > rx - statusLeft) {
+        totalW -= bfm.horizontalAdvance(pills.last().text) + badgeHPad * 2 + badgeGap;
+        pills.removeLast();
+    }
+
+    if (pills.isEmpty()) {
+        return;
+    }
+
+    const int badgeY = row1Rect.top() + (row1Rect.height() - badgeH) / 2;
+    int x = rx - totalW;
+
+    for (const Pill &pill : std::as_const(pills)) {
+        const int tw = paintBadge(p, QPoint(x, badgeY), badgeH, pill.text, pill.bg, pill.fg, badgeFont);
+        x += tw + badgeGap;
+    }
+}
+
+// ── Row 2 painters ────────────────────────────────────────────────────────────
+
+void GameListItemDelegate::paintPlayers(QPainter *p,
+                                        const QStyleOptionViewItem &option,
+                                        const QRect &row2Rect,
+                                        const ServerInfo_Game &game,
+                                        int playersLeft) const
+{
+    const bool full = game.player_count() >= game.max_players();
+    const bool started = game.started();
+
+    // ── Build compound label ──────────────────────────────────────────────────
+    QString label = QStringLiteral("👥 %1/%2").arg(game.player_count()).arg(game.max_players());
+
+    if (game.spectators_allowed()) {
+        label += QStringLiteral("  |  👤 %1").arg(game.spectators_count());
+
+        QStringList perms;
+        if (game.spectators_can_chat()) {
+            perms << tr("chat");
+        }
+        if (game.spectators_omniscient()) {
+            perms << tr("hands");
+        }
+        if (!perms.isEmpty()) {
+            label += QStringLiteral(" · ") + perms.join(QStringLiteral(" · "));
+        }
+    }
+
+    // ── Colours ───────────────────────────────────────────────────────────────
+    const QColor bg = started ? QColor(90, 20, 20) : full ? QColor(90, 42, 10) : QColor(15, 40, 15);
+    const QColor fg = started ? QColor(248, 113, 113) : full ? QColor(251, 146, 60) : QColor(74, 222, 128);
+
+    // ── Measure and draw as a single pill ────────────────────────────────────
+    const QFont &font = option.font;
+    const int w = QFontMetrics(font).horizontalAdvance(label) + badgeHPad * 2;
+    const int h = badgeH;
+    const int y = row2Rect.top() + (row2Rect.height() - h) / 2;
+
+    const QRect r(playersLeft, y, w, h);
+    p->setPen(Qt::NoPen);
+    p->setBrush(bg);
+    p->drawRoundedRect(r, badgeRadius, badgeRadius);
+    p->setFont(font);
+    p->setPen(fg);
+    p->drawText(r, Qt::AlignCenter, label);
 }
 
 void GameListItemDelegate::paintTitle(QPainter *p,
                                       const QStyleOptionViewItem &option,
-                                      const QRect &rect,
+                                      const QRect &row2Rect,
                                       const ServerInfo_Game &game,
                                       int lx,
                                       int titleW,
@@ -202,7 +323,7 @@ void GameListItemDelegate::paintTitle(QPainter *p,
     int w = titleW;
 
     if (game.with_password()) {
-        const int iconY = rect.top() + (rect.height() - lockSize) / 2;
+        const int iconY = row2Rect.top() + (row2Rect.height() - lockSize) / 2;
         p->drawPixmap(x, iconY, LockPixmapGenerator::generatePixmap(lockSize));
         x += lockTextGap;
         w -= lockTextGap;
@@ -218,102 +339,52 @@ void GameListItemDelegate::paintTitle(QPainter *p,
 
     p->setFont(titleFont);
     p->setPen(color);
-    p->drawText(QRect(x, rect.top(), w, rect.height()), Qt::AlignVCenter | Qt::AlignLeft, elided);
+    p->drawText(QRect(x, row2Rect.top(), w, row2Rect.height()), Qt::AlignVCenter | Qt::AlignLeft, elided);
 }
 
 void GameListItemDelegate::paintTypeBadges(QPainter *p,
-                                           const QRect &rect,
+                                           const QRect &row2Rect,
                                            const ServerInfo_Game &game,
                                            int typesLeft,
                                            const QFont &badgeFont) const
 {
     const GameTypeMap &gtMap = gameTypes.value(game.room_id());
-    const int badgeY = rect.top() + (rect.height() - badgeH) / 2;
-    const int xMax = typesLeft + zoneTypesW;
 
-    int x = typesLeft;
+    QStringList names;
+    const QFontMetrics bfm(badgeFont);
+    int totalW = 0;
     for (int i = 0; i < game.game_types_size(); ++i) {
-        const QString typeName = gtMap.value(game.game_types(i));
-        if (typeName.isEmpty()) {
+        const QString name = gtMap.value(game.game_types(i));
+        if (name.isEmpty()) {
             continue;
         }
-        const int tw = QFontMetrics(badgeFont).horizontalAdvance(typeName) + badgeHPad * 2;
-        if (x + tw > xMax) {
-            break;
-        }
+        names << name;
+        totalW += bfm.horizontalAdvance(name) + badgeHPad * 2 + badgeGap;
+    }
+    if (names.isEmpty()) {
+        return;
+    }
+    totalW -= badgeGap;
+
+    // Drop from the right until the strip fits within zoneTypesW
+    while (names.size() > 1 && totalW > zoneTypesW) {
+        totalW -= bfm.horizontalAdvance(names.last()) + badgeHPad * 2 + badgeGap;
+        names.removeLast();
+    }
+
+    // Right-anchor: start so the strip ends flush with typesLeft + zoneTypesW
+    const int badgeY = row2Rect.top() + (row2Rect.height() - badgeH) / 2;
+    int x = typesLeft + zoneTypesW - totalW;
+
+    for (const QString &name : std::as_const(names)) {
         QColor bg, fg;
-        typeColors(typeName, bg, fg);
-        paintBadge(p, QPoint(x, badgeY), badgeH, typeName, bg, fg, badgeFont);
+        typeColors(name, bg, fg);
+        const int tw = paintBadge(p, QPoint(x, badgeY), badgeH, name, bg, fg, badgeFont);
         x += tw + badgeGap;
     }
 }
 
-void GameListItemDelegate::paintStatus(QPainter *p,
-                                       const QRect &rect,
-                                       const ServerInfo_Game &game,
-                                       int statusLeft,
-                                       const QColor &accent,
-                                       const QFont &badgeFont) const
-{
-    Q_UNUSED(accent);
-    // Build the ordered list of status pills.  Each pill is a short label with
-    // explicit bg/fg colours derived from game state.
-    struct Pill
-    {
-        QString text;
-        QColor bg;
-        QColor fg;
-    };
-    QVector<Pill> pills;
-
-    // Players — always first, colour encodes availability
-    const bool full = game.player_count() >= game.max_players();
-    const bool started = game.started();
-    const QString players = QStringLiteral("%1/%2").arg(game.player_count()).arg(game.max_players());
-    const QColor playerBg = started ? QColor(90, 20, 20) : full ? QColor(90, 42, 10) : QColor(15, 50, 25);
-    const QColor playerFg = started ? QColor(248, 113, 113) : full ? QColor(251, 146, 60) : QColor(74, 222, 128);
-    pills.append({players, playerBg, playerFg});
-
-    // Spectators — only when allowed; label encodes chat/omniscient flags
-    if (game.spectators_allowed()) {
-        QString specLabel = QStringLiteral("👁 %1").arg(game.spectators_count());
-        if (game.spectators_can_chat() && game.spectators_omniscient()) {
-            specLabel += QStringLiteral(" c+h");
-        } else if (game.spectators_can_chat()) {
-            specLabel += QStringLiteral(" chat");
-        } else if (game.spectators_omniscient()) {
-            specLabel += QStringLiteral(" hands");
-        }
-        pills.append({specLabel, QColor(15, 40, 65), QColor(96, 165, 220)});
-    }
-
-    // Restriction tags — one pill each
-    if (game.only_buddies()) {
-        pills.append({tr("buddies"), QColor(48, 25, 75), QColor(167, 139, 250)});
-    }
-    if (game.only_registered()) {
-        pills.append({tr("reg."), QColor(50, 48, 12), QColor(217, 210, 80)});
-    }
-    if (game.share_decklists_on_load()) {
-        pills.append({tr("open decks"), QColor(12, 55, 55), QColor(45, 212, 191)});
-    }
-
-    // Draw left-to-right within the zone, stopping when space is exhausted
-    const int badgeY = rect.top() + (rect.height() - badgeH) / 2;
-    const int xMax = statusLeft + zoneStatusW;
-    int x = statusLeft;
-
-    for (const Pill &pill : std::as_const(pills)) {
-        const int tw = QFontMetrics(badgeFont).horizontalAdvance(pill.text) + badgeHPad * 2;
-        if (x + tw > xMax) {
-            break;
-        }
-        paintBadge(p, QPoint(x, badgeY), badgeH, pill.text, pill.bg, pill.fg, badgeFont);
-        x += tw + badgeGap;
-    }
-}
-
-// ── paint — zone layout ───────────────────────────────────────────────────────
+// ── paint — layout ────────────────────────────────────────────────────────────
 
 void GameListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
@@ -332,19 +403,40 @@ void GameListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     const QColor accent = accentForGame(game);
     const QRectF card = QRectF(rect).adjusted(cardMarginH, cardMarginV, -cardMarginH, -cardMarginV);
 
-    // ── Left-anchored zones (left-to-right) ───────────────────────────────────
-    const int ageLeft = rect.left() + leftPad; // age butts up against accent bar
-    const int avatarLeft = ageLeft + zoneAgeW + avatarGap;
-    const int avatarY = rect.top() + (rect.height() - avatarSize) / 2;
-    const QRect avatarRect(avatarLeft, avatarY, avatarSize, avatarSize);
-    const int creatorLeft = avatarLeft + avatarSize + creatorGap;
-    const int lx = creatorLeft + zoneCreatorW + interZoneGap; // title start
+    const QRect row1Rect(rect.left(), rect.top(), rect.width(), row1H);
+    const QRect row2Rect(rect.left(), rect.top() + row1H, rect.width(), row2H);
 
-    // ── Right-anchored zones (right-to-left) ──────────────────────────────────
+    // ── Shared left column x (age row 1, players row 2) ──────────────────────
+    const int ageLeft = rect.left() + leftPad;
+
+    // ── Row 1 geometry ────────────────────────────────────────────────────────
+    const int avatarLeft = ageLeft + zoneAgeW + ageRightPad;
+    const int avatarTop = row1Rect.top() + (row1H - avatarSize) / 2; // 8px margin each side
+    const QRect avatarRect(avatarLeft, avatarTop, avatarSize, avatarSize);
+    const int creatorLeft = avatarLeft + avatarSize + creatorGap;
     const int rx = rect.right() - rightPad;
-    const int statusLeft = rx - zoneStatusW;
-    const int typesLeft = statusLeft - interZoneGap - zoneTypesW;
-    const int titleW = typesLeft - interZoneGap - lx;
+    const int statusLeft = creatorLeft + zoneCreatorW + interZoneGap;
+
+    // Row 2: title starts after the players pill + gap.
+    // Measure the pill width the same way paintPlayers does so titleLeft is exact.
+    QString playersLabel = QStringLiteral("👥 %1/%2").arg(game.player_count()).arg(game.max_players());
+    if (game.spectators_allowed()) {
+        playersLabel += QStringLiteral("  |  👤 %1").arg(game.spectators_count());
+        QStringList perms;
+        if (game.spectators_can_chat()) {
+            perms << tr("chat");
+        }
+        if (game.spectators_omniscient()) {
+            perms << tr("hands");
+        }
+        if (!perms.isEmpty()) {
+            playersLabel += QStringLiteral(" · ") + perms.join(QStringLiteral(" · "));
+        }
+    }
+    const int pillW = QFontMetrics(option.font).horizontalAdvance(playersLabel) + badgeHPad * 2;
+    const int titleLeft = ageLeft + pillW + interZoneGap;
+    const int typesLeft = rx - zoneTypesW;
+    const int titleW = typesLeft - interZoneGap - titleLeft;
 
     QFont titleFont = option.font;
     titleFont.setBold(true);
@@ -354,12 +446,17 @@ void GameListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     badgeFont.setBold(true);
 
     paintCardBackground(painter, card, accent, selected);
-    paintAge(painter, option, rect, game, ageLeft);
+
+    // Row 1
+    paintAge(painter, option, row1Rect, game, ageLeft);
     paintCreatorAvatar(painter, avatarRect, game, accent);
-    paintCreator(painter, option, rect, game, creatorLeft);
-    paintTitle(painter, option, rect, game, lx, titleW, titleFont);
-    paintTypeBadges(painter, rect, game, typesLeft, badgeFont);
-    paintStatus(painter, rect, game, statusLeft, accent, badgeFont);
+    paintCreator(painter, option, row1Rect, game, creatorLeft);
+    paintStatus(painter, row1Rect, game, statusLeft, rx, badgeFont);
+
+    // Row 2
+    paintPlayers(painter, option, row2Rect, game, ageLeft); // same x as age
+    paintTitle(painter, option, row2Rect, game, titleLeft, titleW, titleFont);
+    paintTypeBadges(painter, row2Rect, game, typesLeft, badgeFont);
 
     painter->restore();
 }

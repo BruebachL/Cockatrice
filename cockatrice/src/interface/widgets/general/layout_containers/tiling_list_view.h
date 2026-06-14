@@ -28,7 +28,7 @@ class TilingListView : public QListView
 
     static constexpr int preferredCardW = 560;
     static constexpr int minCardW = 500;
-    static constexpr int cardH = 48;
+    static constexpr int cardH = 80;
     static constexpr int cardSpacing = 6;
 
     int requestedCols = 0; ///< 0 = auto
