@@ -242,6 +242,19 @@ bool ThemeManager::savePaletteConfig(const QString &themeDirPath, const QString 
     return true;
 }
 
+bool ThemeManager::commitPalette(const QString &themeDirPath, const QString &colorScheme, const PaletteConfig &cfg)
+{
+    if (!savePaletteConfig(themeDirPath, colorScheme, cfg)) {
+        return false;
+    }
+
+    ThemeConfig globalCfg = ThemeConfig::fromThemeDir(themeDirPath);
+    globalCfg.colorScheme = colorScheme;
+    globalCfg.save(themeDirPath);
+
+    return true;
+}
+
 void ThemeManager::setColorScheme(const QString &scheme)
 {
     const QString dirPath = getAvailableThemes().value(SettingsCache::instance().getThemeName());

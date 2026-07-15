@@ -76,6 +76,10 @@ public:
     // Load/save per-scheme palette colors
     static PaletteConfig loadPaletteConfig(const QString &themeDirPath, const QString &colorScheme);
     static bool savePaletteConfig(const QString &themeDirPath, const QString &colorScheme, const PaletteConfig &cfg);
+    //! Writes cfg to disk as the theme's palette-<scheme>.toml and updates the
+    //! theme's stored colour scheme to match. Shared by PaletteEditorDialog::onSave
+    //! and FirstRunWizard's theme step so the two "generate + keep" paths can't drift.
+    static bool commitPalette(const QString &themeDirPath, const QString &colorScheme, const PaletteConfig &cfg);
     void setColorScheme(const QString &scheme);
 
     void reloadCurrentTheme();

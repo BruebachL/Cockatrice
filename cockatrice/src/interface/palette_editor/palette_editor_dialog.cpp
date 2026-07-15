@@ -22,7 +22,6 @@ PaletteEditorDialog::PaletteEditorDialog(const QString &_themeDirPath, const QSt
     setMinimumSize(740, 220);
     setupUi();
 
-    // Load both scheme configs upfront so switching is instant
     loadSchemes();
 
     loadedScheme = themeManager->isDarkMode(themeDirPath) ? "Dark" : "Light";
@@ -43,7 +42,6 @@ void PaletteEditorDialog::setupUi()
     root->setSpacing(0);
     root->setContentsMargins(0, 0, 0, 0);
 
-    // Header
     header = new QWidget;
     header->setAutoFillBackground(true);
     {
@@ -79,7 +77,6 @@ void PaletteEditorDialog::setupUi()
 
     root->addWidget(makeSeparator());
 
-    // Quick Setup panel
     quickSetupPanel = new QuickSetupPanel;
     quickSetupPanel->setAutoFillBackground(true);
 
@@ -90,7 +87,6 @@ void PaletteEditorDialog::setupUi()
     root->addWidget(quickSetupPanel);
     root->addWidget(makeSeparator());
 
-    // Toggle button — acts as a section header for the advanced area
     paletteGridToggleButton = new QPushButton(this);
     paletteGridToggleButton->setCheckable(true);
     paletteGridToggleButton->setChecked(false);
@@ -99,7 +95,6 @@ void PaletteEditorDialog::setupUi()
                                            "QPushButton:checked { }");
     root->addWidget(paletteGridToggleButton);
 
-    // Separator + grid start hidden; revealed by the toggle
     paletteGridSeparator = makeSeparator();
     paletteGridSeparator->setVisible(false);
     root->addWidget(paletteGridSeparator);
@@ -108,7 +103,6 @@ void PaletteEditorDialog::setupUi()
     paletteGrid->setVisible(false);
     root->addWidget(paletteGrid, 1);
 
-    // Footer
     root->addWidget(makeSeparator());
     footer = new QWidget;
     footer->setAutoFillBackground(true);
@@ -133,7 +127,6 @@ void PaletteEditorDialog::setupUi()
     footerLayout->addWidget(buttonBox);
     root->addWidget(footer);
 
-    // Connections
     connect(schemeComboBox, &QComboBox::currentTextChanged, this, &PaletteEditorDialog::onSchemeChanged);
     connect(quickSetupPanel, &QuickSetupPanel::generateRequested, this, &PaletteEditorDialog::onGenerateFromAccent);
     connect(revertButton, &QPushButton::clicked, this, &PaletteEditorDialog::onRevertToDefault);
@@ -152,7 +145,7 @@ void PaletteEditorDialog::setupUi()
             resize(width(), 680);
         } else {
             setMinimumHeight(220);
-            adjustSize(); // shrinks to fit just the visible content
+            adjustSize();
         }
     });
 }
@@ -162,7 +155,6 @@ void PaletteEditorDialog::retranslateUi()
     setWindowTitle(tr("Palette Editor — %1").arg(themeName));
     titleLabel->setText(tr("<b>Palette Editor</b> &nbsp;·&nbsp; %1").arg(themeName));
 
-    // Revert button only makes sense when the theme ships default palette files
     const bool hasDefault = PaletteConfig::fromDefault(themeDirPath, "Light").hasPalette() ||
                             PaletteConfig::fromDefault(themeDirPath, "Dark").hasPalette();
     revertButton->setEnabled(hasDefault);
@@ -227,7 +219,6 @@ void PaletteEditorDialog::seedAccentFromScheme(const QString &scheme)
 
 void PaletteEditorDialog::onSchemeChanged(const QString &scheme)
 {
-    // Snapshot unsaved edits for the scheme we're leaving
     if (!loadedScheme.isEmpty()) {
         workingConfig[loadedScheme] = paletteGrid->currentPaletteConfig();
     }
@@ -258,15 +249,11 @@ void PaletteEditorDialog::onSave()
 
     PaletteConfig cfg = paletteGrid->currentPaletteConfig();
 
-    if (!ThemeManager::savePaletteConfig(themeDirPath, loadedScheme, cfg)) {
+    if (!ThemeManager::commitPalette(themeDirPath, loadedScheme, cfg)) {
         QMessageBox::warning(this, tr("Save failed"),
                              tr("Could not write %1 to:\n%2").arg(PaletteConfig::fileName(loadedScheme), themeDirPath));
         return;
     }
-
-    ThemeConfig globalCfg = ThemeConfig::fromThemeDir(themeDirPath);
-    globalCfg.colorScheme = loadedScheme;
-    globalCfg.save(themeDirPath);
 
     savedConfig[loadedScheme] = cfg;
     workingConfig[loadedScheme] = cfg;

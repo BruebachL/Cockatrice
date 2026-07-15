@@ -31,6 +31,7 @@
 #include "../interface/widgets/dialogs/dlg_update.h"
 #include "../interface/widgets/dialogs/dlg_view_log.h"
 #include "../interface/widgets/tabs/tab_game.h"
+#include "../interface/widgets/onboarding/first_run_wizard.h"
 #include "../interface/widgets/tabs/tab_supervisor.h"
 #include "../main.h"
 #include "logger.h"
@@ -541,13 +542,16 @@ void MainWindow::startupConfigCheck()
         actCheckClientUpdates();
     }
 
+    runFirstRunWizard();
+
     if (SettingsCache::instance().getClientVersion() == CLIENT_INFO_NOT_SET) {
         // no config found, 99% new clean install
         qCInfo(WindowMainStartupVersionLog)
             << "Startup: old client version empty, assuming first start after clean install";
-        alertForcedOracleRun(VERSION_STRING, false);
         SettingsCache::instance().downloads().resetToDefaultURLs(); // populate the download urls
         SettingsCache::instance().setClientVersion(VERSION_STRING);
+        actCheckServerUpdates(); // was previously triggered via alertForcedOracleRun
+        runFirstRunWizard();
     } else if (SettingsCache::instance().getClientVersion() != VERSION_STRING) {
         // config found, from another (presumably older) version
         qCInfo(WindowMainStartupVersionLog)
@@ -622,6 +626,21 @@ void MainWindow::startupConfigCheck()
             tip->show();
         }
     }
+}
+
+void MainWindow::runFirstRunWizard()
+{
+    auto *wizard = new FirstRunWizard(this);
+    wizard->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(wizard, &FirstRunWizard::cardDatabaseUpdateRequested, this, &MainWindow::actCheckCardUpdatesBackground);
+    connect(wizard, &FirstRunWizard::manualCardDatabaseSetupRequested, this, &MainWindow::actCheckCardUpdates);
+    connect(this, &MainWindow::cardDatabaseUpdateFinished, wizard, &FirstRunWizard::onCardDatabaseUpdateFinished);
+    connect(wizard, &FirstRunWizard::registerRequested, connectionController, &ConnectionController::registerToServer);
+    connect(wizard, &FirstRunWizard::connectRequested, connectionController, &ConnectionController::connectToServer);
+
+    wizard->setModal(true);
+    wizard->show();
 }
 
 void MainWindow::alertForcedOracleRun(const QString &version, bool isUpdate)
@@ -952,14 +971,17 @@ void MainWindow::cardUpdateError(QProcess::ProcessError err)
 
     exitCardDatabaseUpdate();
     QMessageBox::warning(this, tr("Error"), tr("The card database updater exited with an error:\n%1").arg(error));
+    emit cardDatabaseUpdateFinished(false);
 }
 
-void MainWindow::cardUpdateFinished(int, QProcess::ExitStatus exitStatus)
+void MainWindow::cardUpdateFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
+    const bool success = (exitStatus == QProcess::NormalExit) && (exitCode == 0);
     if (exitStatus == QProcess::NormalExit) {
         SettingsCache::instance().setLastCardUpdateCheck(QDateTime::currentDateTime().date());
     }
     exitCardDatabaseUpdate();
+    emit cardDatabaseUpdateFinished(success);
 }
 
 void MainWindow::actCheckServerUpdates()

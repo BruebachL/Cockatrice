@@ -358,6 +358,27 @@ set(cockatrice_SOURCES
     src/interface/widgets/utility/compact_push_button.h
     src/interface/widgets/server/user/user_info_popup.cpp
     src/interface/widgets/server/user/user_info_popup.h
+        src/interface/widgets/onboarding/step_indicator_widget.cpp
+        src/interface/widgets/onboarding/step_indicator_widget.h
+        src/interface/widgets/onboarding/first_run_wizard_page.cpp
+        src/interface/widgets/onboarding/first_run_wizard_page.h
+        src/interface/widgets/onboarding/first_run_wizard.cpp
+        src/interface/widgets/onboarding/first_run_wizard.h
+        src/interface/widgets/onboarding/pages/welcome_page.cpp
+        src/interface/widgets/onboarding/pages/welcome_page.h
+        src/interface/widgets/onboarding/pages/card_database_setup_page.cpp
+        src/interface/widgets/onboarding/pages/card_database_setup_page.h
+        src/interface/widgets/onboarding/pages/theme_setup_page.cpp
+        src/interface/widgets/onboarding/pages/theme_setup_page.h
+        src/interface/widgets/onboarding/pages/account_setup_page.cpp
+        src/interface/widgets/onboarding/pages/account_setup_page.h
+        src/interface/widgets/onboarding/pages/preferences_setup_page.cpp
+        src/interface/widgets/onboarding/pages/preferences_setup_page.h
+        src/interface/widgets/onboarding/pages/finish_page.cpp
+        src/interface/widgets/onboarding/pages/finish_page.h
+        src/interface/widgets/onboarding/shader_banner_widget.cpp
+        src/interface/widgets/onboarding/shader_banner_widget.h
+        src/interface/widgets/onboarding/banner_shader_config.h
 )
 
 add_subdirectory(sounds)
@@ -428,6 +449,19 @@ if(Qt6_FOUND)
     ${cockatrice_RESOURCES_RCC}
     ${cockatrice_MOC_SRCS}
     MANUAL_FINALIZATION
+  )
+  qt6_add_shaders(cockatrice "onboarding_shaders"
+          PREFIX "/onboarding/shaders"
+          BASE "src/interface/widgets/onboarding/shaders"
+          FILES
+          src/interface/widgets/onboarding/shaders/brand_banner.frag
+  )
+
+  qt6_add_resources(cockatrice "onboarding_qml"
+          PREFIX "/onboarding/qml"
+          BASE "src/interface/widgets/onboarding/qml"
+          FILES
+          src/interface/widgets/onboarding/qml/BrandBanner.qml
   )
 elseif(Qt5_FOUND)
   # Qt5 Translations need to be linked at executable creation time

@@ -59,6 +59,10 @@ class DlgTipOfTheDay;
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+signals:
+    //! Emitted after the background card-database update subprocess exits.
+    void cardDatabaseUpdateFinished(bool success);
+
 public slots:
     void actCheckCardUpdates();
     void actCheckCardUpdatesBackground();
@@ -113,6 +117,9 @@ private:
 
     void createTrayIcon();
     int getNextCustomSetPrefix(QDir dataDir);
+
+    void runFirstRunWizard();
+
     inline QString getCardUpdaterBinaryName()
     {
         return "oracle";
