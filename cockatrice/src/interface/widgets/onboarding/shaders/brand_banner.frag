@@ -3,18 +3,18 @@
 // ════════════════════════════════════════════════════════════════════════
 // brand_banner.frag
 //
-// One shader, six "motifs" (uMode 0..5), selected per onboarding page from
-// C++ (see BannerHost::applyMotifPreset). All motifs share the same base
-// gradient, atmosphere layer, and vignette, and the same colorA/colorB/
-// accent palette, so switching pages never feels like a different app --
-// only the foreground motion differs.
+// One shader, six "motifs" (uMode 0..5), all built on top of the SAME
+// shared backgroundField() -- a dark neutral gradient with two layered,
+// slow-moving flow-noise fields for depth, identical on every page. Only
+// the foreground emphasis differs per motif, and it's kept deliberately
+// small: the traced brand mark drawn in QML (BrandBanner.qml) is the one
+// real "moment" on every page, so these motifs stay quiet texture.
 //
 // IMPORTANT: the uniform block below must list custom uniforms in EXACTLY
 // the order they're declared as properties on each ShaderEffect instance in
 // BrandBanner.qml (after the two Qt-supplied members, qt_Matrix/qt_Opacity).
-// Qt Quick's shader reflection derives this block's layout from the QML
-// declaration order, not from this file. A mismatch compiles fine and
-// silently scrambles which QML property drives which uniform.
+// A mismatch compiles fine and silently scrambles which QML property
+// drives which uniform.
 // ════════════════════════════════════════════════════════════════════════
 
 layout(location = 0) in vec2 qt_TexCoord0;
@@ -57,12 +57,23 @@ float fbm(vec2 p)
 {
     float v = 0.0;
     float amp = 0.5;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
         v += amp * valueNoise(p);
-        p *= 2.02;
+        p *= 2.03;
         amp *= 0.5;
     }
     return v;
+}
+
+// Domain-warped flow noise: sampling fbm at a position that is itself
+// perturbed by fbm gives motion a liquid, flowing quality rather than
+// noise simply sliding under a fixed shape.
+float flowNoise(vec2 p, float t)
+{
+    vec2 warp1 = vec2(fbm(p + vec2(0.0, 0.0)), fbm(p + vec2(5.2, 1.3)));
+    vec2 warp2 = vec2(fbm(p + 4.0 * warp1 + vec2(1.7, 9.2) + t * 0.6),
+                      fbm(p + 4.0 * warp1 + vec2(8.3, 2.8) - t * 0.5));
+    return fbm(p + 4.0 * warp2 + t * 0.15);
 }
 
 // Dual falloff -- tight bright core plus a soft wide halo -- reads as a
@@ -75,153 +86,117 @@ float bloom(float d, float coreRadius, float haloRadius)
     return core + halo;
 }
 
-// Two overlapping sine waves instead of one -- avoids the metronomic feel
-// of a single sin(t), reads as organic "breathing" instead.
-float breathe(float t)
+// Rounded-box SDF (Inigo Quilez). p is local space (uv - shape center).
+float roundedBoxSDF(vec2 p, vec2 halfSize, float radius)
 {
-    return 0.5 + 0.32 * sin(t) + 0.18 * sin(t * 1.9 + 1.3);
+    vec2 d = abs(p) - halfSize + radius;
+    return length(max(d, 0.0)) - radius + min(max(d.x, d.y), 0.0);
 }
 
-vec3 baseGradient(vec2 uv)
+// Shared dark-neutral background: one eased gradient, two independent
+// flow-noise layers at different scale/speed (fakes depth/parallax without
+// needing real layer separation), identical on every page.
+vec3 backgroundField(vec2 uv, float time)
 {
-    float d = smoothstep(0.0, 1.0, uv.x * 0.55 + uv.y * 0.45);
-    return mix(uColorA.rgb, uColorB.rgb, d);
-}
+    float baseD = smoothstep(0.0, 1.0, uv.y * 0.5 + uv.x * 0.3);
+    float painted = flowNoise(uv * 1.3, time * 0.05) - 0.5;
+    baseD = clamp(baseD + painted * 0.16, 0.0, 1.0);
+    vec3 col = mix(uColorA.rgb, uColorB.rgb, baseD);
 
-// Slow-drifting soft cloud, shared by every motif underneath the per-mode
-// foreground -- keeps the banner from ever reading as a flat procedural
-// fill, and ties all six motifs to the same "material".
-float atmosphere(vec2 uv, float t)
-{
-    vec2 p = uv * vec2(2.2, 1.6) + vec2(t * 0.015, -t * 0.01) + uSeed * 3.0;
-    return fbm(p);
+    float deep = fbm(uv * 1.1 + vec2(37.1, 12.4) + time * 0.015);
+    col = mix(col, uColorB.rgb, (deep - 0.5) * 0.10);
+
+    float mid = fbm(uv * 2.3 + vec2(4.3, 88.0) + time * 0.05);
+    col = mix(col, uColorA.rgb, (mid - 0.5) * 0.07);
+
+    return col;
 }
 
 float vignette(vec2 uv)
 {
     vec2 c = uv - 0.5;
     c.x *= max(uAspect, 0.0001);
-    return smoothstep(0.95, 0.3, length(c));
+    return smoothstep(1.0, 0.25, length(c));
 }
 
 // ── Motifs ─────────────────────────────────────────────────────────────
+// All deliberately quiet -- the traced brand mark drawn in QML carries the
+// "moment" on every page now, so these stay background texture.
 
-vec3 motifWelcome(vec2 uv, vec3 base, float t)
+vec3 motifWelcome(vec2 uv, vec3 bg, float t)
 {
-    vec2 center = vec2(0.46, 0.58);
-    float b = breathe(t * 0.6);
-    vec3 col = base + uAccent.rgb * bloom(length(uv - center), 0.16, 0.4) * (0.3 + 0.3 * b);
+    return bg;
+}
 
-    float motes = 0.0;
-    for (int i = 0; i < 5; i++) {
+vec3 motifCardDatabase(vec2 uv, vec3 bg, float t)
+{
+    vec3 col = bg;
+    const int CARDS = 4;
+    for (int i = 0; i < CARDS; i++) {
         float fi = float(i);
-        vec2 p = uv * vec2(5.0, 2.6) + vec2(uSeed * 8.0 + fi * 4.1, -t * (0.05 + fi * 0.015) - fi * 1.7);
-        float mote = smoothstep(0.9, 0.985, valueNoise(p));
-        motes += mote * mix(0.25, 0.55, fract(fi * 0.63));
-    }
-    return col + uAccent.rgb * motes;
-}
+        float depth = fract(fi * 0.618 + uSeed);
+        float speed = mix(0.05, 0.02, depth);
+        float cycle = fract(t * speed + fi * 0.31 + uSeed);
+        vec2 pos = vec2(mix(-0.2, 1.2, cycle), 0.5 + sin(cycle * 6.283 * 1.4 + fi * 2.0) * 0.26);
+        float scale = mix(0.15, 0.07, depth);
 
-float dataStreak(vec2 uv, float rowId, float t)
-{
-    float rowSpeed = 0.35 + hash21(vec2(rowId, 1.0)) * 0.55;
-    float phase = hash21(vec2(rowId, 2.0));
-    float travel = fract(uv.x - t * rowSpeed * 0.14 + phase);
-    float head = smoothstep(0.018, 0.0, travel);
-    float tail = exp(-travel * 9.0) * 0.5; // soft comet trail behind the head
-    return max(head, tail);
-}
+        vec2 p = uv - pos;
+        float d = roundedBoxSDF(p, vec2(scale * 0.7, scale), scale * 0.25);
+        float shape = smoothstep(0.04, -0.03, d);
+        float brightness = mix(0.55, 1.0, 1.0 - depth);
 
-vec3 motifCardDatabase(vec2 uv, vec3 base, float t)
-{
-    vec3 col = base;
-    const int ROWS = 7;
-    for (int r = 0; r < ROWS; r++) {
-        float rowId = float(r) + uSeed * 5.0;
-        float rowY = (float(r) + 0.5) / float(ROWS);
-        float rowMask = smoothstep(0.045, 0.0, abs(uv.y - rowY));
-        float brightness = mix(0.3, 0.8, hash21(vec2(rowId, 3.0)));
-        col += uAccent.rgb * dataStreak(uv, rowId, t) * rowMask * brightness * 0.6;
+        col = mix(col, uColorB.rgb * 1.2, shape * brightness * 0.2);
+        col += uAccent.rgb * smoothstep(0.03, 0.0, abs(d)) * 0.05 * brightness;
     }
     return col;
 }
 
-vec3 motifTheming(vec2 uv, float t)
+vec3 motifTheming(vec2 uv, vec3 bg, float t)
 {
-    float wave = sin((uv.x + uv.y) * 3.6 - t * 0.5) * 0.5 + sin((uv.x - uv.y) * 2.1 + t * 0.31) * 0.3;
-    wave = wave * 0.5 + 0.5;
-    float mixAmt = smoothstep(0.0, 1.0, clamp(uv.x * 0.5 + uv.y * 0.3 + wave * 0.22, 0.0, 1.0));
-    vec3 col = mix(uColorA.rgb, uColorB.rgb, mixAmt);
-    return col + uAccent.rgb * smoothstep(0.75, 1.0, wave) * 0.3;
+    float flow = flowNoise(uv * 1.7 + vec2(uSeed * 3.0, 5.0), t * 0.15);
+    vec3 col = mix(bg, uColorB.rgb * 1.1, (flow - 0.5) * 0.3);
+    float crest = smoothstep(0.82, 0.97, flow);
+    return col + uAccent.rgb * crest * 0.1;
 }
 
-vec3 motifAccount(vec2 uv, vec3 base, float t)
+vec3 motifAccount(vec2 uv, vec3 bg, float t)
 {
-    vec3 col = base;
-    const int NODES = 5;
-    vec2 pts[NODES];
-    for (int i = 0; i < NODES; i++) {
+    vec3 col = bg;
+    vec2 origin = vec2(0.5, 0.52);
+    const int BODIES = 3;
+    for (int i = 0; i < BODIES; i++) {
         float fi = float(i);
-        pts[i] = vec2(hash21(vec2(fi, uSeed)), hash21(vec2(fi + 10.0, uSeed))) * vec2(0.78, 0.66) +
-                 vec2(0.11, 0.17);
-    }
+        float radius = mix(0.14, 0.24, fract(fi * 0.53 + uSeed));
+        float speed = mix(0.05, 0.09, fract(fi * 0.71));
+        float angle = t * speed + fi * 2.4 + uSeed * 6.0;
+        vec2 pos = origin + vec2(cos(angle), sin(angle) * 0.6) * radius;
 
-    for (int i = 0; i < NODES; i++) {
-        vec2 a = pts[i];
-        vec2 b = pts[(i + 1) % NODES];
-        vec2 pa = uv - a;
-        vec2 ba = b - a;
-        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-        float distToLine = length(pa - ba * h);
-        col += uAccent.rgb * 0.09 * smoothstep(0.008, 0.0, distToLine);
-
-        float travel = fract(t * 0.16 + float(i) * 0.37 + uSeed);
-        float diff = abs(h - travel);
-        diff = min(diff, 1.0 - diff); // wrap distance so the pulse loops smoothly, no seam
-        col += uAccent.rgb * smoothstep(0.06, 0.0, diff) * smoothstep(0.02, 0.0, distToLine) * 0.7;
-    }
-
-    for (int i = 0; i < NODES; i++) {
-        float pulse = 0.5 + 0.5 * sin(t * 0.8 + float(i) * 1.7);
-        float nodeSize = mix(0.018, 0.03, hash21(vec2(float(i), uSeed + 1.0)));
-        col += uAccent.rgb * bloom(length(uv - pts[i]), nodeSize, nodeSize * 3.2) * (0.45 + 0.55 * pulse);
+        // Small, tight points of light -- not a soft field filling the frame.
+        col += uAccent.rgb * bloom(length(uv - pos), 0.012, 0.05) * 0.5;
     }
     return col;
 }
 
-vec3 motifPreferences(vec2 uv, vec3 base, float t)
+vec3 motifPreferences(vec2 uv, vec3 bg, float t)
 {
     vec2 cell = fract(uv * 12.0) - 0.5;
     float gridLine = 1.0 - smoothstep(0.0, 0.05, min(abs(cell.x), abs(cell.y)));
-    vec3 col = base + uAccent.rgb * gridLine * 0.045;
+    vec3 col = bg + uAccent.rgb * gridLine * 0.03;
 
     float sweepCoord = fract((uv.x + uv.y) * 0.5 - t * 0.1);
     float sweepDist = min(sweepCoord, 1.0 - sweepCoord);
-    col += uAccent.rgb * smoothstep(0.018, 0.0, sweepDist);
-    col += uAccent.rgb * smoothstep(0.1, 0.0, sweepDist) * 0.4;
+    col += uAccent.rgb * smoothstep(0.012, 0.0, sweepDist);
+    col += uAccent.rgb * smoothstep(0.06, 0.0, sweepDist) * 0.25;
     return col;
 }
 
-vec3 motifFinish(vec2 uv, vec3 base, float t)
+vec3 motifFinish(vec2 uv, vec3 bg, float t)
 {
-    vec3 col = base;
-
-    float sweepPos = fract(t * 0.07);
-    float sweepDist = abs((uv.x * 0.7 + uv.y * 0.3) - sweepPos);
-    col += uAccent.rgb * smoothstep(0.02, 0.0, sweepDist);
-    col += uAccent.rgb * smoothstep(0.09, 0.0, sweepDist) * 0.4;
-
-    vec2 center = vec2(0.5, 0.52);
-    float b = breathe(t * 0.45);
-    col += uAccent.rgb * bloom(length(uv - center), 0.32, 0.5) * 0.12 * (0.5 + 0.5 * b);
-
-    float sparkle = 0.0;
-    for (int i = 0; i < 3; i++) {
-        float fi = float(i);
-        vec2 p = uv * vec2(4.0, 2.2) + vec2(uSeed * 6.0 + fi * 5.3, -t * 0.02 - fi * 2.1);
-        sparkle += smoothstep(0.94, 0.99, valueNoise(p)) * 0.35;
-    }
-    return col + uAccent.rgb * sparkle;
+    vec3 col = bg * 1.02;
+    float sweepPos = fract(t * 0.05);
+    float sweepDist = abs((uv.x * 0.6 + uv.y * 0.4) - sweepPos);
+    col += uAccent.rgb * bloom(sweepDist, 0.025, 0.09) * 0.16;
+    return col;
 }
 
 void main()
@@ -229,17 +204,16 @@ void main()
     vec2 uv = qt_TexCoord0;
     float t = iTime * uSpeed;
 
-    vec3 base = baseGradient(uv);
-    base += (atmosphere(uv, iTime) - 0.5) * 0.05;
+    vec3 bg = backgroundField(uv, iTime);
 
     vec3 col;
-    if (uMode < 0.5) col = motifWelcome(uv, base, t);
-    else if (uMode < 1.5) col = motifCardDatabase(uv, base, t);
-    else if (uMode < 2.5) col = motifTheming(uv, t);
-    else if (uMode < 3.5) col = motifAccount(uv, base, t);
-    else if (uMode < 4.5) col = motifPreferences(uv, base, t);
-    else col = motifFinish(uv, base, t);
+    if (uMode < 0.5) col = motifWelcome(uv, bg, t);
+    else if (uMode < 1.5) col = motifCardDatabase(uv, bg, t);
+    else if (uMode < 2.5) col = motifTheming(uv, bg, t);
+    else if (uMode < 3.5) col = motifAccount(uv, bg, t);
+    else if (uMode < 4.5) col = motifPreferences(uv, bg, t);
+    else col = motifFinish(uv, bg, t);
 
-    col *= mix(0.6, 1.0, vignette(uv));
+    col *= mix(0.62, 1.0, vignette(uv));
     fragColor = vec4(col, 1.0) * qt_Opacity;
 }
