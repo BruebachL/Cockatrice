@@ -21,6 +21,7 @@ CardSetPtr ICardDatabaseParser::internalAddSet(const QString &setName,
 {
     if (sets.contains(setName)) {
         return sets.value(setName);
+
     }
 
     CardSetPtr newSet = CardSet::newInstance(cardSetPriorityController, setName);
