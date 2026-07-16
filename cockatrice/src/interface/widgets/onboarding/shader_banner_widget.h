@@ -46,6 +46,7 @@ public:
     explicit BannerHost(QWidget *parent = nullptr);
 
     void setMotif(Motif motif);
+    void setShowTrace(bool show);
 
 protected:
     void showEvent(QShowEvent *event) override;

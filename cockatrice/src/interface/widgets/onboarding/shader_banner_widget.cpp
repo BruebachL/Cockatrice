@@ -11,13 +11,11 @@
 
 namespace
 {
-// Same two-green-plus-accent brand palette every motif draws from, so the
-// "family resemblance" holds even in the no-shader fallback. Eyeballed
-// against the cockatrice logo's gradient, not pixel-sampled -- swap these
-// three constants for exact hex values if you have them.
-constexpr QRgb kColorA = 0x8BDD6B;
-constexpr QRgb kColorB = 0x145A32;
-constexpr QRgb kAccent = 0xEAFBE7;
+// Near-black base palette -- the background is dark and quiet so the green
+// accent (and the traced brand mark on the welcome page) stand out.
+constexpr QRgb kColorA = 0x1A1A20;
+constexpr QRgb kColorB = 0x0E0E12;
+constexpr QRgb kAccent = 0x8BDD6B;
 } // namespace
 
 class GradientFallbackWidget : public QWidget
@@ -38,7 +36,7 @@ protected:
 
 BannerHost::BannerHost(QWidget *parent) : QWidget(parent)
 {
-    setFixedHeight(120);
+    setFixedHeight(150);
 
     stack = new QStackedLayout(this);
     stack->setContentsMargins(0, 0, 0, 0);
@@ -95,6 +93,13 @@ void BannerHost::setMotif(Motif motif)
     applyMotifPreset(motif);
 }
 
+void BannerHost::setShowTrace(bool show)
+{
+    if (config) {
+        config->setShowTrace(show);
+    }
+}
+
 BannerHost::Preset BannerHost::presetFor(Motif motif)
 {
     // speed/seed tuned per motif so e.g. the network "pulse" (Account) reads
@@ -104,15 +109,15 @@ BannerHost::Preset BannerHost::presetFor(Motif motif)
         case Motif::Welcome:
             return {0.0, 0.6, 0.15};
         case Motif::CardDatabase:
-            return {1.0, 1.0, 0.42};
+            return {1.0, 1.3, 0.42};
         case Motif::Theming:
-            return {2.0, 0.5, 0.73};
+            return {2.0, 1.2, 0.73};
         case Motif::Account:
-            return {3.0, 0.7, 0.28};
+            return {3.0, 0.8, 0.28};
         case Motif::Preferences:
-            return {4.0, 0.8, 0.61};
+            return {4.0, 1.0, 0.61};
         case Motif::Finish:
-            return {5.0, 0.45, 0.91};
+            return {5.0, 1.0, 0.91};
     }
     return {0.0, 0.6, 0.15};
 }

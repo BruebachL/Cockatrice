@@ -22,8 +22,8 @@
 FirstRunWizard::FirstRunWizard(QWidget *parent) : QDialog(parent)
 {
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
-    setMinimumSize(640, 460);
-    resize(720, 520);
+    setMinimumSize(640, 490);
+    resize(720, 550);
 
     bannerHost = new BannerHost(this);
 
@@ -120,6 +120,7 @@ void FirstRunWizard::showPage(int index)
     if (index < motifs.size()) {
         bannerHost->setMotif(motifs[index]);
     }
+    bannerHost->setShowTrace(index == 0);
     titleLabel->setText(pages[index]->stepTitle());
     subtitleLabel->setText(pages[index]->stepSubtitle());
     subtitleLabel->setVisible(!pages[index]->stepSubtitle().isEmpty());

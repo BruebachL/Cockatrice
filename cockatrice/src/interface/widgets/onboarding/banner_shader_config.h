@@ -13,7 +13,8 @@
  * them via opacity -- see frontIsA. The shared palette (colorA/colorB/
  * accent) and clock (time/aspect) apply to both banks identically, since
  * only the foreground motif changes between onboarding pages, never the
- * brand palette.
+ * brand palette. showTrace gates the traced brand-mark reveal animation
+ * (visible only on the welcome page).
  *
  * Deliberately plain `property` (not `required property`) on the QML side
  * -- a required-property shadowing bug bit the home-screen particle
@@ -34,6 +35,7 @@ class BannerShaderConfig : public QObject
     Q_PROPERTY(qreal seedB READ seedB WRITE setSeedB NOTIFY seedBChanged)
 
     Q_PROPERTY(bool frontIsA READ frontIsA WRITE setFrontIsA NOTIFY frontIsAChanged)
+    Q_PROPERTY(bool showTrace READ showTrace WRITE setShowTrace NOTIFY showTraceChanged)
 
     Q_PROPERTY(QColor colorA READ colorA WRITE setColorA NOTIFY colorAChanged)
     Q_PROPERTY(QColor colorB READ colorB WRITE setColorB NOTIFY colorBChanged)
@@ -67,6 +69,9 @@ public:
     bool frontIsA() const { return m_frontIsA; }
     void setFrontIsA(bool v) { if (v != m_frontIsA) { m_frontIsA = v; emit frontIsAChanged(); } }
 
+    bool showTrace() const { return m_showTrace; }
+    void setShowTrace(bool v) { if (v != m_showTrace) { m_showTrace = v; emit showTraceChanged(); } }
+
     QColor colorA() const { return m_colorA; }
     void setColorA(const QColor &c) { if (c != m_colorA) { m_colorA = c; emit colorAChanged(); } }
     QColor colorB() const { return m_colorB; }
@@ -84,6 +89,7 @@ signals:
     void speedBChanged();
     void seedBChanged();
     void frontIsAChanged();
+    void showTraceChanged();
     void colorAChanged();
     void colorBChanged();
     void accentChanged();
@@ -101,10 +107,11 @@ private:
     qreal m_seedB = 0.0;
 
     bool m_frontIsA = true;
+    bool m_showTrace = false;
 
-    QColor m_colorA{0x8B, 0xDD, 0x6B};
-    QColor m_colorB{0x14, 0x5A, 0x32};
-    QColor m_accent{0xEA, 0xFB, 0xE7};
+    QColor m_colorA{0x1A, 0x1A, 0x20};
+    QColor m_colorB{0x0E, 0x0E, 0x12};
+    QColor m_accent{0x8B, 0xDD, 0x6B};
 };
 
 #endif // BANNER_SHADER_CONFIG_H
