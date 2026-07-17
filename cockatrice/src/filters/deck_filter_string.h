@@ -7,7 +7,7 @@
 #ifndef DECK_FILTER_STRING_H
 #define DECK_FILTER_STRING_H
 
-#include "../interface/widgets/visual_deck_storage/deck_preview/deck_preview_widget.h"
+#include "../interface/deck_loader/deck_loader.h"
 
 #include <QLoggingCategory>
 #include <QString>
@@ -16,7 +16,16 @@
 inline Q_LOGGING_CATEGORY(DeckFilterStringLog, "deck_filter_string");
 
 /**
- * Extra info relevant to filtering that isn't present in the DeckPreviewWidget
+ * Data needed for deck filtering, decoupled from any widget.
+ */
+struct DeckFilterData
+{
+    QString filePath;
+    DeckLoader *deckLoader;
+};
+
+/**
+ * Extra info relevant to filtering that isn't present in the DeckFilterData
  */
 struct ExtraDeckSearchInfo
 {
@@ -26,14 +35,14 @@ struct ExtraDeckSearchInfo
     QString relativeFilePath;
 };
 
-typedef std::function<bool(const DeckPreviewWidget *, const ExtraDeckSearchInfo &)> DeckFilter;
+typedef std::function<bool(const DeckFilterData &, const ExtraDeckSearchInfo &)> DeckFilter;
 
 class DeckFilterString
 {
 public:
     DeckFilterString();
     explicit DeckFilterString(const QString &expr);
-    bool check(const DeckPreviewWidget *deck, const ExtraDeckSearchInfo &info) const
+    bool check(const DeckFilterData &deck, const ExtraDeckSearchInfo &info) const
     {
         return filter(deck, info);
     }

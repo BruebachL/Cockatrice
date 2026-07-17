@@ -12,6 +12,7 @@
 
 #include <QWidget>
 
+class FlowWidget;
 class DeckPreviewWidget;
 class DeckPreviewDeckTagsDisplayWidget : public QWidget
 {

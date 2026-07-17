@@ -7,7 +7,6 @@
 #ifndef DECK_PREVIEW_WIDGET_H
 #define DECK_PREVIEW_WIDGET_H
 
-#include "../../../deck_loader/deck_loader.h"
 #include "../../cards/additional_info/color_identity_widget.h"
 #include "../../cards/deck_preview_card_picture_widget.h"
 #include "../visual_deck_storage_widget.h"
@@ -17,6 +16,8 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QEvent>
+#include <QLabel>
+#include <QModelIndex>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -28,34 +29,22 @@ class DeckPreviewWidget final : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DeckPreviewWidget(QWidget *_parent,
-                               VisualDeckStorageWidget *_visualDeckStorageWidget,
-                               const QString &_filePath);
+    explicit DeckPreviewWidget(QWidget *_parent, VisualDeckStorageWidget *_visualDeckStorageWidget);
+    void setModelIndex(const QModelIndex &proxyIndex);
     void retranslateUi();
-    QString getColorIdentity();
     [[nodiscard]] QString getDisplayName() const;
+    [[nodiscard]] QString getFilePath() const;
+    [[nodiscard]] DeckLoader *getDeckLoader() const;
+    [[nodiscard]] QStringList getAllModelTags() const;
 
     VisualDeckStorageWidget *visualDeckStorageWidget;
     QVBoxLayout *layout;
-    QString filePath;
-    QDateTime lastModifiedTime;
-    DeckLoader *deckLoader;
-    DeckPreviewCardPictureWidget *bannerCardDisplayWidget = nullptr;
-    ColorIdentityWidget *colorIdentityWidget = nullptr;
-    DeckPreviewDeckTagsDisplayWidget *deckTagsDisplayWidget = nullptr;
-    QLabel *bannerCardLabel = nullptr;
-    QComboBox *bannerCardComboBox = nullptr;
-    bool filteredBySearch = false;
-    bool filteredByColor = false;
-    bool filteredByTags = false;
-    [[nodiscard]] bool checkVisibility() const;
 
 signals:
     void deckLoadRequested(const QString &filePath);
     void openDeckEditor(const LoadedDeck &deck);
 
 public slots:
-    void setFilePath(const QString &filePath);
     void refreshBannerCardText();
     void refreshBannerCardToolTip();
     void updateBannerCardComboBox(const QString &currentText);
@@ -64,8 +53,7 @@ public slots:
     void imageDoubleClickedEvent(QMouseEvent *event, DeckPreviewCardPictureWidget *instance);
     void initializeUi(bool deckLoadSuccess);
     void resyncWidgets();
-    void reloadIfModified();
-    void updateVisibility();
+    void updateFromModel();
     void updateColorIdentityVisibility(bool visible);
     void updateBannerCardComboBoxVisibility(bool visible);
     void updateTagsVisibility(bool visible);
@@ -73,16 +61,26 @@ public slots:
 
 protected:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    void enterEvent(QEnterEvent *event) override; // Qt6 signature
+    void enterEvent(QEnterEvent *event) override;
 #else
-    void enterEvent(QEvent *event) override; // Qt5 signature
+    void enterEvent(QEvent *event) override;
 #endif
 
 private:
+    QSortFilterProxyModel *proxyModel = nullptr;
+    int sourceModelRow = -1;
+    DeckPreviewCardPictureWidget *bannerCardDisplayWidget = nullptr;
+    ColorIdentityWidget *colorIdentityWidget = nullptr;
+    DeckPreviewDeckTagsDisplayWidget *deckTagsDisplayWidget = nullptr;
+    QLabel *bannerCardLabel = nullptr;
+    QComboBox *bannerCardComboBox = nullptr;
+
     void updateLastModifiedTime();
     void writeDeckToFile();
     QMenu *createRightClickMenu();
     void addSetBannerCardMenu(QMenu *menu);
+    int sourceRow() const;
+    [[nodiscard]] VisualDeckStorageModel *getSourceModel() const;
 
 private slots:
     void setTags(const QStringList &tags);
@@ -105,18 +103,15 @@ protected:
     {
         if (event->type() == QEvent::Wheel) {
             if (auto *combo = qobject_cast<QComboBox *>(obj)) {
-                // If popup is not open, forward event to parent scroll area
                 if (!combo->view()->isVisible()) {
-                    // Try to find a scrollable parent and manually send the event
                     QWidget *parent = combo->parentWidget();
                     while (parent) {
                         if (auto *scroll = qobject_cast<QAbstractScrollArea *>(parent)) {
                             QApplication::sendEvent(scroll->viewport(), event);
-                            return true; // Mark event as handled
+                            return true;
                         }
                         parent = parent->parentWidget();
                     }
-                    // If no scrollable parent found, just block
                     return true;
                 }
             }

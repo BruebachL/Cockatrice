@@ -14,10 +14,15 @@
 #include <QVBoxLayout>
 #include <libcockatrice/card/database/card_database_manager.h>
 
-VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(parent), folderWidget(nullptr)
+VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent)
+    : QWidget(parent), folderWidget(nullptr), rebuildTimer(new QTimer(this))
 {
-    deckListModel = new DeckListModel(this);
-    deckListModel->setObjectName("visualDeckModel");
+    deckStorageModel = new VisualDeckStorageModel(this);
+    deckStorageProxyModel = new VisualDeckStorageProxyModel(this);
+    deckStorageProxyModel->setSourceModel(deckStorageModel);
+
+    rebuildTimer->setSingleShot(true);
+    rebuildTimer->setInterval(50);
 
     layout = new QVBoxLayout(this);
     layout->setSpacing(0);
@@ -56,10 +61,6 @@ VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(pare
     tagFilterWidget = new VisualDeckStorageTagFilterWidget(this);
     updateTagsVisibility(SettingsCache::instance().getVisualDeckStorageShowTagFilter());
 
-    deckPreviewSelectionAnimationEnabled = SettingsCache::instance().getVisualDeckStorageSelectionAnimation();
-    connect(&SettingsCache::instance(), &SettingsCache::visualDeckStorageSelectionAnimationChanged, this,
-            &VisualDeckStorageWidget::updateSelectionAnimationEnabled);
-
     // deck area
     scrollArea = new QScrollArea(this);
     scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -72,16 +73,22 @@ VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(pare
     layout->addWidget(scrollArea);
 
     connect(CardDatabaseManager::getInstance(), &CardDatabase::cardDatabaseLoadingFinished, this,
-            &VisualDeckStorageWidget::createRootFolderWidget);
+            &VisualDeckStorageWidget::loadModel);
+
+    connect(deckStorageModel, &VisualDeckStorageModel::entryLoaded, this, [this](int row) {
+        qInfo() << "[VDS-DEBUG] entryLoaded signal fired for row" << row << "folderWidget set?" << (folderWidget != nullptr);
+        if (folderWidget) {
+            rebuildTimer->start();
+        }
+    });
 
     databaseLoadIndicator = new QLabel(this);
     databaseLoadIndicator->setAlignment(Qt::AlignCenter);
 
     retranslateUi();
 
-    // Don't waste time processing the cards if they're going to get refreshed anyway once the db finishes loading
     if (CardDatabaseManager::getInstance()->getLoadStatus() == LoadStatus::Ok) {
-        createRootFolderWidget();
+        loadModel();
         databaseLoadIndicator->setVisible(false);
     } else {
         scrollArea->setWidget(databaseLoadIndicator);
@@ -91,7 +98,7 @@ VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(pare
 void VisualDeckStorageWidget::refreshIfPossible()
 {
     if (scrollArea->widget() != databaseLoadIndicator) {
-        createRootFolderWidget();
+        loadModel();
     }
 }
 
@@ -100,7 +107,6 @@ void VisualDeckStorageWidget::showEvent(QShowEvent *event)
     QWidget::showEvent(event);
     if (scrollArea->widget() == folderWidget) {
         scrollArea->widget()->setMaximumWidth(scrollArea->viewport()->width());
-        scrollArea->widget()->adjustSize();
     }
 }
 
@@ -109,7 +115,6 @@ void VisualDeckStorageWidget::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     if (scrollArea->widget() == folderWidget) {
         scrollArea->widget()->setMaximumWidth(scrollArea->viewport()->width());
-        scrollArea->widget()->adjustSize();
     }
 }
 
@@ -121,94 +126,86 @@ void VisualDeckStorageWidget::retranslateUi()
     quickSettingsWidget->setToolTip(tr("Visual Deck Storage Settings"));
 }
 
-/**
- * Gets a const pointer to the quick settings so that the values can be accessed.
- */
 const VisualDeckStorageQuickSettingsWidget *VisualDeckStorageWidget::settings() const
 {
     return quickSettingsWidget;
 }
 
-/**
- * Reapplies all sort and filter options by calling the appropriate update methods.
- */
-void VisualDeckStorageWidget::reapplySortAndFilters()
+void VisualDeckStorageWidget::loadModel()
 {
-    updateSortOrder();
-    updateTagFilter();
-    updateColorFilter();
-    updateSearchFilter();
+    qInfo() << "[VDS-DEBUG] loadModel() called, deckPath =" << SettingsCache::instance().getDeckPath();
+    deckStorageModel->setDeckPath(SettingsCache::instance().getDeckPath());
+    qInfo() << "[VDS-DEBUG] loadModel() source model rowCount =" << deckStorageModel->rowCount();
+    rebuildFolderWidget();
 }
 
-void VisualDeckStorageWidget::createRootFolderWidget()
+void VisualDeckStorageWidget::rebuildFolderWidget()
 {
+    qInfo() << "[VDS-DEBUG] rebuildFolderWidget() before sort: source rowCount ="
+             << deckStorageModel->rowCount() << "proxy rowCount =" << deckStorageProxyModel->rowCount();
+    deckStorageProxyModel->sort(0);
+    qInfo() << "[VDS-DEBUG] rebuildFolderWidget() after sort: proxy rowCount ="
+             << deckStorageProxyModel->rowCount();
+
     folderWidget = new VisualDeckStorageFolderDisplayWidget(this, this, SettingsCache::instance().getDeckPath(), false,
                                                             quickSettingsWidget->getShowFolders());
 
-    scrollArea->setWidget(folderWidget); // this automatically destroys the old folderWidget
+    scrollArea->setWidget(folderWidget);
     scrollArea->widget()->setMaximumWidth(scrollArea->viewport()->width());
-    scrollArea->widget()->adjustSize();
 
-    /* We have to schedule a QTimer here so that the sorting logic doesn't try to access widgets that haven't been
-     * processed by the event loop yet. Otherwise, deck sorting will intermittently segfault on some systems.
-     */
-    QTimer::singleShot(0, this, &VisualDeckStorageWidget::reapplySortAndFilters);
+    QTimer::singleShot(0, this, [this]() {
+        updateSortOrder();
+        updateTagFilter();
+        updateColorFilter();
+        updateSearchFilter();
+    });
 }
 
 void VisualDeckStorageWidget::updateShowFolders(bool enabled)
 {
     if (folderWidget) {
         folderWidget->updateShowFolders(enabled);
-        QTimer::singleShot(0, this, &VisualDeckStorageWidget::reapplySortAndFilters);
+        QTimer::singleShot(0, this, [this]() {
+            updateSortOrder();
+            updateTagFilter();
+            updateColorFilter();
+            updateSearchFilter();
+        });
     }
 }
 
 void VisualDeckStorageWidget::updateSortOrder()
 {
-    if (folderWidget) {
-        sortWidget->sortFolder(folderWidget);
-        for (VisualDeckStorageFolderDisplayWidget *subFolderWidget :
-             folderWidget->findChildren<VisualDeckStorageFolderDisplayWidget *>()) {
-            sortWidget->sortFolder(subFolderWidget);
-        }
+    if (sortWidget) {
+        sortWidget->applySortOrder(deckStorageProxyModel);
     }
 }
 
 void VisualDeckStorageWidget::updateTagFilter()
 {
-    if (folderWidget) {
-        tagFilterWidget->filterDecksBySelectedTags(folderWidget->findChildren<DeckPreviewWidget *>());
+    if (tagFilterWidget && folderWidget) {
+        tagFilterWidget->updateFilterFromModel();
         folderWidget->updateVisibility();
     }
 }
 
 void VisualDeckStorageWidget::updateColorFilter()
 {
-    if (folderWidget) {
-        deckPreviewColorIdentityFilterWidget->filterWidgets(folderWidget->findChildren<DeckPreviewWidget *>());
+    if (deckPreviewColorIdentityFilterWidget && folderWidget) {
+        deckPreviewColorIdentityFilterWidget->applyColorFilter(deckStorageProxyModel);
         folderWidget->updateVisibility();
     }
 }
 
 void VisualDeckStorageWidget::updateSearchFilter()
 {
-    if (folderWidget) {
-        searchWidget->filterWidgets(folderWidget->findChildren<DeckPreviewWidget *>(), searchWidget->getSearchText());
+    if (searchWidget && folderWidget) {
+        searchWidget->applySearchFilter(deckStorageProxyModel);
         folderWidget->updateVisibility();
     }
 }
 
 void VisualDeckStorageWidget::updateTagsVisibility(const bool visible)
 {
-    if (visible) {
-        tagFilterWidget->setVisible(true);
-
-    } else {
-        tagFilterWidget->setHidden(true);
-    }
-}
-
-void VisualDeckStorageWidget::updateSelectionAnimationEnabled(const bool enabled)
-{
-    deckPreviewSelectionAnimationEnabled = enabled;
+    tagFilterWidget->setVisible(visible);
 }

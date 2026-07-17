@@ -90,18 +90,17 @@ static QStringList findAllKnownTags()
 
 void DeckPreviewDeckTagsDisplayWidget::openTagEditDlg()
 {
-    if (qobject_cast<DeckPreviewWidget *>(parentWidget())) {
-        // If we're the child of a DeckPreviewWidget, then we need to handle conversion
-        auto *deckPreviewWidget = qobject_cast<DeckPreviewWidget *>(parentWidget());
-
+    if (auto *deckPreviewWidget = qobject_cast<DeckPreviewWidget *>(parentWidget())) {
         bool canAddTags = promptFileConversionIfRequired(deckPreviewWidget);
 
         if (canAddTags) {
-            QStringList knownTags = deckPreviewWidget->visualDeckStorageWidget->tagFilterWidget->getAllKnownTags();
+            QStringList knownTags = deckPreviewWidget->getAllModelTags();
+            if (knownTags.isEmpty()) {
+                knownTags = findAllKnownTags();
+            }
             execTagDialog(knownTags);
         }
     } else {
-        // If we're the child of an AbstractTabDeckEditor, then we don't bother with conversion
         QStringList knownTags = findAllKnownTags();
         execTagDialog(knownTags);
     }
@@ -124,9 +123,11 @@ static bool confirmOverwriteIfExists(QWidget *parent, const QString &filePath)
 
 static void convertFileToCockatriceFormat(DeckPreviewWidget *deckPreviewWidget)
 {
-    DeckLoader::convertToCockatriceFormat(deckPreviewWidget->deckLoader->getDeck());
-    deckPreviewWidget->filePath = deckPreviewWidget->deckLoader->getDeck().lastLoadInfo.fileName;
-    deckPreviewWidget->refreshBannerCardText();
+    DeckLoader *loader = deckPreviewWidget->getDeckLoader();
+    if (loader) {
+        DeckLoader::convertToCockatriceFormat(loader->getDeck());
+        deckPreviewWidget->refreshBannerCardText();
+    }
 }
 
 /**
@@ -136,7 +137,9 @@ static void convertFileToCockatriceFormat(DeckPreviewWidget *deckPreviewWidget)
  */
 bool DeckPreviewDeckTagsDisplayWidget::promptFileConversionIfRequired(DeckPreviewWidget *deckPreviewWidget)
 {
-    if (DeckFileFormat::getFormatFromName(deckPreviewWidget->filePath) == DeckFileFormat::Cockatrice) {
+    QString filePath = deckPreviewWidget->getFilePath();
+
+    if (DeckFileFormat::getFormatFromName(filePath) == DeckFileFormat::Cockatrice) {
         return true;
     }
 
@@ -146,7 +149,7 @@ bool DeckPreviewDeckTagsDisplayWidget::promptFileConversionIfRequired(DeckPrevie
             return false;
         }
 
-        if (!confirmOverwriteIfExists(this, deckPreviewWidget->filePath)) {
+        if (!confirmOverwriteIfExists(this, filePath)) {
             return false;
         }
 
@@ -164,7 +167,7 @@ bool DeckPreviewDeckTagsDisplayWidget::promptFileConversionIfRequired(DeckPrevie
     }
 
     // Try to convert file
-    if (!confirmOverwriteIfExists(this, deckPreviewWidget->filePath)) {
+    if (!confirmOverwriteIfExists(this, filePath)) {
         return false;
     }
 

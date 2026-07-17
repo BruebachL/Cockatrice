@@ -398,7 +398,13 @@ QSize FlowLayout::calculateMinimumSizeVertical() const
 void FlowLayout::addItem(QLayoutItem *item)
 {
     if (item) {
+        if (auto *widgetItem = dynamic_cast<QWidgetItem *>(item)) {
+            if (QWidget *w = widgetItem->widget()) {
+                addChildWidget(w);
+            }
+        }
         items.append(item);
+        invalidate();
     }
 }
 

@@ -7,14 +7,13 @@
 #ifndef DECK_PREVIEW_COLOR_IDENTITY_FILTER_WIDGET_H
 #define DECK_PREVIEW_COLOR_IDENTITY_FILTER_WIDGET_H
 
-#include "../visual_deck_storage_widget.h"
-
 #include <QHBoxLayout>
+#include <QMap>
 #include <QPushButton>
 #include <QWidget>
 
-class DeckPreviewWidget;
 class VisualDeckStorageWidget;
+class VisualDeckStorageProxyModel;
 
 class DeckPreviewColorIdentityFilterWidget : public QWidget
 {
@@ -23,7 +22,7 @@ class DeckPreviewColorIdentityFilterWidget : public QWidget
 public:
     explicit DeckPreviewColorIdentityFilterWidget(VisualDeckStorageWidget *parent);
     void retranslateUi();
-    void filterWidgets(QList<DeckPreviewWidget *> widgets);
+    void applyColorFilter(VisualDeckStorageProxyModel *proxyModel);
 
 signals:
     void filterModeChanged(bool exactMatchMode);
@@ -37,7 +36,7 @@ private:
     QHBoxLayout *layout;
     QPushButton *toggleButton;
     QMap<QChar, bool> activeColors;
-    bool exactMatchMode = false; // Default to "includes" mode
+    bool exactMatchMode = false;
 };
 
 #endif // DECK_PREVIEW_COLOR_IDENTITY_FILTER_WIDGET_H

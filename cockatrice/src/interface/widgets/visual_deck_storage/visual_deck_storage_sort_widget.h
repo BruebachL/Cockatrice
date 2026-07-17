@@ -7,14 +7,13 @@
 #ifndef VISUAL_DECK_STORAGE_SORT_WIDGET_H
 #define VISUAL_DECK_STORAGE_SORT_WIDGET_H
 
-#include "visual_deck_storage_widget.h"
+#include "visual_deck_storage_proxy_model.h"
 
 #include <QComboBox>
 #include <QHBoxLayout>
 #include <QWidget>
 
 class VisualDeckStorageWidget;
-class VisualDeckStorageFolderDisplayWidget;
 class VisualDeckStorageSortWidget : public QWidget
 {
     Q_OBJECT
@@ -22,25 +21,14 @@ class VisualDeckStorageSortWidget : public QWidget
 public:
     explicit VisualDeckStorageSortWidget(VisualDeckStorageWidget *parent);
     void retranslateUi();
-    void updateSortOrder();
-    void sortFolder(VisualDeckStorageFolderDisplayWidget *folderWidget);
-    QString getSearchText();
-    QList<DeckPreviewWidget *> filterFiles(QList<DeckPreviewWidget *> widgets);
+    void applySortOrder(VisualDeckStorageProxyModel *proxyModel);
 
 signals:
     void sortOrderChanged();
 
 private:
-    enum SortOrder
-    {
-        ByName,
-        Alphabetical,
-        ByLastModified,
-        ByLastLoaded,
-    };
     QHBoxLayout *layout;
     VisualDeckStorageWidget *parent;
-    SortOrder sortOrder; // Current sorting option
     QComboBox *sortComboBox;
 };
 

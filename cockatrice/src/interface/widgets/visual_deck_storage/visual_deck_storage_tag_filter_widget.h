@@ -7,11 +7,11 @@
 #ifndef VISUAL_DECK_STORAGE_TAG_FILTER_WIDGET_H
 #define VISUAL_DECK_STORAGE_TAG_FILTER_WIDGET_H
 
-#include "deck_preview/deck_preview_widget.h"
-
 #include <QWidget>
+#include <QStringList>
 
 class VisualDeckStorageWidget;
+class VisualDeckStorageProxyModel;
 class VisualDeckStorageTagFilterWidget : public QWidget
 {
     Q_OBJECT
@@ -27,7 +27,8 @@ class VisualDeckStorageTagFilterWidget : public QWidget
 public:
     explicit VisualDeckStorageTagFilterWidget(VisualDeckStorageWidget *_parent);
     [[nodiscard]] QStringList getAllKnownTags() const;
-    void filterDecksBySelectedTags(const QList<DeckPreviewWidget *> &deckPreviews) const;
+    void updateFilterFromModel();
+    void applyTagFilter(VisualDeckStorageProxyModel *proxyModel);
 
 public slots:
     void refreshTags();
