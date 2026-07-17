@@ -46,8 +46,9 @@ GameView::GameView(GameScene *scene, QWidget *parent) : QGraphicsView(scene, par
     connect(scene, &GameScene::sigStopRubberBand, this, &GameView::stopRubberBand);
     connect(scene, &QGraphicsScene::selectionChanged, this, [this]() { updateTotalSelectionCount(); });
 
-    setFocusDisabled(SettingsCache::instance().getKeepGameChatFocus());
-    connect(&SettingsCache::instance(), &SettingsCache::keepGameChatFocusChanged, this, &GameView::setFocusDisabled);
+    setFocusDisabled(SettingsCache::instance().interface().getKeepGameChatFocus());
+    connect(&SettingsCache::instance().interface(), &InterfaceSettings::keepGameChatFocusChanged, this,
+            &GameView::setFocusDisabled);
 
     aCloseMostRecentZoneView = new QAction(this);
 
@@ -125,7 +126,7 @@ void GameView::resizeRubberBand(const QPointF &cursorPoint, int selectedCount)
     QRect rect = QRect(mapFromScene(selectionOrigin), cursor).normalized();
     rubberBand->setGeometry(rect);
 
-    if (!SettingsCache::instance().getShowDragSelectionCount()) {
+    if (!SettingsCache::instance().interface().getShowDragSelectionCount()) {
         dragCountLabel->hide();
         return;
     }
@@ -234,7 +235,7 @@ void GameView::updateTotalSelectionCount(const QSize &viewSize)
 
     int count = scene()->selectedItems().count();
 
-    if (!SettingsCache::instance().getShowTotalSelectionCount() || count <= 1) {
+    if (!SettingsCache::instance().interface().getShowTotalSelectionCount() || count <= 1) {
         totalCountLabel->hide();
     } else {
         totalCountLabel->setText(QString::number(count));
@@ -247,7 +248,7 @@ void GameView::updateTotalSelectionCount(const QSize &viewSize)
     }
 
     TallyType tallyType =
-        SettingsCache::instance().getShowSubtypeSelectionTally() ? TallyType::Subtypes : TallyType::None;
+        SettingsCache::instance().interface().getShowSubtypeSelectionTally() ? TallyType::Subtypes : TallyType::None;
 
     GameScene *gameScene = static_cast<GameScene *>(scene());
     QList<TallyRow> entries = Tally::compute(gameScene->selectedCards(), tallyType);
