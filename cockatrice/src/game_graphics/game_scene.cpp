@@ -5,6 +5,8 @@
 #include "../game/player/player_actions.h"
 #include "../game/player/player_logic.h"
 #include "../game_graphics/player/player_graphics_item.h"
+#include "../interface/widgets/cards/card_hover_widget.h"
+#include "board/arrow_item.h"
 #include "board/card_item.h"
 #include "phases_toolbar.h"
 #include "player/menu/player_menu.h"
@@ -18,6 +20,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsView>
 #include <QSet>
+#include <QTimer>
 #include <QtMath>
 #include <libcockatrice/utility/zone_names.h>
 #include <numeric>
@@ -39,12 +42,26 @@ GameScene::GameScene(PhasesToolbar *_phasesToolbar, QObject *parent)
     connect(&SettingsCache::instance(), &SettingsCache::minPlayersForMultiColumnLayoutChanged, this,
             &GameScene::rearrange);
 
+    // Card hover popup
+    cardHoverWidget = nullptr; // created lazily on first show
+    hoverActivateTimer = new QTimer(this);
+    hoverActivateTimer->setSingleShot(true);
+    hoverActivateTimer->setInterval(300);
+    connect(hoverActivateTimer, &QTimer::timeout, this, &GameScene::onHoverActivateTimeout);
+
+    hoverGraceTimer = new QTimer(this);
+    hoverGraceTimer->setSingleShot(true);
+    hoverGraceTimer->setInterval(200);
+    connect(hoverGraceTimer, &QTimer::timeout, this, &GameScene::onHoverGraceTimeout);
+
     rearrange();
 }
 
 GameScene::~GameScene()
 {
     delete animationTimer;
+    delete hoverActivateTimer;
+    delete hoverGraceTimer;
 
     // DO NOT call clearViews() here
     // clearViews calls close() on the zoneViews, which sends signals; sending signals in destructors leads to segfaults
@@ -109,6 +126,9 @@ void GameScene::onCardRightClicked(AbstractCardItem *abstractCard, QPoint screen
     if (!view) {
         return;
     }
+
+    // Hide the hover popup when the context menu opens
+    hideCardHoverPopup();
 
     card->getOwner()->getGame()->setActiveCard(card);
 
@@ -546,6 +566,11 @@ void GameScene::updateHover(const QPointF &scenePos)
 
 void GameScene::updateHoveredCard(CardItem *newCard)
 {
+    // Safety: if the popup's card was destroyed, hide the popup immediately
+    if (cardHoverWidget && cardHoverWidget->isVisible() && !cardHoverWidget->hasCard()) {
+        hideCardHoverPopup();
+    }
+
     if (hoveredCard && (newCard != hoveredCard)) {
         endCardHover(hoveredCard);
     }
@@ -553,6 +578,30 @@ void GameScene::updateHoveredCard(CardItem *newCard)
         beginCardHover(newCard);
     }
     hoveredCard = newCard;
+
+    // --- Card hover popup logic ---
+    if (newCard) {
+        // Cancel any pending grace timer (mouse is back on a card)
+        hoverGraceTimer->stop();
+
+        if (cardHoverWidget && cardHoverWidget->isVisible() && cardHoverWidget->getCardItem() == newCard) {
+            // Already showing this card — do nothing
+        } else if (cardHoverWidget && cardHoverWidget->isVisible()) {
+            // Popup is showing a different card — switch immediately
+            showCardHoverPopup(newCard);
+        } else {
+            // Popup not visible — schedule it
+            hoverPopupTarget = newCard;
+            if (!hoverActivateTimer->isActive()) {
+                hoverActivateTimer->start();
+            }
+        }
+    } else {
+        // No card hovered — start grace timer if popup is visible
+        if (cardHoverWidget && cardHoverWidget->isVisible()) {
+            hoverGraceTimer->start();
+        }
+    }
 }
 
 void GameScene::beginCardHover(CardItem *card)
@@ -569,6 +618,86 @@ void GameScene::endCardHover(CardItem *card)
         zone->restoreClipAfterHover(card);
     }
     card->setHovered(false);
+}
+
+// ---------- Card Hover Popup ----------
+
+void GameScene::showCardHoverPopup(CardItem *card)
+{
+    if (!card || !card->getOwner()) {
+        return;
+    }
+
+    PlayerGraphicsItem *playerView = playerViews.value(card->getOwner()->getPlayerInfo()->getId());
+    if (!playerView) {
+        return;
+    }
+
+    hoverActivateTimer->stop();
+    hoverGraceTimer->stop();
+    hoverPopupTarget = card;
+
+    if (!cardHoverWidget) {
+        auto *viewport = views().isEmpty() ? nullptr : views().first()->viewport();
+        cardHoverWidget = new CardHoverWidget(viewport);
+        connect(cardHoverWidget, &CardHoverWidget::hoverEntered, this, &GameScene::onHoverWidgetEntered);
+        connect(cardHoverWidget, &CardHoverWidget::hoverLeft, this, &GameScene::onHoverWidgetLeft);
+    }
+
+    cardHoverWidget->setCard(card, playerView);
+    positionCardHoverPopup();
+
+    if (!cardHoverWidget->isVisible()) {
+        cardHoverWidget->showAnimated();
+    }
+}
+
+void GameScene::hideCardHoverPopup()
+{
+    if (cardHoverWidget && cardHoverWidget->isVisible()) {
+        cardHoverWidget->hideAnimated();
+    }
+    hoverPopupTarget = nullptr;
+}
+
+void GameScene::positionCardHoverPopup()
+{
+    if (!cardHoverWidget || !cardHoverWidget->hasCard()) {
+        return;
+    }
+
+    auto *viewport = views().isEmpty() ? nullptr : views().first()->viewport();
+    if (!viewport) {
+        return;
+    }
+
+    QRectF sceneRect = cardHoverWidget->getCardItem()->sceneBoundingRect();
+    QTransform vpTransform = getViewportTransform();
+    cardHoverWidget->positionNextTo(sceneRect, vpTransform, viewport);
+}
+
+void GameScene::onHoverActivateTimeout()
+{
+    if (hoverPopupTarget && hoverPopupTarget == hoveredCard) {
+        showCardHoverPopup(hoverPopupTarget);
+    }
+}
+
+void GameScene::onHoverGraceTimeout()
+{
+    hideCardHoverPopup();
+}
+
+void GameScene::onHoverWidgetEntered()
+{
+    hoverGraceTimer->stop();
+}
+
+void GameScene::onHoverWidgetLeft()
+{
+    if (!hoveredCard) {
+        hoverGraceTimer->start();
+    }
 }
 
 CardZone *GameScene::findTopmostZone(const QList<QGraphicsItem *> &items)

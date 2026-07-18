@@ -24,6 +24,8 @@ class CardItem;
 class ServerInfo_Card;
 class PhasesToolbar;
 class QBasicTimer;
+class QTimer;
+class CardHoverWidget;
 
 /**
  * @class GameScene
@@ -54,6 +56,12 @@ private:
     QSet<CardItem *> cardsToAnimate;                    ///< Cards currently animating
     int playerRotation;                                 ///< Rotation offset for player layout
 
+    // Card hover popup
+    CardHoverWidget *cardHoverWidget;                   ///< The hover popup widget
+    QTimer *hoverActivateTimer;                         ///< Delay before showing popup (300ms)
+    QTimer *hoverGraceTimer;                            ///< Grace period before hiding popup (200ms)
+    QPointer<CardItem> hoverPopupTarget;                ///< Card the popup is intended for
+
     /**
      * @brief Updates which card is currently hovered based on scene coordinates.
      * @param scenePos Scene position of the cursor.
@@ -67,6 +75,11 @@ private:
     void beginCardHover(CardItem *card);
     /** @brief Deactivates hover state and restores the card to its clip container. */
     void endCardHover(CardItem *card);
+
+    // Card hover popup methods
+    void showCardHoverPopup(CardItem *card);
+    void hideCardHoverPopup();
+    void positionCardHoverPopup();
 
 public:
     /**
@@ -227,6 +240,12 @@ public slots:
     void requestArrowDeletion(int playerId, int arrowId);
 
     void onCardZoneChanged(CardItem *card, bool sameZone);
+
+    // Card hover popup slots
+    void onHoverActivateTimeout();
+    void onHoverGraceTimeout();
+    void onHoverWidgetEntered();
+    void onHoverWidgetLeft();
 
 protected:
     /** @brief Handles hover updates. */
