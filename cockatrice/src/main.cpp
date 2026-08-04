@@ -213,6 +213,9 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("cockatrice.de");
     QCoreApplication::setApplicationName("Cockatrice");
     QCoreApplication::setApplicationVersion(VERSION_STRING);
+#ifdef Q_OS_WIN
+    QApplication::setAppUserModelID(QStringLiteral("Cockatrice.Cockatrice"));
+#endif
 
 #ifdef Q_OS_MAC
     qApp->setAttribute(Qt::AA_DontShowIconsInMenus, true);
