@@ -49,6 +49,7 @@ class GameReplay;
 class HandlePublicServers;
 class LocalClient;
 class LocalServer;
+class QLabel;
 class QThread;
 class RemoteClient;
 class ServerInfo_User;
@@ -71,6 +72,7 @@ public slots:
 private slots:
     void updateTabMenu(const QList<QMenu *> &newMenuList);
     void statusChanged(ClientStatus _status);
+    void updatePingDisplay(int lastMs, int medianMs, int p95Ms, int maxMs, int sampleCount);
     void localGameEnded();
     void pixmapCacheSizeChanged(int newSizeInMBs);
     void actDisconnect();
@@ -145,6 +147,7 @@ private:
     WndSets *wndSets;
     ConnectionController *connectionController;
     LocalServer *localServer;
+    QLabel *pingLabel = nullptr; ///< status bar label with live round-trip stats
     bool bHasActivated, askedForDbUpdater;
     QProcess *cardUpdateProcess;
     DlgViewLog *logviewDialog;
