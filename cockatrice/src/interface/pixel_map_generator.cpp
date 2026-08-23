@@ -13,6 +13,7 @@
 #define DEFAULT_COLOR_MODERATOR_LEFT "#ffffff";
 #define DEFAULT_COLOR_MODERATOR_RIGHT "#000000";
 #define DEFAULT_COLOR_ADMIN "#ff2701";
+#define DEFAULT_COLOR_DEVELOPER "#800020";
 
 /**
  * Loads in an svg from file and scales it without affecting image quality.
@@ -327,6 +328,8 @@ QIcon UserLevelPixmapGenerator::generateIconDefault(int height,
 
     if (userLevel.testFlag(ServerInfo_User::IsAdmin)) {
         colorLeft = DEFAULT_COLOR_ADMIN;
+    } else if (userLevel.testFlag(ServerInfo_User::IsDeveloper)) {
+        colorLeft = DEFAULT_COLOR_DEVELOPER;
     } else if (userLevel.testFlag(ServerInfo_User::IsModerator)) {
         colorLeft = DEFAULT_COLOR_MODERATOR_LEFT;
         colorRight = DEFAULT_COLOR_MODERATOR_RIGHT;
