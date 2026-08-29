@@ -67,7 +67,8 @@ bool OracleImporter::readSetsFromByteArray(const QByteArray &data)
         // capitalize set type
         if (setType.length() > 0) {
             // basic grammar for words that aren't capitalized, like in "From the Vault"
-            const QStringList noCapitalize = {"the", "a", "an", "on", "to", "for", "of", "in", "and", "with", "or"};
+            static const QStringList noCapitalize = {"the", "a",  "an",  "on",   "to", "for",
+                                                     "of",  "in", "and", "with", "or"};
             QStringList words = setType.split("_");
             setType.clear();
             bool first = false;
@@ -75,7 +76,7 @@ bool OracleImporter::readSetsFromByteArray(const QByteArray &data)
                 if (first && noCapitalize.contains(item)) {
                     setType += item + QString(" ");
                 } else {
-                    setType += item[0].toUpper() + item.mid(1, -1) + QString(" ");
+                    setType += item[0].toUpper() + item.mid(1) + QString(" ");
                     first = true;
                 }
             }
@@ -123,14 +124,8 @@ static void sortAndReduceColors(QString &colors)
     std::sort(colors.begin(), colors.end(),
               [](const QChar a, const QChar b) { return colorOrder.value(a, INT_MAX) < colorOrder.value(b, INT_MAX); });
     // reduce
-    QChar lastChar = '\0';
-    for (int i = 0; i < colors.size(); ++i) {
-        if (colors.at(i) == lastChar) {
-            colors.remove(i, 1);
-        } else {
-            lastChar = colors.at(i);
-        }
-    }
+    auto last = std::unique(colors.begin(), colors.end());
+    colors.erase(last, colors.end());
 }
 
 CardInfoPtr OracleImporter::addCard(QString name,
@@ -147,7 +142,9 @@ CardInfoPtr OracleImporter::addCard(QString name,
     if (existingIt != cards.constEnd()) {
         CardInfoPtr card = existingIt.value();
         card->addToSet(printingInfo.getSet(), printingInfo);
-        card->combineLegalities(properties);
+        if (card->getProperties().filter(formatRegex).empty()) {
+            card->combineLegalities(properties);
+        }
         return card;
     }
 
@@ -182,8 +179,9 @@ CardInfoPtr OracleImporter::addCard(QString name,
 
     // DETECT CARD POSITIONING INFO
 
-    bool landscapeOrientation = properties.value("maintype") == "Battle" || properties.value("layout") == "split" ||
-                                properties.value("layout") == "planar";
+    QString layoutVal = properties.value("layout");
+    bool landscapeOrientation =
+        properties.value("maintype") == "Battle" || layoutVal == "split" || layoutVal == "planar";
 
     // cards that enter the field tapped
     bool cipt = parseCipt(name, text) || landscapeOrientation;
@@ -413,7 +411,8 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QJson
                 }
             }
 
-            CardInfoPtr newCard = addCard(name + numComponent, text, isToken, properties, relatedCards, printingInfo);
+            CardInfoPtr newCard =
+                addCard(name + numComponent, text, isToken, std::move(properties), relatedCards, printingInfo);
             numCards++;
         }
     }
@@ -446,7 +445,7 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QJson
                     if (!thisCardPropertyValue.isEmpty() && originalPropertyValue != thisCardPropertyValue) {
                         if (originalPropertyValue.isEmpty()) { // don't create //es if one field is empty
                             properties.insert(prop, thisCardPropertyValue);
-                        } else if (prop == "colors") { // the card is both colors
+                        } else if (prop == "colors" || prop == "coloridentity") { // the card is both colors
                             properties.insert(prop, originalPropertyValue + thisCardPropertyValue);
                         } else if (prop == "maintype") { // don't create maintypes with //es in them
                             continue;
@@ -458,7 +457,7 @@ int OracleImporter::importCardsFromSet(const CardSetPtr &currentSet, const QJson
                 }
             }
         }
-        CardInfoPtr newCard = addCard(name, text, isToken, properties, {}, printingInfo);
+        CardInfoPtr newCard = addCard(name, text, isToken, std::move(properties), {}, printingInfo);
         numCards++;
     }
 
@@ -476,7 +475,7 @@ FormatRulesNameMap OracleImporter::createDefaultMagicFormats()
     CardCondition superTypeIsBasic;
     superTypeIsBasic.field = "type";
     superTypeIsBasic.matchType = "regex";
-    superTypeIsBasic.value = "\bBasic\b[^—]+\bLand\b";
+    superTypeIsBasic.value = R"(\bBasic\b[^—]+\bLand\b)";
 
     ExceptionRule basicLands;
     basicLands.conditions.append(superTypeIsBasic);
@@ -539,6 +538,13 @@ int OracleImporter::startImport()
 {
     static ICardSetPriorityController *noOpController = new NoopCardSetPriorityController();
 
+    // Pre-allocate cards hash to avoid rehashing during import
+    int estimatedCards = 0;
+    for (const SetToDownload &curSetToParse : allSets) {
+        estimatedCards += curSetToParse.getCards().size();
+    }
+    cards.reserve(estimatedCards);
+
     // add an empty set for tokens
     CardSetPtr tokenSet =
         CardSet::newInstance(noOpController, CardSet::TOKENS_SETNAME, tr("Dummy set containing tokens"), "Tokens");
@@ -584,4 +590,6 @@ void OracleImporter::clear()
     sets.clear();
     cards.clear();
     allSets.clear();
+    // Note: createDefaultMagicFormats() uses a function-local static cache that is
+    // intentionally not cleared here since format rules are hardcoded constants.
 }
