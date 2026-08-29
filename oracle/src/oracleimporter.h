@@ -1,6 +1,9 @@
 #ifndef ORACLEIMPORTER_H
 #define ORACLEIMPORTER_H
 
+#include "raw_json_scanner.h"
+
+#include <QByteArray>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMap>
@@ -46,10 +49,14 @@ class SetToDownload
 {
 private:
     QString shortName, longName;
-    QJsonArray cards;
     QDate releaseDate;
     QString setType;
     CardSet::Priority priority;
+    // Byte range of this set's object within the importer's raw JSON text. Parsing
+    // one set at a time keeps peak memory low instead of holding the whole document.
+    qsizetype rawStart = -1;
+    qsizetype rawLength = 0;
+    int cardCount = 0;
 
 public:
     const QString &getShortName() const
@@ -59,10 +66,6 @@ public:
     const QString &getLongName() const
     {
         return longName;
-    }
-    const QJsonArray &getCards() const
-    {
-        return cards;
     }
     const QString &getSetType() const
     {
@@ -76,15 +79,32 @@ public:
     {
         return priority;
     }
+    qsizetype getRawStart() const
+    {
+        return rawStart;
+    }
+    qsizetype getRawLength() const
+    {
+        return rawLength;
+    }
+    int getCardCount() const
+    {
+        return cardCount;
+    }
     SetToDownload(QString _shortName,
                   QString _longName,
-                  QJsonArray _cards,
                   CardSet::Priority _priority,
                   QString _setType = QString(),
                   const QDate &_releaseDate = QDate())
-        : shortName(std::move(_shortName)), longName(std::move(_longName)), cards(std::move(_cards)),
-          releaseDate(_releaseDate), setType(std::move(_setType)), priority(_priority)
+        : shortName(std::move(_shortName)), longName(std::move(_longName)), releaseDate(_releaseDate),
+          setType(std::move(_setType)), priority(_priority)
     {
+    }
+    void setRawRange(qsizetype _rawStart, qsizetype _rawLength, int _cardCount)
+    {
+        rawStart = _rawStart;
+        rawLength = _rawLength;
+        cardCount = _cardCount;
     }
     bool operator<(const SetToDownload &set) const
     {
@@ -141,6 +161,12 @@ private:
 
     QList<SetToDownload> allSets;
 
+    /**
+     * The raw JSON text of the source document, retained for lazy per-set
+     * parsing during startImport(). Frees the card data as each set is imported.
+     */
+    QByteArray rawSetsData;
+
     CardInfoPtr addCard(QString name,
                         const QString &text,
                         bool isToken,
@@ -153,7 +179,11 @@ signals:
 
 public:
     explicit OracleImporter(QObject *parent = nullptr);
-    bool readSetsFromByteArray(const QByteArray &data);
+    /**
+     * Scans the given JSON document for set metadata. Takes the data by value so
+     * the wizard can hand over its decompressed buffer without copying it.
+     */
+    bool readSetsFromByteArray(QByteArray data);
     int startImport();
     bool saveToFile(const QString &fileName, const QString &sourceUrl, const QString &sourceVersion);
     int importCardsFromSet(const CardSetPtr &currentSet, const QJsonArray &cardsList);
@@ -165,6 +195,10 @@ public:
     QList<SetToDownload> &getSets()
     {
         return allSets;
+    }
+    const QByteArray &getRawSetsData() const
+    {
+        return rawSetsData;
     }
     void releaseSetData();
     void clear();
