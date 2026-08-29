@@ -1,12 +1,31 @@
 #include "../../oracle/src/oracleimporter.h"
 
 #include "gtest/gtest.h"
+#include <QBuffer>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QEventLoop>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
+#include <QUrl>
 #include <libcockatrice/interfaces/noop_card_set_priority_controller.h>
+
+#if defined(HAS_LZMA)
+#include "../../oracle/src/lzma/decompress.h"
+#endif
+#if defined(HAS_ZLIB)
+#include "../../oracle/src/zip/unzip.h"
+#endif
+#if defined(Q_OS_MACOS)
+#include <sys/resource.h>
+#endif
 
 // Helper: build a synthetic MTGJSON-style JSON with the given number of sets and cards per set
 static QByteArray buildSyntheticData(int numSets, int cardsPerSet)
@@ -247,8 +266,240 @@ TEST(OracleBenchmark, ImportCardsWithColors)
                               .arg(ms > 0 ? static_cast<double>(count) / ms * 1000.0 : 0.0, 0, 'f', 0);
 }
 
+// ============================================================================
+// RAM usage measurement
+// ============================================================================
+
+// Mirrors the default AllPrintings URL selection in oracle/src/pages.cpp.
+#if defined(HAS_LZMA)
+static const QUrl kDefaultAllPrintingsUrl("https://www.mtgjson.com/api/v5/AllPrintings.json.xz");
+#elif defined(HAS_ZLIB)
+static const QUrl kDefaultAllPrintingsUrl("https://www.mtgjson.com/api/v5/AllPrintings.json.zip");
+#else
+static const QUrl kDefaultAllPrintingsUrl("https://www.mtgjson.com/api/v5/AllPrintings.json");
+#endif
+
+// Magic bytes also from oracle/src/pages.cpp
+static const QByteArray kXzSignature("\xFD\x37\x7A\x58\x5A", 6);
+static const QByteArray kZipSignature("PK");
+
+struct MemorySnapshot
+{
+    qint64 peakRssKb = -1; // process high-water mark (VmHWM on Linux, ru_maxrss on macOS)
+    qint64 rssKb = -1;     // current resident set size
+    bool available = false;
+
+    static MemorySnapshot current()
+    {
+        MemorySnapshot snap;
+#if defined(Q_OS_LINUX)
+        QFile statusFile("/proc/self/status");
+        if (statusFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            // /proc files report size() == 0, so atEnd() is immediately true: read everything first.
+            const QList<QByteArray> lines = statusFile.readAll().split('\n');
+            for (const QByteArray &line : lines) {
+                if (line.startsWith("VmHWM:")) {
+                    snap.peakRssKb = line.mid(6).trimmed().split(' ').value(0).toLongLong();
+                } else if (line.startsWith("VmRSS:")) {
+                    snap.rssKb = line.mid(6).trimmed().split(' ').value(0).toLongLong();
+                }
+            }
+            snap.available = snap.peakRssKb >= 0;
+        }
+#elif defined(Q_OS_MACOS)
+        struct rusage usage;
+        if (getrusage(RUSAGE_SELF, &usage) == 0) {
+            snap.peakRssKb = usage.ru_maxrss / 1024; // bytes -> kB
+            snap.available = snap.peakRssKb >= 0;
+        }
+#endif
+        return snap;
+    }
+};
+
+static QString formatKb(qint64 kb)
+{
+    if (kb < 0) {
+        return "N/A";
+    }
+    return QString("%1 MB").arg(kb / 1024.0, 0, 'f', 1);
+}
+
+static void logRamPhase(const QString &phase, const MemorySnapshot &baseline, const MemorySnapshot &current)
+{
+    if (!baseline.available || !current.available) {
+        qDebug().noquote() << QString("  %1: memory stats unavailable on this platform").arg(phase);
+        return;
+    }
+    qDebug().noquote() << QString("  %1: current RSS %2 | peak added %3 | process peak %4")
+                              .arg(phase)
+                              .arg(formatKb(current.rssKb))
+                              .arg(formatKb(current.peakRssKb - baseline.peakRssKb))
+                              .arg(formatKb(current.peakRssKb));
+}
+
+// Decompresses the download payload when the default URL is a compressed build,
+// mirroring the wizard's magic-byte handling in oracle/src/pages.cpp.
+static QByteArray decompressSetsData(const QByteArray &payload)
+{
+    if (payload.startsWith(kXzSignature)) {
+#if defined(HAS_LZMA)
+        QBuffer inBuffer(const_cast<QByteArray *>(&payload));
+        QByteArray out;
+        QBuffer outBuffer(&out);
+        inBuffer.open(QIODevice::ReadOnly);
+        outBuffer.open(QIODevice::WriteOnly);
+        XzDecompressor xz;
+        if (!xz.decompress(&inBuffer, &outBuffer)) {
+            qDebug() << "RAM benchmark: xz decompression failed";
+            return {};
+        }
+        return out;
+#else
+        qDebug() << "RAM benchmark: download is xz-compressed but this build has no LZMA support";
+        return {};
+#endif
+    }
+    if (payload.startsWith(kZipSignature)) {
+#if defined(HAS_ZLIB)
+        QBuffer inBuffer(const_cast<QByteArray *>(&payload));
+        inBuffer.open(QIODevice::ReadOnly);
+        UnZip unzip;
+        if (unzip.openArchive(&inBuffer) != UnZip::Ok) {
+            qDebug() << "RAM benchmark: zip archive open failed";
+            return {};
+        }
+        if (unzip.fileList().size() != 1) {
+            qDebug() << "RAM benchmark: zip archive doesn't contain exactly one file";
+            return {};
+        }
+        QByteArray out;
+        QBuffer outBuffer(&out);
+        outBuffer.open(QIODevice::WriteOnly);
+        const auto errorCode = unzip.extractFile(unzip.fileList().value(0), &outBuffer);
+        unzip.closeArchive();
+        if (errorCode != UnZip::Ok) {
+            qDebug() << "RAM benchmark: zip extraction failed";
+            return {};
+        }
+        return out;
+#else
+        qDebug() << "RAM benchmark: download is zip-compressed but this build has no zlib support";
+        return {};
+#endif
+    }
+    return payload;
+}
+
+TEST(OracleBenchmark, ImportRamUsage)
+{
+    static constexpr int numSets = 30;
+    static constexpr int cardsPerSet = 2000; // ~60k cards, roughly AllPrintings scale
+
+    const QByteArray data = buildSyntheticData(numSets, cardsPerSet);
+
+    const MemorySnapshot baseline = MemorySnapshot::current();
+    NoopCardSetPriorityController controller;
+    OracleImporter importer;
+
+    QElapsedTimer timer;
+    timer.start();
+    ASSERT_TRUE(importer.readSetsFromByteArray(data));
+    const qint64 parseMs = timer.elapsed();
+    const MemorySnapshot afterParse = MemorySnapshot::current();
+
+    timer.restart();
+    const int importedSets = importer.startImport();
+    const qint64 importMs = timer.elapsed();
+    const MemorySnapshot afterImport = MemorySnapshot::current();
+
+    importer.releaseSetData();
+    const MemorySnapshot afterRelease = MemorySnapshot::current();
+
+    const int totalCards = importer.getCardList().size();
+    qDebug().noquote() << QString("Oracle RAM Benchmark (synthetic): %1 sets, %2 cards, %3 MB JSON")
+                              .arg(importedSets)
+                              .arg(totalCards)
+                              .arg(data.size() / (1024.0 * 1024.0), 0, 'f', 1);
+    qDebug().noquote() << QString("  JSON parse: %1 ms").arg(parseMs);
+    qDebug().noquote() << QString("  Card import: %1 ms").arg(importMs);
+    logRamPhase("parse", baseline, afterParse);
+    logRamPhase("import", afterParse, afterImport);
+    logRamPhase("after releaseSetData()", afterImport, afterRelease);
+}
+
+TEST(OracleBenchmark, ImportRamUsageAllPrintings)
+{
+    if (qEnvironmentVariableIsEmpty("COCKATRICE_ORACLE_RAM_BENCHMARK")) {
+        GTEST_SKIP() << "Set COCKATRICE_ORACLE_RAM_BENCHMARK=1 to download the real AllPrintings dataset for this "
+                        "RAM benchmark. Default URL: "
+                     << kDefaultAllPrintingsUrl.toDisplayString().toStdString();
+    }
+
+    QNetworkAccessManager nam;
+    QNetworkRequest request(kDefaultAllPrintingsUrl);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "Cockatrice Oracle RAM benchmark");
+    QNetworkReply *reply = nam.get(request);
+
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeoutTimer.start(10 * 60 * 1000);
+    loop.exec();
+    timeoutTimer.stop();
+
+    if (reply->error() != QNetworkReply::NoError) {
+        GTEST_SKIP() << "Download failed: " << reply->errorString().toStdString();
+    }
+    const QByteArray payload = reply->readAll();
+    reply->deleteLater();
+
+    const MemorySnapshot baseline = MemorySnapshot::current();
+    const QByteArray setsData = decompressSetsData(payload);
+    const MemorySnapshot afterDownload = MemorySnapshot::current();
+    if (setsData.isEmpty()) {
+        GTEST_SKIP() << "No data to import (download or decompression failed)";
+    }
+
+    NoopCardSetPriorityController controller;
+    OracleImporter importer;
+
+    QElapsedTimer timer;
+    timer.start();
+    ASSERT_TRUE(importer.readSetsFromByteArray(setsData));
+    const qint64 parseMs = timer.elapsed();
+    const MemorySnapshot afterParse = MemorySnapshot::current();
+
+    timer.restart();
+    const int importedSets = importer.startImport();
+    const qint64 importMs = timer.elapsed();
+    const MemorySnapshot afterImport = MemorySnapshot::current();
+
+    importer.releaseSetData();
+    const MemorySnapshot afterRelease = MemorySnapshot::current();
+
+    const int totalCards = importer.getCardList().size();
+    qDebug().noquote() << QString("Oracle RAM Benchmark (real AllPrintings): %1 sets, %2 unique cards")
+                              .arg(importedSets)
+                              .arg(totalCards);
+    qDebug().noquote() << QString("  URL: %1").arg(kDefaultAllPrintingsUrl.toDisplayString());
+    qDebug().noquote() << QString("  Downloaded: %1 MB, decompressed: %2 MB")
+                              .arg(payload.size() / (1024.0 * 1024.0), 0, 'f', 1)
+                              .arg(setsData.size() / (1024.0 * 1024.0), 0, 'f', 1);
+    qDebug().noquote() << QString("  JSON parse: %1 ms").arg(parseMs);
+    qDebug().noquote() << QString("  Card import: %1 ms").arg(importMs);
+    logRamPhase("download+decompress", baseline, afterDownload);
+    logRamPhase("parse", afterDownload, afterParse);
+    logRamPhase("import", afterParse, afterImport);
+    logRamPhase("after releaseSetData()", afterImport, afterRelease);
+}
+
 int main(int argc, char **argv)
 {
+    // Required for the event loop used by the real-AllPrintings download benchmark
+    QCoreApplication app(argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
