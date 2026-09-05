@@ -102,7 +102,7 @@ bool Servatrice_DatabaseInterface::openDatabase()
     if (isStrictModeEnabled()) {
         qCCritical(DatabaseInterfaceLog) << poolStr
                                          << "Error opening database: MySQL/MariaDB strict mode is enabled, which "
-                                            "breaks most servatrice database operations. Please disable strict mode "
+                                            "breaks most Servatrice database operations. Please disable strict mode "
                                             "by removing STRICT_TRANS_TABLES and STRICT_ALL_TABLES from sql_mode, "
                                             "for example by adding 'sql_mode=NO_ENGINE_SUBSTITUTION' under [mysqld] "
                                             "in your my.cnf (or my.ini on Windows) and restarting the database "
