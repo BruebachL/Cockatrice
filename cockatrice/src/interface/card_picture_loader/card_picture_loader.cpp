@@ -63,7 +63,7 @@ void CardPictureLoader::getCardBackPixmap(QPixmap &pixmap, QSize size)
     QString backCacheKey = "_trice_card_back_" + QString::number(size.width()) + "x" + QString::number(size.height());
     if (!QPixmapCache::find(backCacheKey, &pixmap)) {
         qCDebug(CardPictureLoaderLog) << "PictureLoader: cache miss for" << backCacheKey;
-        QPixmap tmpPixmap = themePixmap(QStringLiteral("cardback"));
+        QPixmap tmpPixmap = themePixmap("cardback");
 
         if (tmpPixmap.isNull()) {
             qCWarning(CardPictureLoaderLog) << "Failed to load 'theme:cardback'! Using fallback pixmap.";
@@ -84,7 +84,7 @@ void CardPictureLoader::getCardBackLoadingInProgressPixmap(QPixmap &pixmap, QSiz
         "_trice_card_back_inprogress_" + QString::number(size.width()) + "x" + QString::number(size.height());
     if (!QPixmapCache::find(backCacheKey, &pixmap)) {
         qCDebug(CardPictureLoaderCardBackCacheFailLog) << "PictureLoader: cache miss for" << backCacheKey;
-        QPixmap tmpPixmap = themePixmap(QStringLiteral("cardback"));
+        QPixmap tmpPixmap = themePixmap("cardback");
 
         if (tmpPixmap.isNull()) {
             qCWarning(CardPictureLoaderLog) << "Failed to load 'theme:cardback' for in-progress state! Using fallback.";
@@ -106,7 +106,7 @@ void CardPictureLoader::getCardBackLoadingFailedPixmap(QPixmap &pixmap, QSize si
         "_trice_card_back_failed_" + QString::number(size.width()) + "x" + QString::number(size.height());
     if (!QPixmapCache::find(backCacheKey, &pixmap)) {
         qCDebug(CardPictureLoaderCardBackCacheFailLog) << "PictureLoader: cache miss for" << backCacheKey;
-        QPixmap tmpPixmap = themePixmap(QStringLiteral("cardback"));
+        QPixmap tmpPixmap = themePixmap("cardback");
 
         if (tmpPixmap.isNull()) {
             qCWarning(CardPictureLoaderLog) << "Failed to load 'theme:cardback' for failed state! Using fallback.";

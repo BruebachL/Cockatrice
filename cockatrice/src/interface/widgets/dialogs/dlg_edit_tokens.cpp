@@ -91,10 +91,10 @@ DlgEditTokens::DlgEditTokens(QWidget *parent) : QDialog(parent), currentCard(nul
             &DlgEditTokens::tokenSelectionChanged);
 
     QAction *aAddToken = new QAction(tr("Add token"), this);
-    aAddToken->setIcon(themePixmap(QStringLiteral("icons/increment")));
+    aAddToken->setIcon(themePixmap("icons/increment"));
     connect(aAddToken, &QAction::triggered, this, &DlgEditTokens::actAddToken);
     QAction *aRemoveToken = new QAction(tr("Remove token"), this);
-    aRemoveToken->setIcon(themePixmap(QStringLiteral("icons/decrement")));
+    aRemoveToken->setIcon(themePixmap("icons/decrement"));
     connect(aRemoveToken, &QAction::triggered, this, &DlgEditTokens::actRemoveToken);
 
     auto *databaseToolBar = new QToolBar;

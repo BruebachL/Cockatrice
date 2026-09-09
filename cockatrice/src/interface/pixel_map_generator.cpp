@@ -520,6 +520,11 @@ QPixmap themePixmap(QStringView prefix)
     return QPixmap(QStringLiteral("theme:") + resolved);
 }
 
+QPixmap themePixmap(const char *prefix)
+{
+    return themePixmap(QString::fromUtf8(prefix));
+}
+
 void clearPixmapGeneratorCaches()
 {
     PhasePixmapGenerator::clear();

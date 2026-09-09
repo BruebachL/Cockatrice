@@ -99,7 +99,7 @@ TabRoom::TabRoom(TabSupervisor *_tabSupervisor,
     connect(aOpenChatSettings, &QAction::triggered, this, &TabRoom::actOpenChatSettings);
 
     auto *chatSettingsButton = new QToolButton;
-    chatSettingsButton->setIcon(themePixmap(QStringLiteral("icons/settings")));
+    chatSettingsButton->setIcon(themePixmap("icons/settings"));
     chatSettingsButton->setMenu(chatSettingsMenu);
     chatSettingsButton->setPopupMode(QToolButton::InstantPopup);
 

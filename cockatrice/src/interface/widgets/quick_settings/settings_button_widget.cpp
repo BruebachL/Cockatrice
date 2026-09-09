@@ -10,7 +10,7 @@
 SettingsButtonWidget::SettingsButtonWidget(QWidget *parent)
     : QWidget(parent), button(new QToolButton(this)), popup(new SettingsPopupWidget(nullptr))
 {
-    button->setIcon(themePixmap(QStringLiteral("icons/cogwheel")));
+    button->setIcon(themePixmap("icons/cogwheel"));
     button->setCheckable(true);
     button->setFixedSize(32, 32);
     connect(button, &QToolButton::clicked, this, &SettingsButtonWidget::togglePopup);

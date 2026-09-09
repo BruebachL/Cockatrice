@@ -25,7 +25,7 @@ DlgRegister::DlgRegister(QWidget *parent) : QDialog(parent)
     previousHosts = new QComboBox(this);
 
     btnDeleteServer = new QPushButton(this);
-    btnDeleteServer->setIcon(themePixmap(QStringLiteral("icons/remove_row")));
+    btnDeleteServer->setIcon(themePixmap("icons/remove_row"));
     btnDeleteServer->setToolTip(tr("Delete the currently selected saved server"));
     btnDeleteServer->setFixedWidth(30);
 
@@ -33,7 +33,7 @@ DlgRegister::DlgRegister(QWidget *parent) : QDialog(parent)
 
     hps = new HandlePublicServers(this);
     btnRefreshServers = new QPushButton(this);
-    btnRefreshServers->setIcon(themePixmap(QStringLiteral("icons/sync")));
+    btnRefreshServers->setIcon(themePixmap("icons/sync"));
     btnRefreshServers->setToolTip(tr("Refresh the server list with known public servers"));
     btnRefreshServers->setFixedWidth(30);
 

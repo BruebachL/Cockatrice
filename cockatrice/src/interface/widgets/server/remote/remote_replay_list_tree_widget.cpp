@@ -39,7 +39,7 @@ RemoteReplayList_TreeModel::RemoteReplayList_TreeModel(AbstractClient *_client, 
     QFileIconProvider fip;
     dirIcon = fip.icon(QFileIconProvider::Folder);
     fileIcon = fip.icon(QFileIconProvider::File);
-    lockIcon = themePixmap(QStringLiteral("icons/lock"));
+    lockIcon = themePixmap("icons/lock");
 }
 
 RemoteReplayList_TreeModel::~RemoteReplayList_TreeModel()

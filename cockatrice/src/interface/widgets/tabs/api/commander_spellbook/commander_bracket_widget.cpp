@@ -31,7 +31,7 @@ CommanderBracketWidget::CommanderBracketWidget(QWidget *parent) : QWidget(parent
     bracketInfoButton->setEnabled(false);
 
     bracketRefreshButton = new QToolButton(this);
-    bracketRefreshButton->setIcon(themePixmap(QStringLiteral("icons/reload")));
+    bracketRefreshButton->setIcon(themePixmap("icons/reload"));
     bracketRefreshButton->setAutoRaise(true);
 
     connect(bracketRefreshButton, &QToolButton::clicked, this, &CommanderBracketWidget::requestBracketEstimate);

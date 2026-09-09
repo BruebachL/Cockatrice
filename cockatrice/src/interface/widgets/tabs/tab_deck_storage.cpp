@@ -106,19 +106,19 @@ TabDeckStorage::TabDeckStorage(TabSupervisor *_tabSupervisor,
 
     // Left side actions
     aOpenLocalDeck = new QAction(this);
-    aOpenLocalDeck->setIcon(themePixmap(QStringLiteral("icons/pencil")));
+    aOpenLocalDeck->setIcon(themePixmap("icons/pencil"));
     connect(aOpenLocalDeck, &QAction::triggered, this, &TabDeckStorage::actOpenLocalDeck);
     aRenameLocal = new QAction(this);
-    aRenameLocal->setIcon(themePixmap(QStringLiteral("icons/rename")));
+    aRenameLocal->setIcon(themePixmap("icons/rename"));
     connect(aRenameLocal, &QAction::triggered, this, &TabDeckStorage::actRenameLocal);
     aUpload = new QAction(this);
-    aUpload->setIcon(themePixmap(QStringLiteral("icons/arrow_right_green")));
+    aUpload->setIcon(themePixmap("icons/arrow_right_green"));
     connect(aUpload, &QAction::triggered, this, &TabDeckStorage::actUpload);
     aNewLocalFolder = new QAction(this);
     aNewLocalFolder->setIcon(qApp->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     connect(aNewLocalFolder, &QAction::triggered, this, &TabDeckStorage::actNewLocalFolder);
     aDeleteLocalDeck = new QAction(this);
-    aDeleteLocalDeck->setIcon(themePixmap(QStringLiteral("icons/remove_row")));
+    aDeleteLocalDeck->setIcon(themePixmap("icons/remove_row"));
     connect(aDeleteLocalDeck, &QAction::triggered, this, &TabDeckStorage::actDeleteLocalDeck);
 
     aOpenDecksFolder = new QAction(this);
@@ -127,16 +127,16 @@ TabDeckStorage::TabDeckStorage(TabSupervisor *_tabSupervisor,
 
     // Right side actions
     aOpenRemoteDeck = new QAction(this);
-    aOpenRemoteDeck->setIcon(themePixmap(QStringLiteral("icons/pencil")));
+    aOpenRemoteDeck->setIcon(themePixmap("icons/pencil"));
     connect(aOpenRemoteDeck, &QAction::triggered, this, &TabDeckStorage::actOpenRemoteDeck);
     aDownload = new QAction(this);
-    aDownload->setIcon(themePixmap(QStringLiteral("icons/arrow_left_green")));
+    aDownload->setIcon(themePixmap("icons/arrow_left_green"));
     connect(aDownload, &QAction::triggered, this, &TabDeckStorage::actDownload);
     aNewFolder = new QAction(this);
     aNewFolder->setIcon(qApp->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     connect(aNewFolder, &QAction::triggered, this, &TabDeckStorage::actNewFolder);
     aDeleteRemoteDeck = new QAction(this);
-    aDeleteRemoteDeck->setIcon(themePixmap(QStringLiteral("icons/remove_row")));
+    aDeleteRemoteDeck->setIcon(themePixmap("icons/remove_row"));
     connect(aDeleteRemoteDeck, &QAction::triggered, this, &TabDeckStorage::actDeleteRemoteDeck);
 
     // Add actions to toolbars

@@ -44,7 +44,7 @@ VisualDeckStorageWidget::VisualDeckStorageWidget(QWidget *parent) : QWidget(pare
     searchWidget = new VisualDeckStorageSearchWidget(this);
 
     refreshButton = new QToolButton(this);
-    refreshButton->setIcon(themePixmap(QStringLiteral("icons/reload")));
+    refreshButton->setIcon(themePixmap("icons/reload"));
     refreshButton->setFixedSize(32, 32);
     connect(refreshButton, &QPushButton::clicked, this, &VisualDeckStorageWidget::refreshIfPossible);
 

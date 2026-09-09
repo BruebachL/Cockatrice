@@ -132,7 +132,7 @@ void VisualDeckEditorWidget::initializeSearchBarAndCompleter()
 
     // Search button functionality
     searchPushButton = new CompactPushButton(searchContainer);
-    searchPushButton->setButtonIcon(themePixmap(QStringLiteral("icons/search")));
+    searchPushButton->setButtonIcon(themePixmap("icons/search"));
     connect(searchPushButton, &QPushButton::clicked, this, [=, this]() {
         ExactCard card = CardDatabaseManager::query()->getCard({searchBar->text()});
         if (card) {

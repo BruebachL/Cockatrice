@@ -51,15 +51,15 @@ ReplayWidget::ReplayWidget(QWidget *parent, GameReplay *replay)
     replayPlayButton = new QToolButton;
     replayPlayButton->setIconSize(QSize(32, 32));
     QIcon playButtonIcon = QIcon();
-    playButtonIcon.addPixmap(themePixmap(QStringLiteral("replay/start")), QIcon::Normal, QIcon::Off);
-    playButtonIcon.addPixmap(themePixmap(QStringLiteral("replay/pause")), QIcon::Normal, QIcon::On);
+    playButtonIcon.addPixmap(themePixmap("replay/start"), QIcon::Normal, QIcon::Off);
+    playButtonIcon.addPixmap(themePixmap("replay/pause"), QIcon::Normal, QIcon::On);
     replayPlayButton->setIcon(playButtonIcon);
     replayPlayButton->setCheckable(true);
     connect(replayPlayButton, &QToolButton::toggled, this, &ReplayWidget::replayPlayButtonToggled);
 
     replayFastForwardButton = new QToolButton;
     replayFastForwardButton->setIconSize(QSize(32, 32));
-    replayFastForwardButton->setIcon(themePixmap(QStringLiteral("replay/fastforward")));
+    replayFastForwardButton->setIcon(themePixmap("replay/fastforward"));
     replayFastForwardButton->setCheckable(true);
     connect(replayFastForwardButton, &QToolButton::toggled, this, &ReplayWidget::updateTimeScaleFactor);
 

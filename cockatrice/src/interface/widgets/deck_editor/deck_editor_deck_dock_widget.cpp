@@ -193,25 +193,25 @@ void DeckEditorDeckDockWidget::createDeckDock()
             &DeckEditorDeckDockWidget::applyActiveGroupCriteria);
 
     aIncrement = new QAction(QString(), this);
-    aIncrement->setIcon(themePixmap(QStringLiteral("icons/increment")));
+    aIncrement->setIcon(themePixmap("icons/increment"));
     connect(aIncrement, &QAction::triggered, this, &DeckEditorDeckDockWidget::actIncrementSelection);
     auto *tbIncrement = new QToolButton(this);
     tbIncrement->setDefaultAction(aIncrement);
 
     aDecrement = new QAction(QString(), this);
-    aDecrement->setIcon(themePixmap(QStringLiteral("icons/decrement")));
+    aDecrement->setIcon(themePixmap("icons/decrement"));
     connect(aDecrement, &QAction::triggered, this, &DeckEditorDeckDockWidget::actDecrementSelection);
     auto *tbDecrement = new QToolButton(this);
     tbDecrement->setDefaultAction(aDecrement);
 
     aRemoveCard = new QAction(QString(), this);
-    aRemoveCard->setIcon(themePixmap(QStringLiteral("icons/remove_row")));
+    aRemoveCard->setIcon(themePixmap("icons/remove_row"));
     connect(aRemoveCard, &QAction::triggered, this, &DeckEditorDeckDockWidget::actRemoveCard);
     auto *tbRemoveCard = new QToolButton(this);
     tbRemoveCard->setDefaultAction(aRemoveCard);
 
     aSwapCard = new QAction(QString(), this);
-    aSwapCard->setIcon(themePixmap(QStringLiteral("icons/swap")));
+    aSwapCard->setIcon(themePixmap("icons/swap"));
     connect(aSwapCard, &QAction::triggered, this, &DeckEditorDeckDockWidget::actSwapSelection);
     auto *tbSwapCard = new QToolButton(this);
     tbSwapCard->setDefaultAction(aSwapCard);

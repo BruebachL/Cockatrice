@@ -272,8 +272,7 @@ void MainWindow::actAbout()
                 GITHUB_TROUBLESHOOTING_URL + "'>" + tr("Troubleshooting") + "</a><br>" + "<a href='" + GITHUB_FAQ_URL +
                 "'>" + tr("F.A.Q.") + "</a><br>"),
         QMessageBox::Ok, this);
-    mb.setIconPixmap(
-        themePixmap(QStringLiteral("cockatrice")).scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    mb.setIconPixmap(themePixmap("cockatrice").scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     mb.setTextInteractionFlags(Qt::TextBrowserInteraction);
     mb.exec();
 }
@@ -325,7 +324,7 @@ void MainWindow::retranslateUi()
     aRegister->setText(tr("&Register to server..."));
     aForgotPassword->setText(tr("&Restore password..."));
     aSettings->setText(tr("&Settings..."));
-    aSettings->setIcon(themePixmap(QStringLiteral("icons/settings")));
+    aSettings->setIcon(themePixmap("icons/settings"));
     aExit->setText(tr("&Exit"));
 
 #if defined(__APPLE__) /* For OSX */
@@ -818,7 +817,7 @@ void MainWindow::createTrayIcon()
 
     trayIcon = new QSystemTrayIcon(this);
     trayIcon->setContextMenu(trayIconMenu);
-    trayIcon->setIcon(themePixmap(QStringLiteral("cockatrice")));
+    trayIcon->setIcon(themePixmap("cockatrice"));
     trayIcon->show();
 }
 

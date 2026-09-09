@@ -22,7 +22,7 @@ FilterBuilder::FilterBuilder(QWidget *parent) : QWidget(parent)
         typeCombo->addItem(CardFilter::typeName(static_cast<CardFilter::Type>(i)), QVariant(i));
     }
 
-    QPushButton *ok = new QPushButton(themePixmap(QStringLiteral("icons/increment")), QString());
+    QPushButton *ok = new QPushButton(themePixmap("icons/increment"), QString());
     ok->setObjectName("ok");
     ok->setMaximumSize(20, 20);
 

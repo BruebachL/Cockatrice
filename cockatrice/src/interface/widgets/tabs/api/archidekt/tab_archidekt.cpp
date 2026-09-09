@@ -214,7 +214,7 @@ void TabArchidekt::setupFilterWidgets()
     // Format filter (collapsible)
     formatButton = new SettingsButtonWidget(secondaryToolbar);
     formatButton->setButtonText(tr("Formats"));
-    formatButton->setButtonIcon(themePixmap(QStringLiteral("icons/scale_balanced")));
+    formatButton->setButtonIcon(themePixmap("icons/scale_balanced"));
 
     QWidget *formatContainer = new QWidget(secondaryToolbar);
     QGridLayout *formatLayout = new QGridLayout(formatContainer);

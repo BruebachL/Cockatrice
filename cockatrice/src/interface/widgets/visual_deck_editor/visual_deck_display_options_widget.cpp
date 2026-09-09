@@ -48,7 +48,7 @@ VisualDeckDisplayOptionsWidget::VisualDeckDisplayOptionsWidget(QWidget *parent) 
     sortByLabel = new QLabel(this);
 
     sortCriteriaButton = new SettingsButtonWidget(this);
-    sortCriteriaButton->setButtonIcon(themePixmap(QStringLiteral("icons/sort_arrow_down")));
+    sortCriteriaButton->setButtonIcon(themePixmap("icons/sort_arrow_down"));
 
     sortLabel = new QLabel(sortCriteriaButton);
     sortLabel->setWordWrap(true);
@@ -93,7 +93,7 @@ void VisualDeckDisplayOptionsWidget::retranslateUi()
     sortLabel->setText(tr("Click and drag to change the sort order within the groups"));
     sortCriteriaButton->setToolTip(tr("Configure how cards are sorted within their groups"));
     displayTypeButton->setButtonText(tr("Toggle Layout: Overlap"));
-    displayTypeButton->setButtonIcon(themePixmap(QStringLiteral("icons/scales")));
+    displayTypeButton->setButtonIcon(themePixmap("icons/scales"));
     displayTypeButton->setToolTip(
         tr("Change how cards are displayed within zones (i.e. overlapped or fully visible.)"));
 }
@@ -118,11 +118,11 @@ void VisualDeckDisplayOptionsWidget::updateDisplayType()
     switch (currentDisplayType) {
         case DisplayType::Flat:
             displayTypeButton->setButtonText(tr("Toggle Layout: Flat"));
-            displayTypeButton->setButtonIcon(themePixmap(QStringLiteral("icons/scroll")));
+            displayTypeButton->setButtonIcon(themePixmap("icons/scroll"));
             break;
         case DisplayType::Overlap:
             displayTypeButton->setButtonText(tr("Toggle Layout: Overlap"));
-            displayTypeButton->setButtonIcon(themePixmap(QStringLiteral("icons/scales")));
+            displayTypeButton->setButtonIcon(themePixmap("icons/scales"));
             break;
     }
     emit displayTypeChanged(currentDisplayType);

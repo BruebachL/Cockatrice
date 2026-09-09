@@ -108,15 +108,15 @@ MessagesSettingsPage::MessagesSettingsPage()
     }
 
     aAdd = new QAction(this);
-    aAdd->setIcon(themePixmap(QStringLiteral("icons/increment")));
+    aAdd->setIcon(themePixmap("icons/increment"));
     connect(aAdd, &QAction::triggered, this, &MessagesSettingsPage::actAdd);
 
     aEdit = new QAction(this);
-    aEdit->setIcon(themePixmap(QStringLiteral("icons/pencil")));
+    aEdit->setIcon(themePixmap("icons/pencil"));
     connect(aEdit, &QAction::triggered, this, &MessagesSettingsPage::actEdit);
 
     aRemove = new QAction(this);
-    aRemove->setIcon(themePixmap(QStringLiteral("icons/decrement")));
+    aRemove->setIcon(themePixmap("icons/decrement"));
     connect(aRemove, &QAction::triggered, this, &MessagesSettingsPage::actRemove);
 
     auto *messageToolBar = new QToolBar;

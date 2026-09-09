@@ -61,22 +61,22 @@ VisualDatabaseDisplayFilterToolbarWidget::VisualDatabaseDisplayFilterToolbarWidg
     });
 
     quickFilterSaveLoadWidget = new SettingsButtonWidget(this);
-    quickFilterSaveLoadWidget->setButtonIcon(themePixmap(QStringLiteral("icons/floppy_disk")));
+    quickFilterSaveLoadWidget->setButtonIcon(themePixmap("icons/floppy_disk"));
 
     quickFilterNameWidget = new SettingsButtonWidget(this);
-    quickFilterNameWidget->setButtonIcon(themePixmap(QStringLiteral("icons/pen_to_square")));
+    quickFilterNameWidget->setButtonIcon(themePixmap("icons/pen_to_square"));
 
     quickFilterMainTypeWidget = new SettingsButtonWidget(this);
-    quickFilterMainTypeWidget->setButtonIcon(themePixmap(QStringLiteral("icons/circle_half_stroke")));
+    quickFilterMainTypeWidget->setButtonIcon(themePixmap("icons/circle_half_stroke"));
 
     quickFilterSubTypeWidget = new SettingsButtonWidget(this);
-    quickFilterSubTypeWidget->setButtonIcon(themePixmap(QStringLiteral("icons/dragon")));
+    quickFilterSubTypeWidget->setButtonIcon(themePixmap("icons/dragon"));
 
     quickFilterSetWidget = new SettingsButtonWidget(this);
-    quickFilterSetWidget->setButtonIcon(themePixmap(QStringLiteral("icons/scroll")));
+    quickFilterSetWidget->setButtonIcon(themePixmap("icons/scroll"));
 
     quickFilterFormatLegalityWidget = new SettingsButtonWidget(this);
-    quickFilterFormatLegalityWidget->setButtonIcon(themePixmap(QStringLiteral("icons/scale_balanced")));
+    quickFilterFormatLegalityWidget->setButtonIcon(themePixmap("icons/scale_balanced"));
 
     retranslateUi();
 }

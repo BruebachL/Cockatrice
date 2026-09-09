@@ -15,8 +15,8 @@ SequenceEdit::SequenceEdit(const QString &_shortcutName, QWidget *parent) : QWid
     defaultButton = new QPushButton("", this);
 
     lineEdit->setMinimumWidth(70);
-    clearButton->setIcon(themePixmap(QStringLiteral("icons/clearsearch")));
-    defaultButton->setIcon(themePixmap(QStringLiteral("icons/update")));
+    clearButton->setIcon(themePixmap("icons/clearsearch"));
+    defaultButton->setIcon(themePixmap("icons/update"));
 
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);

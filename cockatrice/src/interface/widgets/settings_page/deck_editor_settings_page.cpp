@@ -54,15 +54,15 @@ DeckEditorSettingsPage::DeckEditorSettingsPage()
     urlList->addItems(SettingsCache::instance().downloads().getAllURLs());
 
     aAdd = new QAction(this);
-    aAdd->setIcon(themePixmap(QStringLiteral("icons/increment")));
+    aAdd->setIcon(themePixmap("icons/increment"));
     connect(aAdd, &QAction::triggered, this, &DeckEditorSettingsPage::actAddURL);
 
     aEdit = new QAction(this);
-    aEdit->setIcon(themePixmap(QStringLiteral("icons/pencil")));
+    aEdit->setIcon(themePixmap("icons/pencil"));
     connect(aEdit, &QAction::triggered, this, &DeckEditorSettingsPage::actEditURL);
 
     aRemove = new QAction(this);
-    aRemove->setIcon(themePixmap(QStringLiteral("icons/decrement")));
+    aRemove->setIcon(themePixmap("icons/decrement"));
     connect(aRemove, &QAction::triggered, this, &DeckEditorSettingsPage::actRemoveURL);
 
     auto *urlToolBar = new QToolBar;

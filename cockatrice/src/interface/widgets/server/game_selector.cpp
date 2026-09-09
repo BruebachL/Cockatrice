@@ -96,10 +96,10 @@ GameSelector::GameSelector(AbstractClient *_client,
     }
 
     filterButton = new QPushButton;
-    filterButton->setIcon(themePixmap(QStringLiteral("icons/search")));
+    filterButton->setIcon(themePixmap("icons/search"));
     connect(filterButton, &QPushButton::clicked, this, &GameSelector::actSetFilter);
     clearFilterButton = new QPushButton;
-    clearFilterButton->setIcon(themePixmap(QStringLiteral("icons/clearsearch")));
+    clearFilterButton->setIcon(themePixmap("icons/clearsearch"));
     bool filtersSetToDefault = showFilters && gameListProxyModel->areFilterParametersSetToDefaults();
     clearFilterButton->setEnabled(!filtersSetToDefault);
     connect(clearFilterButton, &QPushButton::clicked, this, &GameSelector::actClearFilter);

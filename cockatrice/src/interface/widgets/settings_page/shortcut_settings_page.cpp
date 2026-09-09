@@ -48,8 +48,8 @@ ShortcutSettingsPage::ShortcutSettingsPage()
     btnResetAll = new QPushButton(this);
     btnClearAll = new QPushButton(this);
 
-    btnResetAll->setIcon(themePixmap(QStringLiteral("icons/update")));
-    btnClearAll->setIcon(themePixmap(QStringLiteral("icons/clearsearch")));
+    btnResetAll->setIcon(themePixmap("icons/update"));
+    btnClearAll->setIcon(themePixmap("icons/clearsearch"));
 
     // layout
     auto *_editLayout = new QGridLayout;

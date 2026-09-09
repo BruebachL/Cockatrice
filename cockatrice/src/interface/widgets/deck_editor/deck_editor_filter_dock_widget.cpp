@@ -43,11 +43,11 @@ void DeckEditorFilterDockWidget::createFiltersDock()
     connect(filterBuilder, &FilterBuilder::add, filterModel, &FilterTreeModel::addFilter);
 
     aClearFilterOne = new QAction(QString(), this);
-    aClearFilterOne->setIcon(themePixmap(QStringLiteral("icons/decrement")));
+    aClearFilterOne->setIcon(themePixmap("icons/decrement"));
     connect(aClearFilterOne, &QAction::triggered, this, &DeckEditorFilterDockWidget::actClearFilterOne);
 
     aClearFilterAll = new QAction(QString(), this);
-    aClearFilterAll->setIcon(themePixmap(QStringLiteral("icons/clearsearch")));
+    aClearFilterAll->setIcon(themePixmap("icons/clearsearch"));
     connect(aClearFilterAll, &QAction::triggered, this, &DeckEditorFilterDockWidget::actClearFilterAll);
 
     auto *filterDelOne = new QToolButton();
