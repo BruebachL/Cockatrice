@@ -21,8 +21,8 @@
 #include <libcockatrice/settings/paths_settings.h>
 
 HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
-    : QWidget(parent), tabSupervisor(_tabSupervisor), background(themePixmap(QStringLiteral("backgrounds/home"))),
-      overlay(themePixmap(QStringLiteral("cockatrice")))
+    : QWidget(parent), tabSupervisor(_tabSupervisor), background(themePixmap("backgrounds/home")),
+      overlay(themePixmap("cockatrice"))
 {
     layout = new QGridLayout(this);
 
@@ -79,7 +79,7 @@ void HomeWidget::initializeBackgroundFromSource()
     switch (backgroundSourceType) {
         case BackgroundSources::Theme:
             cardChangeTimer->stop();
-            background = themePixmap(QStringLiteral("backgrounds/home"));
+            background = themePixmap("backgrounds/home");
             backgroundSourceDeck = DeckList();
             backgroundSourceCard->setCard(ExactCard());
             updateButtonsToBackgroundColor();

@@ -162,6 +162,7 @@ QPixmap loadColorAdjustedPixmap(const QString &name);
 // the returned path directly. Use for scheme-sensitive pixmaps like
 // backgrounds, the card back, and the app logo.
 QPixmap themePixmap(QStringView prefix);
+QPixmap themePixmap(const char *prefix);
 
 // Clears every PixmapGenerator's static cache so scheme variants are
 // re-resolved when the active theme or color scheme changes.
