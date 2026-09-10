@@ -1,6 +1,8 @@
 #include "printing_selector_card_overlay_widget.h"
 
 #include "../../../client/settings/cache_settings.h"
+#include "../../pixel_map_generator.h"
+#include "../../theme_manager.h"
 #include "../cards/card_info_picture_widget.h"
 #include "printing_selector_card_display_widget.h"
 
@@ -258,7 +260,7 @@ void PrintingSelectorCardOverlayWidget::initializePinBadge()
     }
 
     bool pinLoaded = false;
-    QImageReader pinReader(QStringLiteral("theme:icons/pin"));
+    QImageReader pinReader(QStringLiteral("theme:") + themeManager->assetPath(QStringLiteral("icons/pin")));
 
     if (pinReader.canRead()) {
         // Rasterize a 64×64 logical icon so it has a consistent size regardless of card scaling.

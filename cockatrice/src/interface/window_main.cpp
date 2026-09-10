@@ -45,6 +45,7 @@
 #include "intents/url_parser.h"
 #include "logger.h"
 #include "pixel_map_generator.h"
+#include "theme_manager.h"
 #include "version_string.h"
 #include "widgets/dialogs/dlg_connect.h"
 #include "widgets/server/handle_public_servers.h"
@@ -538,6 +539,15 @@ MainWindow::MainWindow(QWidget *parent)
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
         createTrayIcon();
     }
+
+    // Scheme flips (light/dark/system) fire on themeManager; re-resolve the
+    // scheme-sensitive app icons so the toolbar and tray stay in sync.
+    connect(themeManager, &ThemeManager::themeChanged, this, [this] {
+        aSettings->setIcon(themePixmap("icons/settings"));
+        if (trayIcon != nullptr) {
+            trayIcon->setIcon(themePixmap("cockatrice"));
+        }
+    });
 
     // status bar
     connect(&SettingsCache::instance().userInterface(), &InterfaceSettings::showStatusBarChanged, this,

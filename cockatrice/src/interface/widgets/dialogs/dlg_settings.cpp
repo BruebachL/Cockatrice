@@ -7,6 +7,7 @@
 
 #include "../../../client/settings/cache_settings.h"
 #include "../../pixel_map_generator.h"
+#include "../../theme_manager.h"
 #include "../main.h"
 #include "../settings_page/appearance_settings_page.h"
 #include "../settings_page/deck_editor_settings_page.h"
@@ -65,14 +66,14 @@ static QScrollArea *makeScrollable(QWidget *widget)
 }
 
 /**
- * @brief Returns the theme icon resources for each settings page, indexed by SettingsPage order
+ * @brief Returns the theme icon stems for each settings page, indexed by SettingsPage order
  */
 static QStringList pageIconResources()
 {
-    return {QStringLiteral("theme:config/general"),   QStringLiteral("theme:config/appearance"),
-            QStringLiteral("theme:config/interface"), QStringLiteral("theme:config/deckeditor"),
-            QStringLiteral("theme:config/storage"),   QStringLiteral("theme:config/messages"),
-            QStringLiteral("theme:config/sound"),     QStringLiteral("theme:config/shorcuts")};
+    return {QStringLiteral("config/general"),   QStringLiteral("config/appearance"),
+            QStringLiteral("config/interface"), QStringLiteral("config/deckeditor"),
+            QStringLiteral("config/storage"),   QStringLiteral("config/messages"),
+            QStringLiteral("config/sound"),     QStringLiteral("config/shorcuts")};
 }
 
 DlgSettings::DlgSettings(QWidget *parent) : QDialog(parent), currentTabIndex(0), searchActive(false)
@@ -154,11 +155,12 @@ void DlgSettings::setupUi()
     searchResultsView->setItemDelegate(searchDelegate);
     connect(searchResultsView, &QListView::clicked, this, &DlgSettings::onSearchResultClicked);
 
-    connect(&SettingsCache::instance(), &SettingsCache::themeChanged, this, [this] {
+    connect(themeManager, &ThemeManager::themeChanged, this, [this] {
         const QStringList icons = pageIconResources();
         for (int i = 0; i < tabButtons.size() && i < icons.size(); ++i) {
-            tabButtons[i]->setIcon(QPixmap(icons[i]));
+            tabButtons[i]->setIcon(themePixmap(icons[i]));
         }
+        searchEdit->addAction(themePixmap(QStringLiteral("icons/search")), QLineEdit::LeadingPosition);
         searchDelegate->setPageIcons(icons);
         searchResultsView->viewport()->update();
     });
@@ -227,7 +229,7 @@ void DlgSettings::setupTabBar()
     for (int i = 0; i < iconResources.size(); ++i) {
         auto *tabButton = new QToolButton;
         tabButton->setCheckable(true);
-        tabButton->setIcon(QPixmap(iconResources[i]));
+        tabButton->setIcon(themePixmap(iconResources[i]));
         tabButton->setIconSize(QSize(48, 48));
         tabButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
         tabButton->setAutoExclusive(true);

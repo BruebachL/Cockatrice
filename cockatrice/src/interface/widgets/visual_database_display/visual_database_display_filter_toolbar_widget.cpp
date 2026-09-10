@@ -1,6 +1,7 @@
 #include "visual_database_display_filter_toolbar_widget.h"
 
 #include "../../pixel_map_generator.h"
+#include "../../theme_manager.h"
 #include "../deck_editor/card_database_view.h"
 #include "visual_database_display_widget.h"
 
@@ -17,13 +18,20 @@ VisualDatabaseDisplayFilterToolbarWidget::VisualDatabaseDisplayFilterToolbarWidg
     sortGroupBox = new QGroupBox(this);
     filterGroupBox = new QGroupBox(this);
 
-    auto scalePixmap = [](const QString &fileName) { return QIcon(QPixmap(fileName)).pixmap({20, 20}); };
+    auto scalePixmap = [](QStringView stem) { return QIcon(themePixmap(stem)).pixmap({20, 20}); };
 
     sortByLabel = new QLabel(this);
-    sortByLabel->setPixmap(scalePixmap("theme:icons/sort_arrow_down"));
+    sortByLabel->setPixmap(scalePixmap(u"icons/sort_arrow_down"));
 
     filterByLabel = new QLabel(this);
-    filterByLabel->setPixmap(scalePixmap("theme:icons/filter"));
+    filterByLabel->setPixmap(scalePixmap(u"icons/filter"));
+
+    // Scheme flips (light/dark/system) fire on themeManager, so re-resolve
+    // these two labels' scheme-qualified art on that signal.
+    connect(themeManager, &ThemeManager::themeChanged, this, [this] {
+        sortByLabel->setPixmap(QIcon(themePixmap(u"icons/sort_arrow_down")).pixmap({20, 20}));
+        filterByLabel->setPixmap(QIcon(themePixmap(u"icons/filter")).pixmap({20, 20}));
+    });
 
     sortColumnCombo = new QComboBox(this);
     sortColumnCombo->setSizeAdjustPolicy(QComboBox::SizeAdjustPolicy::AdjustToContents);

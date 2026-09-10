@@ -5,6 +5,7 @@
  */
 #include "settings_search_delegate.h"
 
+#include "../../pixel_map_generator.h"
 #include "settings_search_model.h"
 
 #include <QPainter>
@@ -22,7 +23,7 @@ void SettingsSearchDelegate::setPageIcons(const QStringList &iconResources)
 {
     pageIcons.clear();
     for (const QString &resource : iconResources) {
-        pageIcons.append(QPixmap(resource));
+        pageIcons.append(themePixmap(resource));
     }
 }
 
