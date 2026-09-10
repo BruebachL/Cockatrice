@@ -108,7 +108,9 @@ static QPixmap tryLoadImage(const QString &path, const QSize &size, bool expandO
         if (!pix.isNull()) {
             return pix.scaled(size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         }
-        return {};
+        // Raster load failed (corrupt/zero-byte); fall through to SVG
+        // so a bad theme file doesn't silently drop the icon.
+        return loadSvg(path.left(path.lastIndexOf(QLatin1Char('.'))) + QStringLiteral(".svg"), size, expandOnly);
     }
 
     const auto formats = {"png", "jpg"};
@@ -499,7 +501,10 @@ QPixmap loadColorAdjustedPixmap(const QString &name)
     // Prefer an authored scheme-qualified variant when one exists for this asset.
     const QString variant = themeManager->schemeVariantPath(QStringView(name).mid(QStringLiteral("theme:").size()));
     if (!variant.isEmpty()) {
-        return QPixmap(QStringLiteral("theme:") + variant);
+        QPixmap variantPix(QStringLiteral("theme:") + variant);
+        if (!variantPix.isNull()) {
+            return variantPix;
+        }
     }
 
     // Legacy fallback: runtime-invert for dark mode when no authored variant.

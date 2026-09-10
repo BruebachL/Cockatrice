@@ -31,6 +31,7 @@ public slots:
     void onBackgroundShuffleFrequencyChanged();
     void updateBackgroundProperties();
     void updateButtonsToBackgroundColor();
+    void updateSchemeVariantAssets();
     QGroupBox *createButtons();
     void updateConnectButton(const ClientStatus status);
 
@@ -44,6 +45,7 @@ private:
     QPixmap overlay;
     QPair<QColor, QColor> gradientColors;
     HomeStyledButton *connectButton;
+    QLabel *logoLabel = nullptr;
 
     void setRandomCard(ExactCard &newCard);
     void loadBackgroundSourceDeck();

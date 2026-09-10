@@ -48,6 +48,7 @@ private:
     // switching away from a custom palette restores the original colours.
     QPalette defaultPalette;
     QString currentThemePath;
+    bool isDarkModeCache = false;
     std::array<QBrush, Role::MaxRole + 1> brushes;
     QStringMap availableThemes;
     /*
@@ -69,10 +70,11 @@ public:
     // Explicit color scheme of the theme: theme.cfg's ColorScheme setting
     // (Dark/Light), falling back to the OS color scheme when it is "System".
     bool isDarkMode(const QString &themeDirPath) const;
-    // The resolved scheme of the currently active theme.
+    // The resolved scheme of the currently active theme. Cached at
+    // themeChangedSlot() time so repeated queries don't re-parse theme.cfg.
     bool isDarkModeActive() const
     {
-        return isDarkMode(currentThemePath);
+        return isDarkModeCache;
     }
     QStringMap &getAvailableThemes();
     // Returns the path to the currently active theme directory (empty = default)
@@ -97,9 +99,12 @@ public:
     QString assetPath(QStringView prefix) const;
     // Like assetPath, but resolves only the scheme-qualified variant
     // ("<prefix>-<dark|light>.<ext>") and returns an empty string when no
-    // variant exists — it never falls back to the plain "<prefix>" asset.
-    // Callers that must distinguish "no authored variant" (e.g. to keep a
-    // legacy runtime fallback alive) should use this instead of assetPath.
+    // variant would be used — it never falls back to the plain "<prefix>"
+    // asset. A plain asset in a search-path root also suppresses any variant
+    // found in lower-priority roots, so a theme's own plain override can beat
+    // a built-in variant. Callers that must distinguish "no authored variant"
+    // (e.g. to keep a legacy runtime fallback alive) should use this instead
+    // of assetPath.
     QString schemeVariantPath(QStringView prefix) const;
     // Load the theme's shipped default palette, falling back to the system
     // theme directory when it is absent from the resolved (user) directory.

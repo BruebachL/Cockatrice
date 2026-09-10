@@ -59,8 +59,10 @@ HomeWidget::HomeWidget(QWidget *parent, TabSupervisor *_tabSupervisor)
     connect(&SettingsCache::instance(), &SettingsCache::themeChanged, this,
             &HomeWidget::updateButtonsToBackgroundColor);
     // Scheme flips (light/dark/system with an OS switch) fire on themeManager,
-    // not on SettingsCache::themeChanged, so re-resolve the variant background.
-    connect(themeManager, &ThemeManager::themeChanged, this, &HomeWidget::initializeBackgroundFromSource);
+    // not on SettingsCache::themeChanged. Re-resolve the scheme-sensitive
+    // background and logo without re-running the whole initializer (which
+    // SettingsCache::themeChanged already does and would double-fire here).
+    connect(themeManager, &ThemeManager::themeChanged, this, &HomeWidget::updateSchemeVariantAssets);
     connect(&SettingsCache::instance().appearance(), &AppearanceSettings::homeTabButtonColorChanged, this,
             &HomeWidget::updateButtonsToBackgroundColor);
 }
@@ -214,6 +216,22 @@ void HomeWidget::updateButtonsToBackgroundColor()
     }
 }
 
+void HomeWidget::updateSchemeVariantAssets()
+{
+    if (BackgroundSources::fromId(SettingsCache::instance().appearance().getHomeTabBackgroundSource()) !=
+        BackgroundSources::Theme) {
+        return;
+    }
+
+    background = themePixmap("backgrounds/home");
+    overlay = themePixmap("cockatrice");
+    if (logoLabel != nullptr) {
+        logoLabel->setPixmap(overlay.scaledToWidth(200, Qt::SmoothTransformation));
+    }
+    updateButtonsToBackgroundColor();
+    update();
+}
+
 QGroupBox *HomeWidget::createButtons()
 {
     QGroupBox *box = new QGroupBox(this);
@@ -234,7 +252,7 @@ QGroupBox *HomeWidget::createButtons()
     QVBoxLayout *boxLayout = new QVBoxLayout;
     boxLayout->setAlignment(Qt::AlignHCenter);
 
-    QLabel *logoLabel = new QLabel;
+    logoLabel = new QLabel;
     logoLabel->setPixmap(overlay.scaledToWidth(200, Qt::SmoothTransformation));
     logoLabel->setAlignment(Qt::AlignCenter);
     boxLayout->addWidget(logoLabel);

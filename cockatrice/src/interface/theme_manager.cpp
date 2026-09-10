@@ -146,12 +146,26 @@ QString ThemeManager::schemeVariantPath(QStringView prefix) const
 {
     static const QStringList formats = {QStringLiteral(".png"), QStringLiteral(".jpg"), QStringLiteral(".jpeg"),
                                         QStringLiteral(".svg")};
-    const QString scheme = isDarkMode(currentThemePath) ? QStringLiteral("dark") : QStringLiteral("light");
+    const QString scheme = isDarkModeCache ? QStringLiteral("dark") : QStringLiteral("light");
     const QString variantStem = prefix.toString() + QLatin1Char('-') + scheme;
+    const QString plainStem = prefix.toString();
 
-    for (const QString &format : formats) {
-        if (QFileInfo::exists(QStringLiteral("theme:") + variantStem + format)) {
-            return variantStem + format;
+    // Check each search-path root individually so a theme's own plain asset
+    // can beat a built-in variant in a lower-priority root: a plain asset in
+    // the current root suppresses any variant found later in the list.
+    const QStringList roots = QDir::searchPaths("theme");
+    for (const QString &root : roots) {
+        for (const QString &format : formats) {
+            const QString variantFile = root + QLatin1Char('/') + variantStem + format;
+            if (QFileInfo::exists(variantFile)) {
+                return variantStem + format;
+            }
+        }
+        for (const QString &format : formats) {
+            const QString plainFile = root + QLatin1Char('/') + plainStem + format;
+            if (QFileInfo::exists(plainFile)) {
+                return QString();
+            }
         }
     }
     return QString();
@@ -435,12 +449,13 @@ void ThemeManager::themeChangedSlot()
     QString themeName = SettingsCache::instance().getThemeName();
     QString dirPath = getAvailableThemes().value(themeName);
     currentThemePath = dirPath;
+    isDarkModeCache = isDarkMode(dirPath);
     QDir dir(dirPath);
 
     // CSS — prefer the scheme-qualified stylesheet (style-dark.css /
     // style-light.css) when present, else the plain style.css as fallback.
     if (!dirPath.isEmpty()) {
-        const QString scheme = isDarkMode(dirPath) ? QStringLiteral("dark") : QStringLiteral("light");
+        const QString scheme = isDarkModeCache ? QStringLiteral("dark") : QStringLiteral("light");
         const QString schemeCss = QFileInfo(QStringLiteral(STYLE_CSS_NAME)).completeBaseName() + QLatin1Char('-') +
                                   scheme + QStringLiteral(".css");
         if (dir.exists(schemeCss)) {
@@ -460,7 +475,7 @@ void ThemeManager::themeChangedSlot()
     // Resolve active scheme:
     // theme.cfg says Dark/Light → use that
     // theme.cfg says System or is absent → follow the OS
-    QString activeScheme = isDarkMode(dirPath) ? "Dark" : "Light";
+    QString activeScheme = isDarkModeCache ? "Dark" : "Light";
 
     // ── Load palette: custom first, then theme default ────────────────────
     PaletteConfig palette = PaletteConfig::fromScheme(dirPath, activeScheme);
