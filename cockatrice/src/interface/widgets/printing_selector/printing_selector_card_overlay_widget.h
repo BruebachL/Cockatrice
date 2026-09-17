@@ -8,6 +8,8 @@
 #define PRINTING_SELECTOR_CARD_OVERLAY_WIDGET_H
 
 class QAction;
+class QContextMenuEvent;
+class QMenu;
 
 #include "../../../interface/widgets/tabs/abstract_tab_deck_editor.h"
 #include "all_zones_card_amount_widget.h"
@@ -31,6 +33,7 @@ protected:
     void enterEvent(QEnterEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
     void customMenu(QPoint point);
 
 signals:
@@ -55,6 +58,8 @@ private:
     ExactCard rootCard;
     QLabel *cardOverridePreviewLabel = nullptr;
     ExactCard hoveredOverrideCard;
+    QMenu *previewSourceMenu = nullptr;
+    QAction *hoveredOverrideAction = nullptr;
 };
 
 #endif // PRINTING_SELECTOR_CARD_OVERLAY_WIDGET_H

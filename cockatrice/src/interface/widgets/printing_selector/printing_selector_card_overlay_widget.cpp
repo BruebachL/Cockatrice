@@ -6,6 +6,7 @@
 #include "printing_selector_card_display_widget.h"
 
 #include <QApplication>
+#include <QContextMenuEvent>
 #include <QFileDialog>
 #include <QImageReader>
 #include <QLabel>
@@ -40,6 +41,10 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
                                                                      const ExactCard &_rootCard)
     : QWidget(parent), deckEditor(_deckEditor), rootCard(_rootCard)
 {
+    // Keyboard entry point: let the overlay join the Tab chain and take click focus so a
+    // keyboard user can reach it and open its context menu (Menu key / Shift+F10).
+    setFocusPolicy(Qt::StrongFocus);
+
     // Set up the main layout
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -96,20 +101,41 @@ PrintingSelectorCardOverlayWidget::PrintingSelectorCardOverlayWidget(QWidget *pa
 }
 
 /**
- * @brief Handles the mouse press event for right-clicks to show the context menu.
+ * @brief Contains a right-button press to the overlay.
  *
- * If the right mouse button is pressed, a custom context menu will appear. For other mouse buttons,
- * the event is passed to the base class for default handling.
+ * The context menu itself is opened from contextMenuEvent(): Qt sends
+ * QContextMenuEvent whether or not the originating mouse-press was handled,
+ * so this handler does not gate the menu. Its only job is defensive
+ * containment — a right-press on the overlay must never propagate to an
+ * ancestor widget, so a card right-click can only ever yield this overlay's
+ * own menu and no stray sibling/ancestor surface.
  *
- * @param event The mouse event triggered by the user.
+ * All other buttons keep the base-class passthrough.
  */
 void PrintingSelectorCardOverlayWidget::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::RightButton) {
-        customMenu(event->pos());
-    } else {
-        QWidget::mousePressEvent(event); // Pass other events to the base class
+        event->accept();
+        return;
     }
+    QWidget::mousePressEvent(event);
+}
+
+/**
+ * @brief Opens the card-overlay context menu from the single keyboard+platform entry point.
+ *
+ * QContextMenuEvent fires from the ContextMenu/Menu key, Shift+F10, and platform
+ * right-clicks, and Qt sends it regardless of whether the original mouse or key event was
+ * accepted, so mouse and keyboard converge on the same path. For keyboard-invoked events
+ * pos() may be null; the menu is then anchored to the overlay's center.
+ *
+ * @param event The context menu event triggered by the user.
+ */
+void PrintingSelectorCardOverlayWidget::contextMenuEvent(QContextMenuEvent *event)
+{
+    const QPoint menuPoint = event->pos().isNull() ? rect().center() : event->pos();
+    customMenu(menuPoint);
+    event->accept();
 }
 
 /**
@@ -215,17 +241,19 @@ void PrintingSelectorCardOverlayWidget::leaveEvent(QEvent *event)
 }
 
 /**
- * @brief Creates and shows a custom context menu when the right mouse button is clicked.
+ * @brief Creates and shows the card-overlay context menu.
  *
- * The context menu includes an option to show related cards, which displays a submenu with actions
- * for each related card. When an action is triggered, the card information is updated, and the
- * printing selector is shown.
+ * The menu includes the card art preference (Pin/Unpin Printing), the Image Override
+ * submenu (Load Custom Image, Clear Override, and one entry per alternate printing with a
+ * live preview), and the Show Related cards submenu.
  *
- * @param point The position of the mouse when the right-click occurred.
+ * @param point The local position the menu should pop at.
  */
 void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
 {
     QMenu menu;
+
+    hidePreview(); // Clear any preview state left over from a previous menu run.
 
     // Submenus are owned by the stack-allocated top-level menu (addMenu() does not
     // transfer ownership).
@@ -347,7 +375,11 @@ void PrintingSelectorCardOverlayWidget::customMenu(QPoint point)
             });
         }
     }
+    // The preview anchors itself to this popup's global geometry while it is open, so the
+    // pointer must stay valid for the whole exec() and be dropped before the stack unwinds.
+    previewSourceMenu = overrideMenu;
     menu.exec(this->mapToGlobal(point));
+    previewSourceMenu = nullptr;
 }
 
 /**
@@ -405,11 +437,14 @@ void PrintingSelectorCardOverlayWidget::initializePinBadge()
 }
 
 /**
- * @brief Shows the hover preview for a printing entry in the Image Override submenu.
+ * @brief Shows the hover preview for a highlighted printing entry in the Image Override submenu.
+ *
+ * QMenu::hovered fires on keyboard highlight too, so the preview appears when arrows walk
+ * onto a printing entry, not only under the mouse.
  *
  * Non-printing entries (e.g., Load Custom Image, Clear Override) hide the preview.
  *
- * @param action The action the cursor is hovering over.
+ * @param action The action that was highlighted.
  */
 void PrintingSelectorCardOverlayWidget::showPreviewForAction(QAction *action)
 {
@@ -427,15 +462,16 @@ void PrintingSelectorCardOverlayWidget::showPreviewForAction(QAction *action)
     }
 
     hoveredOverrideCard = previewCard;
+    hoveredOverrideAction = action;
     refreshPreview();
 }
 
 /**
- * @brief Renders the hover preview for the currently hovered printing.
+ * @brief Renders the hover preview for the currently highlighted printing.
  *
  * The preview shows the loading placeholder while the art is pending and swaps in the real
  * art when it resolves. The label is positioned against its already-resized geometry so the
- * first-ever hover at the screen's edges stays fully on-screen.
+ * first-ever show at the screen's edges stays fully on-screen.
  */
 void PrintingSelectorCardOverlayWidget::refreshPreview()
 {
@@ -461,33 +497,68 @@ void PrintingSelectorCardOverlayWidget::refreshPreview()
     const QSize labelSize = previewPixmap.size();
     cardOverridePreviewLabel->resize(labelSize);
 
-    const QPoint cursorPos = QCursor::pos();
-    QScreen *screen = QGuiApplication::screenAt(cursorPos);
-    if (!screen) {
+    // Anchor the preview to the walked submenu popup rather than QCursor::pos(), which is idle
+    // under keyboard-only operation: a keyboard-highlighted row must preview at the same place as
+    // a hovered one. The mouse path is unchanged in effect — the popup sits under the cursor, so
+    // the preview stays beside the row in both modalities.
+    const QMenu *popup = previewSourceMenu;
+    if (!popup || !popup->isVisible() || !hoveredOverrideAction) {
         hidePreview();
         return;
     }
 
+    const QRect popupGeometry = popup->geometry();
+    const QRect actionRectLocal = popup->actionGeometry(hoveredOverrideAction);
+    const QRect actionRect(popupGeometry.topLeft() + actionRectLocal.topLeft(), actionRectLocal.size());
+
+    QScreen *screen = QGuiApplication::screenAt(popupGeometry.center());
+    if (!screen) {
+        hidePreview();
+        return;
+    }
     const QRect &screenGeometry = screen->geometry();
 
-    QPoint pos = cursorPos + QPoint(previewOffset, previewOffset);
-    if (pos.x() + labelSize.width() > screenGeometry.right()) {
-        pos.setX(cursorPos.x() - labelSize.width() - previewOffset);
-    }
-    if (pos.y() + labelSize.height() > screenGeometry.bottom()) {
-        pos.setY(cursorPos.y() - labelSize.height() - previewOffset);
-    }
+    // Side-aware: hug the side of the submenu popup that has room, aligned with the highlighted
+    // row, then clamp every edge so the preview always lands fully on-screen on first show.
+    const bool rightFits = actionRect.right() + previewOffset + labelSize.width() <= screenGeometry.right();
+    const bool leftFits = actionRect.left() - previewOffset - labelSize.width() >= screenGeometry.left();
 
-    cardOverridePreviewLabel->move(pos);
+    int x;
+    if (rightFits) {
+        x = actionRect.right() + previewOffset;
+    } else if (leftFits) {
+        x = actionRect.left() - previewOffset - labelSize.width();
+    } else {
+        x = actionRect.left();
+    }
+    x = qMax(screenGeometry.left(), x);
+    x = qMin(screenGeometry.right() - labelSize.width() + 1, x);
+
+    const bool belowFits = actionRect.bottom() + previewOffset + labelSize.height() <= screenGeometry.bottom();
+    const bool aboveFits = actionRect.top() - previewOffset - labelSize.height() >= screenGeometry.top();
+
+    int y;
+    if (belowFits) {
+        y = actionRect.bottom() + previewOffset;
+    } else if (aboveFits) {
+        y = actionRect.top() - previewOffset - labelSize.height();
+    } else {
+        y = actionRect.top();
+    }
+    y = qMax(screenGeometry.top(), y);
+    y = qMin(screenGeometry.bottom() - labelSize.height() + 1, y);
+
+    cardOverridePreviewLabel->move(x, y);
     cardOverridePreviewLabel->show();
 }
 
 /**
- * @brief Hides the hover preview and forgets the currently hovered printing.
+ * @brief Hides the hover preview and forgets the currently highlighted printing.
  */
 void PrintingSelectorCardOverlayWidget::hidePreview()
 {
     hoveredOverrideCard = ExactCard();
+    hoveredOverrideAction = nullptr;
 
     if (cardOverridePreviewLabel) {
         cardOverridePreviewLabel->hide();
