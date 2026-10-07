@@ -1,5 +1,6 @@
 #include "tab_report.h"
 
+#include "../server/user/user_context_menu.h"
 #include "../utility/report_utils.h"
 #include "abstract_client.h"
 #include "tab_supervisor.h"
@@ -25,11 +26,13 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <libcockatrice/network/server/remote/user_level.h>
 #include <libcockatrice/protocol/pb/command_replay_download_by_game_id.pb.h>
 #include <libcockatrice/protocol/pb/command_report_add_comment.pb.h>
 #include <libcockatrice/protocol/pb/command_report_assign.pb.h>
 #include <libcockatrice/protocol/pb/command_report_details.pb.h>
 #include <libcockatrice/protocol/pb/command_report_list.pb.h>
+#include <libcockatrice/protocol/pb/command_report_reopen.pb.h>
 #include <libcockatrice/protocol/pb/command_report_resolve.pb.h>
 #include <libcockatrice/protocol/pb/command_report_stats.pb.h>
 #include <libcockatrice/protocol/pb/command_report_user_info.pb.h>
@@ -110,6 +113,23 @@ TabReport::TabReport(TabSupervisor *_tabSupervisor, AbstractClient *_client) : T
     table->horizontalHeader()->setSectionResizeMode(COL_REPORTED, QHeaderView::Stretch);
     table->horizontalHeader()->setSectionResizeMode(COL_REPORTER, QHeaderView::ResizeToContents);
     connect(table, &QTableWidget::itemSelectionChanged, this, &TabReport::onSelectionChanged);
+    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    userContextMenu = new UserContextMenu(tabSupervisor, this);
+    connect(table, &QTableWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        const int row = table->itemAt(pos)->row();
+        if (row < 0) {
+            return;
+        }
+        QTableWidgetItem *reportedItem = table->item(row, COL_REPORTED);
+        if (!reportedItem) {
+            return;
+        }
+        QString userName = reportedItem->text();
+        if (userName.isEmpty()) {
+            return;
+        }
+        userContextMenu->showContextMenu(table->viewport()->mapToGlobal(pos), userName, UserLevelFlags());
+    });
 
     descGroup = new QGroupBox;
     descriptionEdit = new QTextEdit;
@@ -223,12 +243,14 @@ TabReport::TabReport(TabSupervisor *_tabSupervisor, AbstractClient *_client) : T
     resolveButton = new QPushButton;
     resolveWithNoteButton = new QPushButton;
     dismissButton = new QPushButton;
+    reopenButton = new QPushButton;
     viewReplayButton = new QPushButton;
     joinGameButton = new QPushButton;
     connect(assignButton, &QPushButton::clicked, this, &TabReport::assignReport);
     connect(resolveButton, &QPushButton::clicked, this, [this]() { resolveReport(false, false); });
     connect(resolveWithNoteButton, &QPushButton::clicked, this, [this]() { resolveReport(false, true); });
     connect(dismissButton, &QPushButton::clicked, this, [this]() { resolveReport(true, true); });
+    connect(reopenButton, &QPushButton::clicked, this, &TabReport::reopenReport);
     connect(viewReplayButton, &QPushButton::clicked, this, &TabReport::viewReplay);
     connect(joinGameButton, &QPushButton::clicked, this, &TabReport::joinGame);
 
@@ -239,6 +261,7 @@ TabReport::TabReport(TabSupervisor *_tabSupervisor, AbstractClient *_client) : T
     actionBar->addWidget(resolveButton);
     actionBar->addWidget(resolveWithNoteButton);
     actionBar->addWidget(dismissButton);
+    actionBar->addWidget(reopenButton);
     actionBar->addSpacing(20);
     actionBar->addWidget(viewReplayButton);
     actionBar->addWidget(joinGameButton);
@@ -305,6 +328,7 @@ void TabReport::retranslateUi()
     resolveButton->setText(tr("Resolve"));
     resolveWithNoteButton->setText(tr("Resolve with note..."));
     dismissButton->setText(tr("Dismiss..."));
+    reopenButton->setText(tr("Reopen"));
     viewReplayButton->setText(tr("View Replay"));
     joinGameButton->setText(tr("Join Game"));
 }
@@ -569,6 +593,9 @@ void TabReport::updateActionStates()
     resolveButton->setEnabled(status == "open" || status == "assigned");
     resolveWithNoteButton->setEnabled(status == "open" || status == "assigned");
     dismissButton->setEnabled(status == "open" || status == "assigned");
+    if (reopenButton) {
+        reopenButton->setEnabled(status == "resolved" || status == "dismissed");
+    }
 
     const bool hasGameId = report.game_id() > 0;
     const bool hasReplay = hasGameId && report.has_replay_id() && report.replay_id() > 0;
@@ -582,6 +609,9 @@ void TabReport::setActionsEnabled(bool enabled)
     resolveButton->setEnabled(enabled);
     resolveWithNoteButton->setEnabled(enabled);
     dismissButton->setEnabled(enabled);
+    if (reopenButton) {
+        reopenButton->setEnabled(false);
+    }
     viewReplayButton->setEnabled(false);
     joinGameButton->setEnabled(false);
     commentButton->setEnabled(enabled);
@@ -687,6 +717,44 @@ void TabReport::resolveResponse(const Response &response)
     }
 }
 
+void TabReport::reopenReport()
+{
+    const int reportId = selectedReportId();
+    if (reportId < 0) {
+        return;
+    }
+
+    bool ok;
+    QString note = QInputDialog::getText(this, tr("Reopen Report"), tr("Reason for reopening (optional):"),
+                                         QLineEdit::Normal, QString(), &ok);
+    if (!ok) {
+        return;
+    }
+
+    setActionsEnabled(false);
+    statusLabel->setText(tr("Reopening..."));
+
+    Command_ReportReopen cmd;
+    cmd.set_report_id(reportId);
+    if (!note.isEmpty()) {
+        cmd.set_reopen_note(note.toStdString());
+    }
+
+    PendingCommand *pend = client->prepareModeratorCommand(cmd);
+    connect(pend, &PendingCommand::finished, this, &TabReport::reopenResponse);
+    client->sendCommand(pend);
+}
+
+void TabReport::reopenResponse(const Response &response)
+{
+    if (response.response_code() == Response::RespOk) {
+        statusLabel->setText(tr("Done."));
+        refreshList();
+    } else {
+        statusLabel->setText(tr("Action failed."));
+        updateActionStates();
+    }
+}
 void TabReport::viewReplay()
 {
     ServerInfo_Report report;

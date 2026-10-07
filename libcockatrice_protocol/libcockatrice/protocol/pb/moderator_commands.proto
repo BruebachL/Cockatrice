@@ -23,9 +23,10 @@ message ModeratorCommand {
         REPORT_LIST = 1200;
         REPORT_ASSIGN = 1201;
         REPORT_RESOLVE = 1202;
-        REPLAY_DOWNLOAD_BY_GAME_ID = 1203;
-        REPORT_USER_INFO = 1204;
-        REPORT_STATS = 1205;
+        REPORT_REOPEN = 1203;
+        REPLAY_DOWNLOAD_BY_GAME_ID = 1204;
+        REPORT_USER_INFO = 1205;
+        REPORT_STATS = 1206;
     }
     extensions 100 to max;
 }

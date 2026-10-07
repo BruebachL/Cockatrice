@@ -19,6 +19,7 @@ class QTableWidget;
 class QTextEdit;
 class QTimer;
 class GameReplay;
+class UserContextMenu;
 
 class TabReport : public Tab
 {
@@ -53,6 +54,8 @@ private slots:
     void reportDetailsResponse(const Response &response);
     void requestStats();
     void statsResponse(const Response &response);
+    void reopenReport();
+    void reopenResponse(const Response &response);
 
 private:
     int selectedReportId() const;
@@ -84,10 +87,12 @@ private:
     QPushButton *resolveButton;
     QPushButton *resolveWithNoteButton;
     QPushButton *dismissButton;
+    QPushButton *reopenButton;
     QPushButton *viewReplayButton;
     QPushButton *joinGameButton;
     QLabel *statusLabel;
     QTimer *refreshTimer;
+    UserContextMenu *userContextMenu;
 
     QGroupBox *userContextGroup;
     QLabel *userContextName;

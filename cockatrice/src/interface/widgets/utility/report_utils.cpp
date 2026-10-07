@@ -92,10 +92,26 @@ void renderReportDetails(QTextEdit *chatLogEdit,
                          const QString &moderatorPrefix,
                          const QString &nonModeratorPrefix)
 {
+    QString details = QString::fromStdString(report.description());
+    if (report.has_resolution_note() && !report.resolution_note().empty()) {
+        details += "\n\n" + QObject::tr("Resolution note: %1").arg(QString::fromStdString(report.resolution_note()));
+    }
+    if (report.has_resolution_time()) {
+        QString resolvedBy = QObject::tr("unknown");
+        if (report.has_resolved_by_name() && !report.resolved_by_name().empty()) {
+            resolvedBy = QString::fromStdString(report.resolved_by_name());
+        }
+        details +=
+            "\n" + QObject::tr("Resolved at %1 by %2").arg(formatReportTime(report.resolution_time()), resolvedBy);
+    }
+    if (report.has_assigned_mod_name() && !report.assigned_mod_name().empty()) {
+        // keep existing info implicit; details may already show assignment context
+    }
+
     if (report.has_chat_log() && !report.chat_log().empty()) {
-        chatLogEdit->setPlainText(QString::fromStdString(report.chat_log()));
+        chatLogEdit->setPlainText(details + "\n\n=== Chat Log ===\n" + QString::fromStdString(report.chat_log()));
     } else {
-        chatLogEdit->clear();
+        chatLogEdit->setPlainText(details);
     }
 
     commentsEdit->clear();
