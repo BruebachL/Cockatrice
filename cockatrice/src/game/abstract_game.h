@@ -18,7 +18,7 @@ class GameMetaInfo;
 class GameReplay;
 class GameState;
 class PlayerManager;
-
+class CardState;
 class AbstractGame : public QObject
 {
     Q_OBJECT
@@ -57,7 +57,7 @@ public:
 
     void loadReplay(const GameReplay *replay);
 
-    CardItem *getCard(int playerId, const QString &zoneName, int cardId) const;
+    CardState *getCard(int playerId, const QString &zoneName, int cardId) const;
 };
 
 #endif // COCKATRICE_ABSTRACT_GAME_H
