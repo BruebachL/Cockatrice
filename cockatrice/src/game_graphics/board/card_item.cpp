@@ -85,14 +85,18 @@ void CardItem::prepareDelete()
         owner = nullptr;
     }
 
-    const QList<CardItem *> &attachedCards = state->getAttachedCards();
-    while (!attachedCards.isEmpty()) {
-        attachedCards.first()->setZone(nullptr); // so that it won't try to call reorganizeCards()
-        attachedCards.first()->setAttachedTo(nullptr);
+    const QList<CardState *> &attachedStates = state->getAttachedCards();
+    while (!attachedStates.isEmpty()) {
+        auto *attachedItem = qobject_cast<CardItem *>(attachedStates.first()->parent());
+        if (attachedItem == nullptr) {
+            break;
+        }
+        attachedItem->setZone(nullptr); // so that it won't try to call reorganizeCards()
+        attachedItem->setAttachedTo(nullptr);
     }
 
     if (state->getAttachedTo() != nullptr) {
-        state->getAttachedTo()->removeAttachedCard(this);
+        state->getAttachedTo()->removeAttachedCard(state);
         state->setAttachedTo(nullptr);
     }
 }
@@ -222,7 +226,7 @@ void CardItem::setPT(const QString &_pt)
 void CardItem::setAttachedTo(CardItem *_attachedTo)
 {
     if (state->getAttachedTo() != nullptr) {
-        state->getAttachedTo()->removeAttachedCard(this);
+        state->getAttachedTo()->removeAttachedCard(state);
     }
 
     state->setGridPoint(QPoint(-1, state->getGridPoint().y()));
@@ -234,7 +238,7 @@ void CardItem::setAttachedTo(CardItem *_attachedTo)
             deleteLater();
         } else {
             emit state->getAttachedTo()->getZone()->cardAdded(state);
-            state->getAttachedTo()->addAttachedCard(this);
+            state->getAttachedTo()->addAttachedCard(state);
             if (state->getZone() != state->getAttachedTo()->getZone()) {
                 state->getAttachedTo()->getZone()->reorganizeCards();
             }
