@@ -166,6 +166,12 @@ QByteArray CardDatabaseLoader::computeSourceHash(const QStringList &customPaths)
     hash.addData(QCoreApplication::applicationVersion().toUtf8());
     hash.addData(QByteArray(1, '\0'));
 
+    // Include parser schema version to invalidate caches when parser behavior changes.
+    // Increment this if the parser logic changes in a way that affects cached data.
+    static const char SCHEMA_VERSION[] = "xml4-schema-v1-unfiltered";
+    hash.addData(QByteArray(SCHEMA_VERSION, sizeof(SCHEMA_VERSION) - 1));
+    hash.addData(QByteArray(1, '\0'));
+
     const QStringList inputs = QStringList()
                                << pathProvider->getCardDatabasePath() << pathProvider->getTokenDatabasePath()
                                << pathProvider->getSpoilerCardDatabasePath() << customPaths;
@@ -177,6 +183,15 @@ QByteArray CardDatabaseLoader::computeSourceHash(const QStringList &customPaths)
             hash.addData(QByteArray::number(info.size()));
             hash.addData(QByteArray(1, '\0'));
             hash.addData(QByteArray::number(info.lastModified().toSecsSinceEpoch()));
+            hash.addData(QByteArray(1, '\0'));
+        }
+    }
+
+    // Include set enablement state as part of cache hash (both terms: schema + enabled sets)
+    if (priorityController) {
+        const QStringList enabledSets = priorityController->getEnabledSetNames();
+        for (const QString &setName : enabledSets) {
+            hash.addData(setName.toUtf8());
             hash.addData(QByteArray(1, '\0'));
         }
     }

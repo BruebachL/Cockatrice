@@ -225,32 +225,28 @@ void CockatriceXml3Parser::loadCardsFromXml(QXmlStreamReader &xml)
                     QXmlStreamAttributes attrs = xml.attributes();
                     QString setName = xml.readElementText(QXmlStreamReader::IncludeChildElements);
                     auto set = internalAddSet(setName);
-                    // Only load printings from sets the user has enabled, matching the v4 loader's
-                    // behaviour. Without this check, disabling a set has no effect on v3 databases.
-                    if (set->getEnabled()) {
-                        QHash<QString, QString> printingProps;
-                        if (attrs.hasAttribute("muId")) {
-                            printingProps.insert("muid", attrs.value("muId").toString());
-                        }
-
-                        if (attrs.hasAttribute("uuId")) {
-                            printingProps.insert("uuid", attrs.value("uuId").toString());
-                        }
-
-                        if (attrs.hasAttribute("picURL")) {
-                            printingProps.insert("picurl", attrs.value("picURL").toString());
-                        }
-
-                        if (attrs.hasAttribute("num")) {
-                            printingProps.insert("num", attrs.value("num").toString());
-                        }
-
-                        if (attrs.hasAttribute("rarity")) {
-                            printingProps.insert("rarity", attrs.value("rarity").toString());
-                        }
-                        PrintingInfo setInfo(set, LazyPropertiesHash(printingProps));
-                        _sets[setName].append(setInfo);
+                    QHash<QString, QString> printingProps;
+                    if (attrs.hasAttribute("muId")) {
+                        printingProps.insert("muid", attrs.value("muId").toString());
                     }
+
+                    if (attrs.hasAttribute("uuId")) {
+                        printingProps.insert("uuid", attrs.value("uuId").toString());
+                    }
+
+                    if (attrs.hasAttribute("picURL")) {
+                        printingProps.insert("picurl", attrs.value("picURL").toString());
+                    }
+
+                    if (attrs.hasAttribute("num")) {
+                        printingProps.insert("num", attrs.value("num").toString());
+                    }
+
+                    if (attrs.hasAttribute("rarity")) {
+                        printingProps.insert("rarity", attrs.value("rarity").toString());
+                    }
+                    PrintingInfo setInfo(set, LazyPropertiesHash(printingProps));
+                    _sets[setName].append(setInfo);
                     // related cards
                 } else if (xmlName == "related" || xmlName == "reverse-related") {
                     CardRelationType attach = CardRelationType::DoesNotAttach;
