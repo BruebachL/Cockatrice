@@ -13,6 +13,7 @@ add_test(NAME server_counter_test COMMAND server_counter_test)
 add_test(NAME server_rate_limiter_test COMMAND server_rate_limiter_test)
 add_test(NAME server_developer_role_test COMMAND server_developer_role_test)
 add_test(NAME server_game_join_test COMMAND server_game_join_test)
+add_test(NAME server_room_channels_test COMMAND server_room_channels_test)
 add_test(NAME warning_categories_test COMMAND warning_categories_test)
 # The translation loader test compiles a .qm fixture, which needs lrelease from Qt Linguist.
 if(TARGET Qt6::lrelease)
@@ -42,6 +43,7 @@ add_executable(server_counter_test server_counter_test.cpp)
 add_executable(server_rate_limiter_test server_rate_limiter_test.cpp)
 add_executable(server_developer_role_test server_developer_role_test.cpp)
 add_executable(server_game_join_test server_game_join_test.cpp)
+add_executable(server_room_channels_test server_room_channels_test.cpp)
 add_executable(warning_categories_test warning_categories_test.cpp)
 if(TARGET Qt6::lrelease)
   add_executable(translation_loader_test translation_loader_test.cpp)
@@ -142,6 +144,7 @@ if(NOT GTEST_FOUND)
   add_dependencies(server_rate_limiter_test gtest)
   add_dependencies(server_developer_role_test gtest)
   add_dependencies(server_game_join_test gtest)
+  add_dependencies(server_room_channels_test gtest)
   add_dependencies(warning_categories_test gtest)
   if(TARGET translation_loader_test)
     add_dependencies(translation_loader_test gtest)
@@ -191,6 +194,10 @@ target_link_libraries(
 target_link_libraries(
   server_game_join_test libcockatrice_network_server_remote libcockatrice_rng Threads::Threads ${GTEST_BOTH_LIBRARIES}
   ${TEST_QT_MODULES}
+)
+target_link_libraries(
+  server_room_channels_test libcockatrice_network_server_remote libcockatrice_rng Threads::Threads
+  ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES}
 )
 target_link_libraries(
   warning_categories_test libcockatrice_utility Threads::Threads ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES}
