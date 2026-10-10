@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+message ServerInfo_RoomChannel {
+    enum AccessLevel {
+        Public = 0;
+        Moderator = 1;
+    }
+    optional string id = 1;           // stable ASCII id, e.g. "deck-discussion"
+    optional string display_name = 2; // server-provided, localizable only server-side
+    optional AccessLevel access_level = 3 [default = Public];
+}
