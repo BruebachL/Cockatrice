@@ -342,18 +342,31 @@ Response::ResponseCode Server_Room::processJoinGameCommand(const Command_JoinGam
 void Server_Room::say(const QString &userName, const QString &userMessage, const QString &channelId, bool sendToIsl)
 {
     const bool isMain = isMainChannel(channelId);
+    bool moderatorOnly = false;
+    if (!isMain) {
+        const ServerInfo_RoomChannel *channel = findChannel(channelId);
+        if (channel == nullptr) {
+            // The channel was not whitelisted against the catalog; drop the message.
+            return;
+        }
+        moderatorOnly = channel->access_level() == ServerInfo_RoomChannel::Moderator;
+        // V1 does not relay moderator channels across ISL (plan N5).
+        if (moderatorOnly) {
+            sendToIsl = false;
+        }
+    }
 
     if (isMain) {
         Event_RoomSay event;
         event.set_name(userName.toStdString());
         event.set_message(userMessage.toStdString());
-        sendRoomEvent(prepareRoomEvent(event), sendToIsl);
+        sendRoomEvent(prepareRoomEvent(event), sendToIsl, false);
     } else {
         Event_RoomChannelSay event;
         event.set_channel_id(channelId.toStdString());
         event.set_name(userName.toStdString());
         event.set_message(userMessage.toStdString());
-        sendRoomEvent(prepareRoomEvent(event), sendToIsl);
+        sendRoomEvent(prepareRoomEvent(event), sendToIsl, moderatorOnly);
     }
 
     if (chatHistorySize != 0) {
@@ -403,13 +416,17 @@ void Server_Room::removeSaidMessages(const QString &userName, int amount, bool s
     }
 }
 
-void Server_Room::sendRoomEvent(RoomEvent *event, bool sendToIsl)
+void Server_Room::sendRoomEvent(RoomEvent *event, bool sendToIsl, bool moderatorOnly)
 {
     usersLock.lockForRead();
     {
         QMapIterator<QString, Server_ProtocolHandler *> userIterator(users);
         while (userIterator.hasNext()) {
-            userIterator.next().value()->sendProtocolItem(*event);
+            Server_ProtocolHandler *user = userIterator.next().value();
+            if (moderatorOnly && !(user->getUserInfo()->user_level() & ServerInfo_User::IsModerator)) {
+                continue;
+            }
+            user->sendProtocolItem(*event);
         }
     }
     usersLock.unlock();

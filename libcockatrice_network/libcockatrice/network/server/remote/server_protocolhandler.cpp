@@ -848,8 +848,13 @@ Response::ResponseCode Server_ProtocolHandler::cmdJoinRoom(const Command_JoinRoo
         rc.enqueuePostResponseItem(ServerMessage::ROOM_EVENT, room->prepareRoomEvent(roomChatHistory));
     }
 
-    // Replay the history of every catalog channel public to the joining user.
+    // Replay the history of every catalog channel the joining user may see:
+    // public channels for everyone, moderator channels only for moderators.
     for (const ServerInfo_RoomChannel &channel : room->getChannels()) {
+        if (channel.access_level() == ServerInfo_RoomChannel::Moderator &&
+            !(userInfo->user_level() & ServerInfo_User::IsModerator)) {
+            continue;
+        }
         const QList<ServerInfo_ChatMessage> channelHistory = room->getChatHistory(QString::fromStdString(channel.id()));
         for (const ServerInfo_ChatMessage &chatMessage : channelHistory) {
             Event_RoomChannelSay channelChatHistory;
@@ -961,6 +966,10 @@ Response::ResponseCode Server_ProtocolHandler::cmdRoomChannelSay(const Command_R
     if (channel == nullptr) {
         // The client only ever offers catalog ids; a crafted or stale id is rejected.
         return Response::RespInvalidCommand;
+    }
+    if (channel->access_level() == ServerInfo_RoomChannel::Moderator &&
+        !(userInfo->user_level() & ServerInfo_User::IsModerator)) {
+        return Response::RespFunctionNotAllowed;
     }
 
     if (!addSaidMessageSize(static_cast<int>(cmd.message().size()))) {

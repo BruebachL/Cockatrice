@@ -159,7 +159,7 @@ public:
     void addGame(Server_Game *game);
     void removeGame(Server_Game *game);
 
-    void sendRoomEvent(RoomEvent *event, bool sendToIsl = true);
+    void sendRoomEvent(RoomEvent *event, bool sendToIsl = true, bool moderatorOnly = false);
     RoomEvent *prepareRoomEvent(const ::google::protobuf::Message &roomEvent);
 };
 
