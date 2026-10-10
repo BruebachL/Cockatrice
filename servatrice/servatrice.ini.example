@@ -322,6 +322,19 @@ roomlist\1\game_types\1\name="GameType1"
 roomlist\1\game_types\2\name="GameType2"
 roomlist\1\game_types\3\name="GameType3"
 
+; Optional chat channels for room number 1, in addition to the implicit Main
+; channel every room has. Each channel needs a stable ASCII id, a display name
+; (server data, like the room name) and an access level of "public" or
+; "moderator". Public channels are visible to every room member; moderator
+; channels are only readable and writable by moderators.
+roomlist\1\channels\size=2
+roomlist\1\channels\1\id=looking-for-players
+roomlist\1\channels\1\displayname="Looking for players"
+roomlist\1\channels\1\access=public
+roomlist\1\channels\2\id=moderators
+roomlist\1\channels\2\displayname="Moderators"
+roomlist\1\channels\2\access=moderator
+
 
 [game]
 

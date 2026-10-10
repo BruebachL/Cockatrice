@@ -63,6 +63,7 @@
 #include <libcockatrice/protocol/pb/event_connection_closed.pb.h>
 #include <libcockatrice/protocol/pb/event_server_message.pb.h>
 #include <libcockatrice/protocol/pb/event_server_shutdown.pb.h>
+#include <libcockatrice/protocol/pb/serverinfo_room_channel.pb.h>
 #include <new>
 #include <qlogging.h>
 #include <qnamespace.h>
@@ -351,10 +352,28 @@ bool Servatrice::initServer()
             while (query2->next()) {
                 gameTypes.append(query2->value(0).toString());
             }
+
+            QSqlQuery *query3 = servatriceDatabaseInterface->prepareQuery(
+                "select channel_id, display_name, access_level from {prefix}_rooms_channels where id_room = :id_room "
+                "AND id_server = :id_server order by channel_id asc");
+            query3->bindValue(":id_server", serverId);
+            query3->bindValue(":id_room", query->value(0).toInt());
+            servatriceDatabaseInterface->execSqlQuery(query3);
+            QList<ServerInfo_RoomChannel> channels;
+            while (query3->next()) {
+                ServerInfo_RoomChannel channel;
+                channel.set_id(query3->value(0).toString().toStdString());
+                channel.set_display_name(query3->value(1).toString().toStdString());
+                channel.set_access_level(query3->value(2).toString().toLower() == "moderator"
+                                             ? ServerInfo_RoomChannel::Moderator
+                                             : ServerInfo_RoomChannel::Public);
+                channels.append(channel);
+            }
+
             addRoom(new Server_Room(query->value(0).toInt(), query->value(7).toInt(), query->value(1).toString(),
                                     query->value(2).toString(), query->value(3).toString().toLower(),
                                     query->value(4).toString().toLower(), static_cast<bool>(query->value(5).toInt()),
-                                    query->value(6).toString(), gameTypes, this));
+                                    query->value(6).toString(), gameTypes, this, channels));
         }
     } else {
         int size = settingsCache->beginReadArray("rooms/roomlist");
@@ -367,12 +386,25 @@ bool Servatrice::initServer()
                 gameTypes.append(settingsCache->value("name").toString());
             }
             settingsCache->endArray();
+            QList<ServerInfo_RoomChannel> channels;
+            int size3 = settingsCache->beginReadArray("channels");
+            for (int k = 0; k < size3; ++k) {
+                settingsCache->setArrayIndex(k);
+                ServerInfo_RoomChannel channel;
+                channel.set_id(settingsCache->value("id").toString().toStdString());
+                channel.set_display_name(settingsCache->value("displayname").toString().toStdString());
+                channel.set_access_level(settingsCache->value("access").toString().toLower() == "moderator"
+                                             ? ServerInfo_RoomChannel::Moderator
+                                             : ServerInfo_RoomChannel::Public);
+                channels.append(channel);
+            }
+            settingsCache->endArray();
             Server_Room *newRoom = new Server_Room(
                 i, settingsCache->value("chathistorysize").toInt(), settingsCache->value("name").toString(),
                 settingsCache->value("description").toString(),
                 settingsCache->value("permissionlevel").toString().toLower(),
                 settingsCache->value("privilegelevel").toString().toLower(), settingsCache->value("autojoin").toBool(),
-                settingsCache->value("joinmessage").toString(), gameTypes, this);
+                settingsCache->value("joinmessage").toString(), gameTypes, this, channels);
             addRoom(newRoom);
         }
 
