@@ -5,6 +5,7 @@ enable_testing()
 add_test(NAME dummy_test COMMAND dummy_test)
 add_test(NAME expression_test COMMAND expression_test)
 add_test(NAME test_age_formatting COMMAND test_age_formatting)
+add_test(NAME user_data_backup_test COMMAND user_data_backup_test)
 add_test(NAME password_hash_test COMMAND password_hash_test)
 add_test(NAME server_card_counter_test COMMAND server_card_counter_test)
 add_test(NAME server_counter_test COMMAND server_counter_test)
@@ -17,6 +18,7 @@ set_tests_properties(deck_hash_performance_test PROPERTIES TIMEOUT 5)
 add_executable(dummy_test dummy_test.cpp)
 add_executable(expression_test expression_test.cpp)
 add_executable(test_age_formatting test_age_formatting.cpp)
+add_executable(user_data_backup_test user_data_backup_test.cpp)
 add_executable(password_hash_test password_hash_test.cpp)
 add_executable(deck_hash_performance_test deck_hash_performance_test.cpp)
 add_executable(server_card_counter_test server_card_counter_test.cpp)
@@ -50,6 +52,7 @@ if(NOT GTEST_FOUND)
   add_dependencies(dummy_test gtest)
   add_dependencies(expression_test gtest)
   add_dependencies(test_age_formatting gtest)
+  add_dependencies(user_data_backup_test gtest)
   add_dependencies(password_hash_test gtest)
   add_dependencies(deck_hash_performance_test gtest)
   add_dependencies(server_card_counter_test gtest)
@@ -61,6 +64,9 @@ target_link_libraries(dummy_test Threads::Threads ${GTEST_BOTH_LIBRARIES})
 target_link_libraries(expression_test libcockatrice_utility Threads::Threads ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES})
 target_link_libraries(
   test_age_formatting libcockatrice_utility Threads::Threads ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES}
+)
+target_link_libraries(
+  user_data_backup_test libcockatrice_utility Threads::Threads ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES}
 )
 target_link_libraries(
   password_hash_test libcockatrice_utility Threads::Threads ${GTEST_BOTH_LIBRARIES} ${TEST_QT_MODULES}

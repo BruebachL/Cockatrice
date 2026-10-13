@@ -356,7 +356,7 @@ private:
 
 public:
     SettingsCache();
-    QString getDataPath();
+    QString getDataPath() const;
     QString getSettingsPath();
     [[nodiscard]] QString getCachePath() const;
     [[nodiscard]] QString getNetworkCachePath() const;
@@ -1019,6 +1019,23 @@ public:
     {
         return isPortableBuild;
     }
+
+    /**
+     * @brief Lists user data paths that live inside the application install directory.
+     *
+     * Such paths are at risk: Windows uninstallers shipped in 3.1.0/3.1.1 deleted the
+     * whole install tree, including portable $INSTDIR/data and any custom folder the
+     * user pointed into $INSTDIR. An empty list means nothing is at risk.
+     */
+    [[nodiscard]] QStringList getUserDataPathsInsideInstallDir() const;
+    [[nodiscard]] bool isUserDataInsideInstallDir() const;
+    /**
+     * @brief Copies at-risk user data (decks, settings) to a timestamped folder outside
+     * the install directory.
+     * @param backupLocationOut receives the created backup directory on success.
+     * @returns true when nothing was at risk or the backup succeeded.
+     */
+    bool backupUserDataInsideInstallDir(QString *backupLocationOut = nullptr);
     [[nodiscard]] bool getDownloadSpoilersStatus() const
     {
         return mbDownloadSpoilers;

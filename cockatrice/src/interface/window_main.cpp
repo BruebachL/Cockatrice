@@ -531,6 +531,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::startupConfigCheck()
 {
+    checkUserDataInsideInstallDir();
+
     if (SettingsCache::instance().debug().getLocalGameOnStartup()) {
         LocalGameOptions options;
         options.numberPlayers = SettingsCache::instance().debug().getLocalGamePlayerCount();
@@ -622,6 +624,40 @@ void MainWindow::startupConfigCheck()
             tip->show();
         }
     }
+}
+
+void MainWindow::checkUserDataInsideInstallDir()
+{
+    if (!SettingsCache::instance().isUserDataInsideInstallDir()) {
+        return;
+    }
+    QStringList atRisk = SettingsCache::instance().getUserDataPathsInsideInstallDir();
+    qCWarning(MainWindowLog) << "User data inside install dir, creating safety backup:" << atRisk;
+
+    QString backupLocation;
+    bool backupOk = SettingsCache::instance().backupUserDataInsideInstallDir(&backupLocation);
+
+    QString detail = atRisk.join("\n");
+    QString message;
+    if (backupOk && !backupLocation.isEmpty()) {
+        message = tr("Your decks and settings are stored inside the Cockatrice install folder:\n"
+                     "%1\n\n"
+                     "Uninstalling or updating Cockatrice can permanently delete that folder "
+                     "(this happened with the 3.1.0/3.1.1 uninstaller). A safety backup has been "
+                     "created at:\n%2\n\n"
+                     "Please move your data out of the install folder (Settings -> General -> Paths) "
+                     "so a future uninstall cannot delete it again.")
+                      .arg(detail, backupLocation);
+    } else {
+        message = tr("Your decks and settings are stored inside the Cockatrice install folder:\n"
+                     "%1\n\n"
+                     "Uninstalling or updating Cockatrice can permanently delete that folder "
+                     "(this happened with the 3.1.0/3.1.1 uninstaller), and the automatic safety "
+                     "backup failed. Please back up these folders manually and move them out of "
+                     "the install folder (Settings -> General -> Paths).")
+                      .arg(detail);
+    }
+    QMessageBox::warning(this, tr("Decks stored in install folder"), message);
 }
 
 void MainWindow::alertForcedOracleRun(const QString &version, bool isUpdate)

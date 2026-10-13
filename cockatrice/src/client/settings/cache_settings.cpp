@@ -11,10 +11,12 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGlobalStatic>
 #include <QSettings>
 #include <QStandardPaths>
 #include <libcockatrice/settings/card_override_settings.h>
+#include <libcockatrice/utility/user_data_backup.h>
 #include <utility>
 
 Q_GLOBAL_STATIC(SettingsCache, settingsCache)
@@ -24,7 +26,7 @@ SettingsCache &SettingsCache::instance()
     return *settingsCache; // returns a QT managed singleton reference
 }
 
-QString SettingsCache::getDataPath()
+QString SettingsCache::getDataPath() const
 {
     if (isPortableBuild) {
         return qApp->applicationDirPath() + "/data";
@@ -1427,4 +1429,74 @@ void SettingsCache::resetPaths()
 CardCounterSettings &SettingsCache::cardCounters() const
 {
     return *cardCounterSettings;
+}
+
+QStringList SettingsCache::getUserDataPathsInsideInstallDir() const
+{
+    QString appDir = QCoreApplication::applicationDirPath();
+    if (appDir.isEmpty()) {
+        return {};
+    }
+    QStringList candidates = {getDataPath(),    deckPath,          filtersPath,        replaysPath,
+                              themesPath,       picsPath,          customPicsPath,     customCardDatabasePath,
+                              cardDatabasePath, tokenDatabasePath, spoilerDatabasePath};
+    QStringList atRisk = UserDataBackup::filterPathsInsideDirectory(candidates, appDir);
+    atRisk.removeDuplicates();
+    return atRisk;
+}
+
+bool SettingsCache::isUserDataInsideInstallDir() const
+{
+    return !getUserDataPathsInsideInstallDir().isEmpty();
+}
+
+bool SettingsCache::backupUserDataInsideInstallDir(QString *backupLocationOut)
+{
+    QStringList atRisk = getUserDataPathsInsideInstallDir();
+    if (atRisk.isEmpty()) {
+        return true;
+    }
+    QString backupRoot = UserDataBackup::defaultBackupRoot();
+    // Never write the safety copy back into the tree it protects.
+    if (UserDataBackup::isPathInsideDirectory(backupRoot, QCoreApplication::applicationDirPath())) {
+        backupRoot = QDir::temp().absoluteFilePath("CockatriceBackups");
+    }
+    bool ok = true;
+    QString firstBackup;
+    for (const QString &path : atRisk) {
+        QFileInfo info(path);
+        QString backupDir;
+        if (info.isFile()) {
+            QString targetDir = QDir(backupRoot).absoluteFilePath("single-files");
+            if (!QDir().mkpath(targetDir)) {
+                qCWarning(SettingsCacheLog) << "[SettingsCache] Could not create backup dir:" << targetDir;
+                ok = false;
+                continue;
+            }
+            QString target = QDir(targetDir).absoluteFilePath(info.fileName());
+            if (QFile::exists(target)) {
+                QFile::remove(target);
+            }
+            if (!QFile::copy(path, target)) {
+                qCWarning(SettingsCacheLog) << "[SettingsCache] Could not back up file:" << path;
+                ok = false;
+            } else if (firstBackup.isEmpty()) {
+                firstBackup = target;
+            }
+        } else {
+            if (!UserDataBackup::backupAtRiskData(path, backupRoot, &backupDir)) {
+                qCWarning(SettingsCacheLog) << "[SettingsCache] Could not back up folder:" << path;
+                ok = false;
+            } else {
+                qCInfo(SettingsCacheLog) << "[SettingsCache] Backed up at-risk data" << path << "to" << backupDir;
+                if (firstBackup.isEmpty()) {
+                    firstBackup = backupDir;
+                }
+            }
+        }
+    }
+    if (backupLocationOut && !firstBackup.isEmpty()) {
+        *backupLocationOut = firstBackup;
+    }
+    return ok;
 }

@@ -103,6 +103,7 @@ private slots:
 
     void startupConfigCheck();
     void alertForcedOracleRun(const QString &version, bool isUpdate);
+    void checkUserDataInsideInstallDir();
 
 private:
     static const QString appName;
