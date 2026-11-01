@@ -1,135 +1,170 @@
 #include "update_downloader.h"
 
 #include <QDir>
-#include <QFileInfo>
 #include <QIODevice>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QSaveFile>
 #include <QTemporaryDir>
 #include <QUrl>
-#include <QVariant>
 #include <libcockatrice/network/network_manager.h>
 
 namespace
 {
 constexpr int DOWNLOAD_TIMEOUT_MS = 30000;
+constexpr qint64 DOWNLOAD_BUFFER_SIZE = 256 * 1024;
+constexpr qint64 WRITE_CHUNK_SIZE = 64 * 1024;
+
+QString installerFileName(const QUrl &url)
+{
+    QString name = QUrl::fromPercentEncoding(url.fileName(QUrl::FullyEncoded).toUtf8());
+    // The URL supplies a filename, not a path. Encoded separators must not escape
+    // the private directory, and the installer suffix must survive URL queries.
+    for (QChar &character : name) {
+        if (character.unicode() < 32 || QStringLiteral("<>:\"/\\|?*").contains(character)) {
+            character = QLatin1Char('_');
+        }
+    }
+    while (name.endsWith(QLatin1Char('.')) || name.endsWith(QLatin1Char(' '))) {
+        name.chop(1);
+    }
+    return name.isEmpty() ? QStringLiteral("update") : name;
+}
 } // namespace
 
-UpdateDownloader::UpdateDownloader(QObject *parent) : QObject(parent), response(nullptr)
+UpdateDownloader::UpdateDownloader(QObject *parent) : QObject(parent)
 {
     netMan = NetworkManagerFactory::create(this);
+    connect(this, &UpdateDownloader::stopDownload, this, &UpdateDownloader::discardDownload);
+}
+
+UpdateDownloader::~UpdateDownloader()
+{
+    discardDownload();
 }
 
 void UpdateDownloader::beginDownload(QUrl downloadUrl)
 {
-    // Save the original URL because we need it for the filename
-    if (originalUrl.isEmpty()) {
-        originalUrl = downloadUrl;
-    }
+    // Retire the old reply before abort(), which may emit its signals synchronously.
+    discardDownload();
 
-    if (response != nullptr) {
-        response->abort();
-        response->deleteLater();
+    downloadDir = std::make_unique<QTemporaryDir>(QDir::temp().filePath(QStringLiteral("cockatrice-update-XXXXXX")));
+    if (!downloadDir->isValid()) {
+        failDownload(tr("Could not create a temporary directory for the download."));
+        return;
     }
-
-    errorReported = false;
+    fileName = downloadDir->filePath(installerFileName(downloadUrl));
+    output = std::make_unique<QSaveFile>(fileName);
+    output->setDirectWriteFallback(false);
+    if (!output->open(QIODevice::WriteOnly)) {
+        failDownload(tr("Could not open the file for writing: %1").arg(output->errorString()));
+        return;
+    }
 
     QNetworkRequest request(downloadUrl);
-    // Without a timeout, a stalled connection leaves the dialog waiting forever.
     request.setTransferTimeout(DOWNLOAD_TIMEOUT_MS);
-
     response = netMan->get(request);
+    response->setReadBufferSize(DOWNLOAD_BUFFER_SIZE);
+    connect(response, &QNetworkReply::readyRead, this, [this] {
+        if (sender() == response) {
+            writeAvailableData();
+        }
+    });
     connect(response, &QNetworkReply::finished, this, &UpdateDownloader::fileFinished);
     connect(response, &QNetworkReply::errorOccurred, this, &UpdateDownloader::downloadError);
     connect(response, &QNetworkReply::downloadProgress, this, &UpdateDownloader::downloadProgress);
-    connect(this, &UpdateDownloader::stopDownload, response, &QNetworkReply::abort);
+}
+
+void UpdateDownloader::discardDownload()
+{
+    const auto oldReply = response;
+    response.clear();
+    if (oldReply) {
+        disconnect(oldReply, nullptr, this, nullptr);
+        if (!oldReply->isFinished() && oldReply->error() == QNetworkReply::NoError) {
+            oldReply->abort();
+        }
+        if (oldReply) {
+            oldReply->deleteLater();
+        }
+    }
+    if (output) {
+        output->cancelWriting();
+        output.reset();
+    }
+    downloadDir.reset();
+    fileName.clear();
+    bytesWritten = 0;
+}
+
+void UpdateDownloader::failDownload(const QString &message)
+{
+    // Clear operation state before notifying callers: an error receiver may retry
+    // or destroy the downloader while handling the signal.
+    discardDownload();
+    emit error(message);
+}
+
+bool UpdateDownloader::writeAvailableData()
+{
+    while (response && response->bytesAvailable() > 0) {
+        const QByteArray data = response->read(WRITE_CHUNK_SIZE);
+        if (data.isEmpty() || !output || output->write(data) != data.size()) {
+            failDownload(tr("Could not write the downloaded file to disk."));
+            return false;
+        }
+        bytesWritten += data.size();
+    }
+    return true;
 }
 
 void UpdateDownloader::downloadError(QNetworkReply::NetworkError networkError)
 {
-    // A reply that was superseded by beginDownload() can still deliver a
-    // queued error; it must not be reported against the current reply.
-    if (response == nullptr || sender() != response || errorReported) {
+    if (!response || sender() != response) {
         return;
     }
-
-    // A user-requested abort is not an error worth showing.
     if (networkError == QNetworkReply::OperationCanceledError) {
+        discardDownload();
         return;
     }
-
-    errorReported = true;
-    emit error(response->errorString());
+    failDownload(response->errorString());
 }
 
 void UpdateDownloader::fileFinished()
 {
-    // An aborted, superseded reply also emits finished(). Only the reply
-    // currently stored in response may be consumed.
-    if (response == nullptr || sender() != response) {
+    if (!response || sender() != response) {
         return;
     }
-
-    // errorOccurred normally reports this first; keep the check for errors that
-    // only surface when the reply finishes.
     if (response->error() != QNetworkReply::NoError) {
         downloadError(response->error());
-        response->deleteLater();
-        response = nullptr;
+        return;
+    }
+    if (!writeAvailableData()) {
+        return;
+    }
+    if (bytesWritten == 0) {
+        failDownload(tr("The downloaded update is empty."));
+        return;
+    }
+    // Check buffered writes before committing. In particular, a failed flush
+    // must never turn a partial installer into a successful download.
+    if (!output->flush() || !output->commit()) {
+        failDownload(tr("Could not save the downloaded file: %1").arg(output->errorString()));
         return;
     }
 
-    // Give the update its own private directory. The name is unpredictable, so a
-    // local user cannot pre-create or symlink the path, and the original file
-    // name (including the installer suffix) is preserved inside it.
-    QTemporaryDir downloadDir(QDir::temp().filePath(QStringLiteral("cockatrice-update-XXXXXX")));
-    if (!downloadDir.isValid()) {
-        emit error(tr("Could not create a temporary directory for the download."));
-        response->deleteLater();
-        response = nullptr;
-        return;
-    }
-    downloadDir.setAutoRemove(false);
-
-    const QString remoteName = QFileInfo(originalUrl.path()).fileName();
-    const QString fileName = downloadDir.filePath(remoteName.isEmpty() ? QStringLiteral("update") : remoteName);
-
-    QSaveFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
-        downloadDir.remove();
-        emit error(tr("Could not open the file for writing: %1").arg(file.errorString()));
-        response->deleteLater();
-        response = nullptr;
-        return;
-    }
-
-    const QByteArray data = response->readAll();
-    if (file.write(data) != data.size()) {
-        file.cancelWriting();
-        downloadDir.remove();
-        emit error(tr("Could not write the downloaded file to disk."));
-        response->deleteLater();
-        response = nullptr;
-        return;
-    }
-
-    if (!file.commit()) {
-        downloadDir.remove();
-        emit error(tr("Could not save the downloaded file: %1").arg(file.errorString()));
-        response->deleteLater();
-        response = nullptr;
-        return;
-    }
-
-    response->deleteLater();
-    response = nullptr;
-
-    // Emit the success signal with a URL to the download file
-    emit downloadSuccessful(QUrl::fromLocalFile(fileName));
+    const QUrl downloadedFile = QUrl::fromLocalFile(fileName);
+    output.reset();
+    // A successfully launched installer may outlive both this object and the
+    // application. Only successful downloads retain their private directory.
+    downloadDir->setAutoRemove(false);
+    discardDownload();
+    emit downloadSuccessful(downloadedFile);
 }
 
 void UpdateDownloader::downloadProgress(qint64 bytesRead, qint64 totalBytes)
 {
-    emit progressMade(bytesRead, totalBytes);
+    if (response && sender() == response) {
+        emit progressMade(bytesRead, totalBytes);
+    }
 }
